@@ -36,7 +36,7 @@ public final class DemoRunner {
             section("Phase 1: Authentication & User Registration");
 
             // Verify seeded admin
-            assertTrue("Seeded admin authenticates", engine.authenticate("admin", "admin123").isPresent());
+            assertTrue("Seeded admin authenticates", engine.authenticate("admin", "admin_password_123").isPresent());
 
             // Register standard player accounts (no team required initially)
             User alice = engine.registerUser("alice", "alice@test.local", "pass_alice");

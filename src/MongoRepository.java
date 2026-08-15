@@ -364,10 +364,10 @@ public final class MongoRepository {
 
     private void seedDefaultAdminIfEmpty() {
         if (mongoManager.getUsersCollection().countDocuments() == 0) {
-            String adminHash = CTFChallenge.sha256Hex("admin123");
+            String adminHash = CTFChallenge.sha256Hex("admin_password_123");
             User admin = new User("USER-ADMIN", "admin", "admin@cyberarena.local", adminHash, User.Role.ADMIN, null);
             saveUser(admin);
-            System.out.println("[MongoRepository] Seeded default administrator: admin / admin123");
+            System.out.println("[MongoRepository] Seeded default administrator: admin / admin_password_123");
         }
     }
 
