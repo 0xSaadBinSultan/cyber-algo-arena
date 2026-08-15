@@ -1,0 +1,6 @@
+out/
+target/
+contest_data_demo/
+.git/
+*.md
+.commandcode/

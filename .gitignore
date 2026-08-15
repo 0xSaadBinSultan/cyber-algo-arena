@@ -1,0 +1,6 @@
+target/
+out/
+contest_data_demo/
+.commandcode/
+*.log
+.DS_Store
