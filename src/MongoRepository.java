@@ -363,11 +363,17 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     private void seedDefaultAdminIfEmpty() {
-        if (mongoManager.getUsersCollection().countDocuments() == 0) {
-            String adminHash = CTFChallenge.sha256Hex("admin_password_123");
+        String adminHash = CTFChallenge.sha256Hex("admin_password_123");
+        Optional<User> existingAdmin = getUserByUsername("admin");
+        if (existingAdmin.isEmpty()) {
             User admin = new User("USER-ADMIN", "admin", "admin@cyberarena.local", adminHash, User.Role.ADMIN, null);
             saveUser(admin);
             System.out.println("[MongoRepository] Seeded default administrator: admin / admin_password_123");
+        } else if (!existingAdmin.get().getPasswordHash().equals(adminHash)) {
+            User current = existingAdmin.get();
+            User updated = new User(current.getId(), current.getUsername(), current.getEmail(), adminHash, User.Role.ADMIN, current.getTeamId());
+            saveUser(updated);
+            System.out.println("[MongoRepository] Updated administrator password to: admin_password_123");
         }
     }
 
