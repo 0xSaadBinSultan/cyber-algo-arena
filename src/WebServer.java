@@ -23,11 +23,13 @@ public final class WebServer {
     private final ObjectMapper mapper;
     private final RateLimiter rateLimiter;
     private final SecureRandom secureRandom;
+    private final ContestRadarService radarService;
 
     public WebServer(ContestEngine engine, int port) {
         this.engine = engine;
         this.rateLimiter = new RateLimiter();
         this.secureRandom = new SecureRandom();
+        this.radarService = new ContestRadarService();
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -74,9 +76,10 @@ public final class WebServer {
         app.get("/api/users/me/profile", this::handleMyProfile);
         app.get("/api/users/{id}/profile", this::handleUserProfile);
 
-        // ── Contests ──
+        // ── Contests & Radar ──
         app.get("/api/contests", this::handleGetContests);
         app.post("/api/contests/{id}/register", this::handleRegisterContest);
+        app.get("/api/events/upcoming", this::handleUpcomingEvents);
 
         // ── Challenges ──
         app.get("/api/challenges", this::handleGetChallenges);
@@ -272,6 +275,10 @@ public final class WebServer {
         } catch (IllegalStateException ex) {
             ctx.status(409).json(errorMap(ex.getMessage()));
         }
+    }
+
+    private void handleUpcomingEvents(Context ctx) {
+        ctx.json(radarService.getUpcomingEvents());
     }
 
     // ═══════════════════════════════════════════

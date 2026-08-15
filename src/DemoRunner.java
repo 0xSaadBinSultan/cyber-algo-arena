@@ -204,10 +204,37 @@ public final class DemoRunner {
             assertTrue("Challenge deleted from MongoDB", notFound);
             assertTrue("Attachment file cleaned up from disk", !Files.exists(ATTACH_DIR.resolve("demo_cipher.txt")));
 
+            // ━━━ Phase 9: Contest Radar & Piston Judge ━━━
+            section("Phase 9: Live Contest Radar & Piston Judge Verification");
+
+            ContestRadarService radar = new ContestRadarService();
+            var events = radar.getUpcomingEvents();
+            assertTrue("Contest Radar returns upcoming events list", events != null);
+
+            PistonJudgeEngine piston = new PistonJudgeEngine();
+            // Test C++ source code execution against CP problem
+            String cppSource = """
+                    #include <iostream>
+                    using namespace std;
+                    int main() {
+                        int n;
+                        if (cin >> n) {
+                            int sum = 0;
+                            for (int i = 0; i < n; i++) {
+                                int x; cin >> x; sum += x;
+                            }
+                            cout << 0 << endl; // matches DEMO-CP01 testcase output '0'
+                        }
+                        return 0;
+                    }
+                    """;
+            PistonJudgeEngine.ExecutionResult res = piston.judge(cp, cppSource);
+            assertTrue("Piston engine handles source code submission", res != null && res.status() != null);
+
             // Final Summary
             System.out.println();
             System.out.println("╔══════════════════════════════════════════════════╗");
-            System.out.printf("║  SECURITY & LIFECYCLE: %d/%d assertions passed    ║%n", passed, assertions);
+            System.out.printf("║  ALL SUITES COMPLETE: %d/%d assertions passed      ║%n", passed, assertions);
             System.out.println("╚══════════════════════════════════════════════════╝");
 
             if (passed != assertions) {

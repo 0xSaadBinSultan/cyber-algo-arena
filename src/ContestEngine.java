@@ -13,6 +13,7 @@ public final class ContestEngine {
 
     private final MongoRepository repository;
     private final Leaderboard leaderboard;
+    private final PistonJudgeEngine pistonJudge;
 
     private final Map<String, Challenge> challengesById = new ConcurrentHashMap<>();
     private final Map<String, User> usersById = new ConcurrentHashMap<>();
@@ -29,6 +30,7 @@ public final class ContestEngine {
     public ContestEngine(MongoRepository repository) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.leaderboard = new Leaderboard();
+        this.pistonJudge = new PistonJudgeEngine();
     }
 
     /** Loads all persisted state from MongoDB into memory. */
@@ -356,18 +358,28 @@ public final class ContestEngine {
             throw new DuplicateSubmissionException("Challenge already solved by team " + team.getId());
         }
 
-        boolean accepted;
-        try {
-            accepted = challenge.evaluate(submission.getPayload());
-        } catch (InvalidSubmissionException ex) {
-            SubmissionResult errResult = new SubmissionResult(SubmissionResult.Status.INVALID, 0, ex.getMessage());
-            submission.applyResult(errResult);
-            submissions.add(submission);
-            repository.saveSubmission(submission);
-            return errResult;
+        SubmissionResult.Status status = SubmissionResult.Status.WRONG_ANSWER;
+        String outcomeMessage = "Wrong answer";
+
+        if (challenge instanceof CPProblem cp) {
+            PistonJudgeEngine.ExecutionResult execRes = pistonJudge.judge(cp, submission.getPayload());
+            status = execRes.status();
+            outcomeMessage = execRes.message();
+        } else {
+            try {
+                boolean accepted = challenge.evaluate(submission.getPayload());
+                status = accepted ? SubmissionResult.Status.ACCEPTED : SubmissionResult.Status.WRONG_ANSWER;
+                outcomeMessage = accepted ? "Accepted" : "Wrong answer";
+            } catch (InvalidSubmissionException ex) {
+                SubmissionResult errResult = new SubmissionResult(SubmissionResult.Status.INVALID, 0, ex.getMessage());
+                submission.applyResult(errResult);
+                submissions.add(submission);
+                repository.saveSubmission(submission);
+                return errResult;
+            }
         }
 
-        if (accepted) {
+        if (status == SubmissionResult.Status.ACCEPTED) {
             int wrongCount = getWrongAttempts(team.getId(), challenge.getId());
             int hintsCount = getHintUsageCount(team.getId(), challenge.getId());
             int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
@@ -383,7 +395,7 @@ public final class ContestEngine {
             repository.saveTeam(team);
             repository.saveUser(user);
 
-            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, "Accepted");
+            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, outcomeMessage);
             submission.applyResult(acceptResult);
             submissions.add(submission);
             repository.saveSubmission(submission);
@@ -394,11 +406,11 @@ public final class ContestEngine {
             teamWrongAttempts.computeIfAbsent(team.getId(), k -> new ConcurrentHashMap<>())
                     .merge(challenge.getId(), 1, Integer::sum);
 
-            SubmissionResult wrongResult = new SubmissionResult(SubmissionResult.Status.WRONG_ANSWER, 0, "Wrong answer");
-            submission.applyResult(wrongResult);
+            SubmissionResult failResult = new SubmissionResult(status, 0, outcomeMessage);
+            submission.applyResult(failResult);
             submissions.add(submission);
             repository.saveSubmission(submission);
-            return wrongResult;
+            return failResult;
         }
     }
 

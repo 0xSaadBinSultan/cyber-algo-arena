@@ -242,6 +242,7 @@
         </h1>
         <div class="hidden md:flex space-x-5">
           <a href="#" class="nav-link text-cyber-cyan neon-text-cyan font-bold transition-colors uppercase text-sm" data-target="challenges">Challenges</a>
+          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="radar">📡 Radar</a>
           <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="team">Team Hub</a>
           <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="profile">Profile</a>
           <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="leaderboard">Leaderboard</a>
@@ -258,6 +259,7 @@
       </div>
       <div class="w-full flex md:hidden space-x-3 mt-3 border-t border-cyber-border pt-2 overflow-x-auto text-xs">
         <a href="#" class="nav-link text-cyber-cyan uppercase" data-target="challenges">Challenges</a>
+        <a href="#" class="nav-link text-gray-400 uppercase" data-target="radar">Radar</a>
         <a href="#" class="nav-link text-gray-400 uppercase" data-target="team">Team</a>
         <a href="#" class="nav-link text-gray-400 uppercase" data-target="profile">Profile</a>
         <a href="#" class="nav-link text-gray-400 uppercase" data-target="leaderboard">Leaderboard</a>
@@ -360,6 +362,35 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- 1.5 CONTEST RADAR SECTION (CTFtime & Codeforces Aggregator) -->
+      <section id="sec-radar" class="app-section hidden">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-cyber-border pb-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-cyber-cyan neon-text-cyan uppercase tracking-wider flex items-center gap-2">
+              <span>📡 TOURNAMENT RADAR</span>
+              <span class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan bg-[rgba(0,240,255,0.1)]">LIVE AGGREGATOR</span>
+            </h2>
+            <p class="text-xs text-gray-400 mt-1">Real-time tracker for upcoming CTFtime and Codeforces championship rounds</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
+            <span class="text-xs text-gray-400">10m Cached Intel</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mb-6">
+          <span class="text-xs text-gray-400 uppercase font-semibold mr-1">Filter Platform:</span>
+          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active" data-platform="ALL">ALL PLATFORMS</button>
+          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan rounded font-bold uppercase transition-all" data-platform="CTFtime">🛡️ CTFtime</button>
+          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-yellow rounded font-bold uppercase transition-all" data-platform="Codeforces">⚡ Codeforces</button>
+        </div>
+
+        <div id="radar-events-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Dynamic Event Cards -->
         </div>
       </section>
 
@@ -803,6 +834,7 @@
       });
 
       if(targetId === 'challenges') fetchChallenges();
+      if(targetId === 'radar') fetchUpcomingRadar();
       if(targetId === 'team') fetchMyTeam();
       if(targetId === 'profile') fetchMyProfile();
       if(targetId === 'leaderboard') {
@@ -1334,6 +1366,109 @@
           });
         }
       } catch(err){}
+    }
+
+    // --- CONTEST RADAR (CTFtime + Codeforces) ---
+    let upcomingRadarEvents = [];
+    let selectedRadarPlatform = 'ALL';
+
+    document.querySelectorAll('.radar-filter-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.radar-filter-pill').forEach(p => {
+          p.className = "radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan rounded font-bold uppercase transition-all";
+        });
+        pill.className = "radar-filter-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active";
+        selectedRadarPlatform = pill.dataset.platform;
+        renderRadarCards();
+      });
+    });
+
+    async function fetchUpcomingRadar() {
+      const grid = document.getElementById('radar-events-grid');
+      grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-cyan italic animate-pulse">Scanning orbital frequencies for upcoming tournaments...</div>';
+      try {
+        const res = await fetch('/api/events/upcoming');
+        if (res.ok) {
+          upcomingRadarEvents = await res.json();
+          renderRadarCards();
+        } else {
+          grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-red">Unable to retrieve upcoming tournament schedule.</div>';
+        }
+      } catch (err) {
+        grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-red">Connection error to radar relay.</div>';
+      }
+    }
+
+    function renderRadarCards() {
+      const grid = document.getElementById('radar-events-grid');
+      grid.innerHTML = '';
+
+      let list = upcomingRadarEvents;
+      if (selectedRadarPlatform !== 'ALL') {
+        list = list.filter(e => (e.platform || '').toUpperCase() === selectedRadarPlatform.toUpperCase());
+      }
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div class="col-span-full p-8 text-center text-gray-500 italic bg-cyber-card border border-cyber-border rounded">No upcoming events scheduled on '${escapeHtml(selectedRadarPlatform)}'.</div>`;
+        return;
+      }
+
+      list.forEach(ev => {
+        const isCtf = ev.platform === 'CTFtime';
+        const cardBorder = isCtf ? 'neon-border' : 'neon-border-yellow';
+        const badgeColor = isCtf ? 'bg-[rgba(0,240,255,0.15)] text-cyber-cyan border-cyber-cyan' : 'bg-[rgba(255,230,0,0.15)] text-cyber-yellow border-cyber-yellow';
+        const btnClass = isCtf ? 'btn-cyber' : 'btn-cyber-yellow';
+
+        let startDateStr = 'TBD';
+        if (ev.startTime) {
+          try {
+            startDateStr = new Date(ev.startTime).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short'
+            });
+          } catch(e) {}
+        }
+
+        const card = document.createElement('div');
+        card.className = `bg-cyber-card ${cardBorder} p-5 rounded flex flex-col justify-between hover:scale-[1.01] transition-transform duration-200`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="text-[10px] px-2.5 py-0.5 border font-extrabold uppercase rounded ${badgeColor}">
+                ${isCtf ? '🛡️ CTFTIME' : '⚡ CODEFORCES'}
+              </span>
+              <span class="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">${escapeHtml(ev.format || 'Standard')}</span>
+            </div>
+
+            <h3 class="text-base font-extrabold text-white mb-2 leading-snug">${escapeHtml(ev.title)}</h3>
+            
+            <div class="space-y-1.5 text-xs text-gray-300 bg-cyber-card2 p-3 border border-cyber-border rounded mb-4">
+              <div class="flex items-center gap-1.5">
+                <span class="text-cyber-cyan">📅 START:</span>
+                <span class="font-bold text-white">${escapeHtml(startDateStr)}</span>
+              </div>
+              ${ev.durationSeconds ? `
+                <div class="flex items-center gap-1.5">
+                  <span class="text-cyber-yellow">⏱️ DURATION:</span>
+                  <span>${Math.round(ev.durationSeconds / 3600)} Hours</span>
+                </div>
+              ` : ''}
+              ${ev.weight ? `
+                <div class="flex items-center gap-1.5">
+                  <span class="text-cyber-magenta">⚖️ WEIGHT:</span>
+                  <span class="font-bold text-cyber-magenta">${escapeHtml(ev.weight)}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="w-full ${btnClass} py-2 text-xs font-extrabold tracking-wider uppercase text-center block rounded flex items-center justify-center gap-1.5">
+            <span>REGISTER / INTEL</span>
+            <span>↗</span>
+          </a>
+        `;
+        grid.appendChild(card);
+      });
     }
 
     // --- ADMIN ACTIONS (XSS SAFE) ---

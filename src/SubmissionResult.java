@@ -10,6 +10,9 @@ public final class SubmissionResult implements Persistable {
         PENDING,
         ACCEPTED,
         WRONG_ANSWER,
+        TIME_LIMIT_EXCEEDED,
+        RUNTIME_ERROR,
+        COMPILATION_ERROR,
         INVALID;
 
         public static Status fromToken(String token) {
