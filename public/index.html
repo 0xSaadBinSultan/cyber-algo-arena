@@ -3,14 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber-Algo Arena</title>
+  <title>Cyber-Algo Arena — CTF + CP Competition Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            cyber: { bg: '#050510', card: '#0d0d1a', border: '#1a1a2e', cyan: '#00f0ff', magenta: '#ff00aa', green: '#00ff88', red: '#ff003c' }
+            cyber: {
+              bg: '#050510',
+              card: '#0d0d1a',
+              card2: '#121224',
+              border: '#1a1a2e',
+              border2: '#2a2a4a',
+              cyan: '#00f0ff',
+              magenta: '#ff00aa',
+              green: '#00ff88',
+              yellow: '#ffe600',
+              red: '#ff003c'
+            }
           },
           fontFamily: {
             mono: ['"JetBrains Mono"', 'monospace'],
@@ -19,7 +30,7 @@
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   <style>
     body {
       background-color: #050510;
@@ -29,160 +40,185 @@
     .scanlines {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.12));
       background-size: 100% 4px;
       pointer-events: none;
       z-index: 9999;
     }
     .neon-border {
       border: 1px solid #00f0ff;
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.1);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25), inset 0 0 12px rgba(0, 240, 255, 0.05);
     }
     .neon-border-magenta {
       border: 1px solid #ff00aa;
-      box-shadow: 0 0 10px rgba(255, 0, 170, 0.3), inset 0 0 10px rgba(255, 0, 170, 0.1);
+      box-shadow: 0 0 12px rgba(255, 0, 170, 0.25), inset 0 0 12px rgba(255, 0, 170, 0.05);
+    }
+    .neon-border-yellow {
+      border: 1px solid #ffe600;
+      box-shadow: 0 0 12px rgba(255, 230, 0, 0.25), inset 0 0 12px rgba(255, 230, 0, 0.05);
     }
     .neon-text-cyan {
-      text-shadow: 0 0 5px #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
     }
     .neon-text-magenta {
-      text-shadow: 0 0 5px #ff00aa;
+      text-shadow: 0 0 8px rgba(255, 0, 170, 0.8);
+    }
+    .neon-text-yellow {
+      text-shadow: 0 0 8px rgba(255, 230, 0, 0.8);
     }
     .input-cyber {
-      background: #0d0d1a;
+      background: #090915;
       border: 1px solid #1a1a2e;
       color: #00f0ff;
-      transition: all 0.3s;
+      transition: all 0.2s ease-in-out;
     }
     .input-cyber:focus {
       outline: none;
       border-color: #00f0ff;
-      box-shadow: 0 0 8px rgba(0,240,255,0.4);
+      box-shadow: 0 0 10px rgba(0,240,255,0.3);
     }
     .btn-cyber {
-      background: rgba(0, 240, 255, 0.05);
+      background: rgba(0, 240, 255, 0.1);
       border: 1px solid #00f0ff;
       color: #00f0ff;
-      text-transform: uppercase;
-      font-weight: bold;
-      cursor: pointer;
       transition: all 0.2s;
     }
     .btn-cyber:hover {
-      background: rgba(0, 240, 255, 0.2);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+      background: #00f0ff;
+      color: #050510;
+      box-shadow: 0 0 15px rgba(0,240,255,0.5);
     }
     .btn-cyber-magenta {
-      background: rgba(255, 0, 170, 0.05);
-      border-color: #ff00aa;
+      background: rgba(255, 0, 170, 0.1);
+      border: 1px solid #ff00aa;
       color: #ff00aa;
+      transition: all 0.2s;
     }
     .btn-cyber-magenta:hover {
-      background: rgba(255, 0, 170, 0.2);
-      box-shadow: 0 0 15px rgba(255, 0, 170, 0.6);
+      background: #ff00aa;
+      color: #ffffff;
+      box-shadow: 0 0 15px rgba(255,0,170,0.5);
     }
-    
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #050510; }
-    ::-webkit-scrollbar-thumb { background: #1a1a2e; border: 1px solid #00f0ff; }
-    
-    .hidden { display: none !important; }
-    
-    #toast-container {
+    .btn-cyber-yellow {
+      background: rgba(255, 230, 0, 0.1);
+      border: 1px solid #ffe600;
+      color: #ffe600;
+      transition: all 0.2s;
+    }
+    .btn-cyber-yellow:hover {
+      background: #ffe600;
+      color: #050510;
+      box-shadow: 0 0 15px rgba(255,230,0,0.5);
+    }
+    .toast-container {
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 1.5rem;
+      right: 1.5rem;
       z-index: 10000;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 0.5rem;
     }
     .toast {
-      padding: 12px 20px;
-      border-radius: 4px;
-      color: #fff;
-      font-weight: bold;
-      animation: slideIn 0.3s ease-out;
-      border: 1px solid;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.25rem;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
-    .toast-success { background: rgba(0, 255, 136, 0.1); border-color: #00ff88; color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
-    .toast-error { background: rgba(255, 0, 60, 0.1); border-color: #ff003c; color: #ff003c; box-shadow: 0 0 10px rgba(255,0,60,0.3); }
-    .toast-warning { background: rgba(255, 204, 0, 0.1); border-color: #ffcc00; color: #ffcc00; box-shadow: 0 0 10px rgba(255,204,0,0.3); }
-    .toast-info { background: rgba(0, 240, 255, 0.1); border-color: #00f0ff; color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.3); }
-
+    .toast-success { border: 1px solid #00ff88; background: #071a10; color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+    .toast-error { border: 1px solid #ff003c; background: #1a050b; color: #ff003c; box-shadow: 0 0 10px rgba(255,0,60,0.3); }
+    .toast-info { border: 1px solid #00f0ff; background: #05141a; color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.3); }
+    .toast-warning { border: 1px solid #ffe600; background: #1a1705; color: #ffe600; box-shadow: 0 0 10px rgba(255,230,0,0.3); }
+    
     .modal-overlay {
-      background: rgba(5, 5, 16, 0.85);
+      background-color: rgba(5, 5, 16, 0.85);
       backdrop-filter: blur(4px);
+    }
+
+    /* Segment tab active styles */
+    .segment-tab-active-ctf {
+      background: linear-gradient(135deg, rgba(0,240,255,0.2) 0%, rgba(0,240,255,0.05) 100%);
+      border-color: #00f0ff;
+      color: #00f0ff;
+      box-shadow: 0 0 15px rgba(0,240,255,0.3), inset 0 0 10px rgba(0,240,255,0.1);
+    }
+    .segment-tab-active-cp {
+      background: linear-gradient(135deg, rgba(255,230,0,0.2) 0%, rgba(255,230,0,0.05) 100%);
+      border-color: #ffe600;
+      color: #ffe600;
+      box-shadow: 0 0 15px rgba(255,230,0,0.3), inset 0 0 10px rgba(255,230,0,0.1);
     }
   </style>
 </head>
-<body class="font-mono text-gray-300 relative min-h-screen">
+<body class="min-h-screen flex flex-col antialiased selection:bg-cyber-cyan selection:text-black">
   <div class="scanlines"></div>
-  <div id="toast-container"></div>
+  <div id="toast-container" class="toast-container"></div>
 
-  <!-- AUTH VIEW -->
-  <div id="view-auth" class="flex items-center justify-center min-h-screen p-4 hidden">
-    <div class="w-full max-w-md bg-cyber-card neon-border p-8 rounded-sm">
-      <div class="text-cyber-cyan text-center mb-6 overflow-hidden">
-        <pre class="text-xs sm:text-sm font-bold neon-text-cyan leading-none">
-  ____       _               
- / ___| _   | |__   ___ _ __ 
-| |   | | | | '_ \ / _ \ '__|
-| |___| |_| | |_) |  __/ |   
- \____|\__, |_.__/ \___|_|   
-       |___/                 
+  <!-- AUTHENTICATION VIEW -->
+  <div id="view-auth" class="flex-grow flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-cyber-card neon-border p-8 relative overflow-hidden">
+      <div class="text-center mb-6">
+        <pre class="text-[9px] leading-tight text-cyber-cyan select-none mx-auto mb-2 font-bold">
+ ██████╗██╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
+██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝
+██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗
+╚██████╗   ██║   ██████╔╝███████╗██║  ██║
+ ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝
         </pre>
-        <h2 class="text-xl mt-4 font-bold tracking-widest uppercase">Arena Access</h2>
+        <h1 class="text-xl font-bold tracking-widest text-white uppercase mt-2">Cyber-Algo Arena</h1>
+        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ HYBRID CTF + CP COMPETITION SYSTEM ]</p>
       </div>
 
       <!-- Login Form -->
       <form id="form-login" class="space-y-4">
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Username</label>
-          <input type="text" id="login-username" class="w-full input-cyber p-2 text-sm" required autocomplete="username">
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Operative Identifier</label>
+          <input type="text" id="login-username" class="w-full input-cyber p-2.5 text-sm" placeholder="Username" required autocomplete="username">
         </div>
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Password</label>
-          <input type="password" id="login-password" class="w-full input-cyber p-2 text-sm" required autocomplete="current-password">
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Access Passkey</label>
+          <input type="password" id="login-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required autocomplete="current-password">
         </div>
-        <button type="submit" class="w-full btn-cyber p-2 mt-4 text-sm tracking-wider">Initialize Connection</button>
+        <button type="submit" class="w-full btn-cyber p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Initialize Connection</button>
         <div class="text-center mt-4">
-          <a href="#" id="link-to-register" class="text-cyber-magenta text-xs hover:underline hover:neon-text-magenta">New Operative? Register</a>
+          <a href="#" id="link-to-register" class="text-cyber-magenta text-xs hover:underline hover:neon-text-magenta">New Operative? Register Identity</a>
         </div>
       </form>
 
       <!-- Register Form -->
-      <form id="form-register" class="space-y-4 hidden">
+      <form id="form-register" class="space-y-3 hidden">
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Username</label>
-          <input type="text" id="reg-username" class="w-full input-cyber p-2 text-sm" required autocomplete="new-password">
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Username</label>
+          <input type="text" id="reg-username" class="w-full input-cyber p-2 text-sm" placeholder="Unique username" required autocomplete="username">
         </div>
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Password</label>
-          <input type="password" id="reg-password" class="w-full input-cyber p-2 text-sm" required autocomplete="new-password">
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Password</label>
+          <input type="password" id="reg-password" class="w-full input-cyber p-2 text-sm" placeholder="Secret passkey" required autocomplete="new-password">
         </div>
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Confirm Password</label>
-          <input type="password" id="reg-password-confirm" class="w-full input-cyber p-2 text-sm" required autocomplete="new-password">
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Confirm Password</label>
+          <input type="password" id="reg-password-confirm" class="w-full input-cyber p-2 text-sm" placeholder="Repeat passkey" required autocomplete="new-password">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs text-cyber-cyan mb-1 uppercase">Role</label>
+            <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Role</label>
             <select id="reg-role" class="w-full input-cyber p-2 text-sm">
-              <option value="Player">Player</option>
-              <option value="Admin">Admin</option>
+              <option value="PLAYER">PLAYER</option>
+              <option value="ADMIN">ADMIN</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-cyber-cyan mb-1 uppercase">Team ID</label>
-            <input type="text" id="reg-team-id" class="w-full input-cyber p-2 text-sm">
+            <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Team ID</label>
+            <input type="text" id="reg-team-id" class="w-full input-cyber p-2 text-sm" placeholder="e.g. T-CYBER">
           </div>
         </div>
-        <button type="submit" class="w-full btn-cyber-magenta p-2 mt-4 text-sm tracking-wider">Establish Identity</button>
+        <button type="submit" class="w-full btn-cyber-magenta p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Establish Identity</button>
         <div class="text-center mt-4">
           <a href="#" id="link-to-login" class="text-cyber-cyan text-xs hover:underline hover:neon-text-cyan">Existing Operative? Login</a>
         </div>
@@ -196,67 +232,148 @@
     <!-- NAVBAR -->
     <nav class="sticky top-0 z-50 bg-cyber-bg border-b border-cyber-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)] py-3 px-6 flex flex-wrap items-center justify-between">
       <div class="flex items-center gap-6">
-        <h1 class="text-xl font-bold text-cyber-cyan neon-text-cyan tracking-widest uppercase">Cyber-Algo Arena</h1>
-        <div class="hidden md:flex space-x-4">
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="challenges">Challenges</a>
+        <h1 class="text-lg md:text-xl font-bold text-cyber-cyan neon-text-cyan tracking-widest uppercase flex items-center gap-2">
+          <span class="text-cyber-magenta">⚡</span> CYBER-ALGO ARENA
+        </h1>
+        <div class="hidden md:flex space-x-5">
+          <a href="#" class="nav-link text-cyber-cyan neon-text-cyan font-bold transition-colors uppercase text-sm" data-target="challenges">Challenges</a>
           <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="leaderboard">Leaderboard</a>
-          <a href="#" id="nav-admin" class="nav-link text-cyber-magenta hover:neon-text-magenta transition-colors uppercase text-sm hidden" data-target="admin">Admin</a>
+          <a href="#" id="nav-admin" class="nav-link text-cyber-magenta hover:neon-text-magenta transition-colors uppercase text-sm hidden" data-target="admin">Admin Console</a>
         </div>
       </div>
       <div class="flex items-center gap-4 mt-2 md:mt-0">
-        <span class="text-xs text-gray-400">User: <span id="nav-username" class="text-cyber-cyan neon-text-cyan font-bold"></span></span>
-        <button id="btn-logout" class="text-xs border border-cyber-magenta text-cyber-magenta px-3 py-1 hover:bg-cyber-magenta hover:text-white transition-colors">LOGOUT</button>
+        <div class="text-xs text-gray-400 flex items-center gap-1.5">
+          <span>OPERATIVE:</span>
+          <span id="nav-username" class="text-cyber-cyan font-bold"></span>
+          <span id="nav-role-badge" class="px-1.5 py-0.2 bg-cyber-border text-[10px] text-gray-300 uppercase"></span>
+        </div>
+        <button id="btn-logout" class="text-xs border border-cyber-magenta text-cyber-magenta px-3 py-1 hover:bg-cyber-magenta hover:text-white transition-colors uppercase font-bold">DISCONNECT</button>
       </div>
-      <div class="w-full flex md:hidden space-x-4 mt-4 border-t border-cyber-border pt-2">
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan text-xs uppercase" data-target="challenges">Challenges</a>
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan text-xs uppercase" data-target="leaderboard">Leaderboard</a>
-          <a href="#" id="nav-admin-mobile" class="nav-link text-cyber-magenta text-xs uppercase hidden" data-target="admin">Admin</a>
+      <div class="w-full flex md:hidden space-x-4 mt-3 border-t border-cyber-border pt-2">
+        <a href="#" class="nav-link text-cyber-cyan text-xs uppercase" data-target="challenges">Challenges</a>
+        <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan text-xs uppercase" data-target="leaderboard">Leaderboard</a>
+        <a href="#" id="nav-admin-mobile" class="nav-link text-cyber-magenta text-xs uppercase hidden" data-target="admin">Admin Console</a>
       </div>
     </nav>
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full relative z-10">
       
-      <!-- CHALLENGES VIEW -->
+      <!-- CHALLENGES SECTION WITH SEGMENTED SWITCHER -->
       <section id="sec-challenges" class="app-section">
-        <h2 class="text-2xl font-bold text-cyber-cyan mb-6 uppercase border-b border-cyber-border pb-2">Active Targets</h2>
-        <div class="overflow-x-auto bg-cyber-card neon-border">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-cyber-border text-cyber-cyan uppercase text-xs tracking-wider">
-                <th class="p-3">ID</th>
-                <th class="p-3">Type</th>
-                <th class="p-3">Title</th>
-                <th class="p-3">Difficulty</th>
-                <th class="p-3">Pts</th>
-                <th class="p-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody id="challenges-tbody" class="text-sm">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
+        
+        <!-- Header & Segment Control -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-cyber-border pb-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+              <span>ACTIVE TARGETS</span>
+              <span id="stat-total-badge" class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan">3 ONLINE</span>
+            </h2>
+            <p class="text-xs text-gray-400 mt-1">Select operation protocol to inspect and engage challenges</p>
+          </div>
+
+          <!-- Segmented Pill Switcher -->
+          <div class="inline-flex bg-cyber-card border border-cyber-border p-1 rounded-lg space-x-1 shadow-lg">
+            <button id="tab-ctf" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-ctf">
+              <span>🛡️</span>
+              <span>CTF Operations (Security)</span>
+              <span id="badge-ctf-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-cyan rounded border border-cyber-cyan">2</span>
+            </button>
+            <button id="tab-cp" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-yellow border border-transparent">
+              <span>⚡</span>
+              <span>CP Arena (Algorithmic)</span>
+              <span id="badge-cp-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-yellow rounded border border-cyber-yellow">1</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. CTF DEDICATED VIEW -->
+        <div id="segment-ctf-view" class="space-y-4">
+          <div class="flex items-center justify-between text-xs text-gray-400 px-1">
+            <div class="flex items-center gap-2">
+              <span class="text-cyber-cyan font-bold">SECURITY PROTOCOL:</span>
+              <span>Capture flags through exploit analysis & cryptanalysis. SHA-256 verified.</span>
+            </div>
+            <span class="text-cyber-magenta">Wrong Attempt Penalty: -10 pts</span>
+          </div>
+
+          <div class="overflow-x-auto bg-cyber-card neon-border rounded">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-cyber-card2 text-cyber-cyan uppercase text-xs tracking-wider border-b border-cyber-border">
+                  <th class="p-3.5">Target ID</th>
+                  <th class="p-3.5">Title</th>
+                  <th class="p-3.5">Category</th>
+                  <th class="p-3.5">Difficulty</th>
+                  <th class="p-3.5 text-center">Base Points</th>
+                  <th class="p-3.5 text-center">Hint Cost</th>
+                  <th class="p-3.5 text-center">Status</th>
+                  <th class="p-3.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="ctf-tbody" class="text-sm divide-y divide-cyber-border">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. CP DEDICATED VIEW -->
+        <div id="segment-cp-view" class="space-y-4 hidden">
+          <div class="flex items-center justify-between text-xs text-gray-400 px-1">
+            <div class="flex items-center gap-2">
+              <span class="text-cyber-yellow font-bold">ALGORITHMIC PROTOCOL:</span>
+              <span>Evaluate candidate solution outputs against hidden testcases.</span>
+            </div>
+            <span class="text-cyber-yellow">Time / Memory Enforced</span>
+          </div>
+
+          <div class="overflow-x-auto bg-cyber-card neon-border-yellow rounded">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-cyber-card2 text-cyber-yellow uppercase text-xs tracking-wider border-b border-cyber-border">
+                  <th class="p-3.5">Problem ID</th>
+                  <th class="p-3.5">Title</th>
+                  <th class="p-3.5 text-center">Time Limit</th>
+                  <th class="p-3.5 text-center">Memory Limit</th>
+                  <th class="p-3.5">Difficulty</th>
+                  <th class="p-3.5 text-center">Points</th>
+                  <th class="p-3.5 text-center">Status</th>
+                  <th class="p-3.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="cp-tbody" class="text-sm divide-y divide-cyber-border">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       <!-- LEADERBOARD VIEW -->
       <section id="sec-leaderboard" class="app-section hidden">
-        <div class="flex justify-between items-center mb-6 border-b border-cyber-border pb-2">
-          <h2 class="text-2xl font-bold text-cyber-cyan uppercase">Global Rankings</h2>
-          <span class="text-xs text-gray-500">Auto-sync: 15s</span>
+        <div class="flex justify-between items-center mb-6 border-b border-cyber-border pb-3">
+          <div>
+            <h2 class="text-2xl font-bold text-cyber-cyan uppercase">Global Rankings</h2>
+            <p class="text-xs text-gray-400">Deterministic scoring & tie-break order</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
+            <span class="text-xs text-gray-400">Live Auto-sync: 15s</span>
+          </div>
         </div>
-        <div class="overflow-x-auto bg-cyber-card border border-cyber-border p-1">
+        <div class="overflow-x-auto bg-cyber-card border border-cyber-border rounded">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-cyber-border text-gray-400 uppercase text-xs">
-                <th class="p-3 w-16">Rank</th>
-                <th class="p-3">Team</th>
-                <th class="p-3 text-center">Solves</th>
-                <th class="p-3 text-center">Score</th>
-                <th class="p-3 text-right">Last Solve</th>
+              <tr class="bg-cyber-card2 border-b border-cyber-border text-gray-400 uppercase text-xs tracking-wider">
+                <th class="p-3.5 w-20">Rank</th>
+                <th class="p-3.5">Team Name</th>
+                <th class="p-3.5 text-center">Solves</th>
+                <th class="p-3.5 text-center">Total Score</th>
+                <th class="p-3.5 text-right">Last Accepted Solve</th>
               </tr>
             </thead>
-            <tbody id="leaderboard-tbody" class="text-sm">
+            <tbody id="leaderboard-tbody" class="text-sm divide-y divide-cyber-border">
               <!-- Dynamically populated -->
             </tbody>
           </table>
@@ -265,113 +382,140 @@
 
       <!-- ADMIN VIEW -->
       <section id="sec-admin" class="app-section hidden">
-        <h2 class="text-2xl font-bold text-cyber-magenta neon-text-magenta mb-6 uppercase border-b border-cyber-magenta pb-2">Command Center</h2>
+        <div class="flex justify-between items-center mb-6 border-b border-cyber-magenta pb-3">
+          <div>
+            <h2 class="text-2xl font-bold text-cyber-magenta neon-text-magenta uppercase">Command Center</h2>
+            <p class="text-xs text-gray-400">Challenge Deployment, Audit Logs & System Sync</p>
+          </div>
+          <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Force Sync All Data</button>
+        </div>
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <!-- Add CTF -->
-          <div class="bg-cyber-card neon-border-magenta p-6">
-            <h3 class="text-lg font-bold text-cyber-magenta mb-4">Deploy CTF Target</h3>
+          <div class="bg-cyber-card neon-border p-6 rounded">
+            <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase flex items-center gap-2">
+              <span>🛡️</span> Deploy CTF Challenge
+            </h3>
             <form id="form-add-ctf" class="space-y-3">
               <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400">ID</label><input type="text" id="ctf-id" class="w-full input-cyber p-1.5 text-sm" required></div>
-                <div><label class="text-xs text-gray-400">Base Points</label><input type="number" id="ctf-pts" class="w-full input-cyber p-1.5 text-sm" required></div>
+                <div><label class="text-xs text-gray-400 uppercase">Challenge ID</label><input type="text" id="ctf-id" placeholder="CTF-03" class="w-full input-cyber p-2 text-sm" required></div>
+                <div><label class="text-xs text-gray-400 uppercase">Base Points</label><input type="number" id="ctf-pts" placeholder="250" class="w-full input-cyber p-2 text-sm" required></div>
               </div>
-              <div><label class="text-xs text-gray-400">Title</label><input type="text" id="ctf-title" class="w-full input-cyber p-1.5 text-sm" required></div>
+              <div><label class="text-xs text-gray-400 uppercase">Title</label><input type="text" id="ctf-title" placeholder="Challenge Name" class="w-full input-cyber p-2 text-sm" required></div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="text-xs text-gray-400">Difficulty</label>
-                  <select id="ctf-diff" class="w-full input-cyber p-1.5 text-sm">
-                    <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option><option value="Insane">Insane</option>
+                  <label class="text-xs text-gray-400 uppercase">Difficulty</label>
+                  <select id="ctf-diff" class="w-full input-cyber p-2 text-sm">
+                    <option value="EASY">EASY</option><option value="MEDIUM" selected>MEDIUM</option><option value="HARD">HARD</option>
                   </select>
                 </div>
-                <div><label class="text-xs text-gray-400">Category</label><input type="text" id="ctf-cat" class="w-full input-cyber p-1.5 text-sm" required></div>
+                <div><label class="text-xs text-gray-400 uppercase">Category</label><input type="text" id="ctf-cat" placeholder="CRYPTO / PWN / WEB" class="w-full input-cyber p-2 text-sm" required></div>
               </div>
-              <div><label class="text-xs text-gray-400">Raw Flag</label><input type="text" id="ctf-flag" class="w-full input-cyber p-1.5 text-sm" required></div>
-              <div><label class="text-xs text-gray-400">Hint Cost</label><input type="number" id="ctf-hint" class="w-full input-cyber p-1.5 text-sm" value="0"></div>
-              <button type="submit" class="w-full btn-cyber-magenta py-1.5 mt-2 text-sm">Deploy Target</button>
+              <div><label class="text-xs text-gray-400 uppercase">Raw Flag (SHA-256 Auto-hashed)</label><input type="text" id="ctf-flag" placeholder="flag{secret_token}" class="w-full input-cyber p-2 text-sm" required></div>
+              <div><label class="text-xs text-gray-400 uppercase">Hint Cost (Pts)</label><input type="number" id="ctf-hint" class="w-full input-cyber p-2 text-sm" value="25"></div>
+              <button type="submit" class="w-full btn-cyber py-2 mt-2 text-sm font-bold uppercase">Deploy CTF Target</button>
             </form>
           </div>
 
           <!-- Add CP -->
-          <div class="bg-cyber-card neon-border-magenta p-6">
-            <h3 class="text-lg font-bold text-cyber-magenta mb-4">Deploy CP Target</h3>
+          <div class="bg-cyber-card neon-border-yellow p-6 rounded">
+            <h3 class="text-lg font-bold text-cyber-yellow mb-4 uppercase flex items-center gap-2">
+              <span>⚡</span> Deploy CP Problem
+            </h3>
             <form id="form-add-cp" class="space-y-3">
               <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400">ID</label><input type="text" id="cp-id" class="w-full input-cyber p-1.5 text-sm" required></div>
-                <div><label class="text-xs text-gray-400">Base Points</label><input type="number" id="cp-pts" class="w-full input-cyber p-1.5 text-sm" required></div>
+                <div><label class="text-xs text-gray-400 uppercase">Problem ID</label><input type="text" id="cp-id" placeholder="CP-02" class="w-full input-cyber p-2 text-sm" required></div>
+                <div><label class="text-xs text-gray-400 uppercase">Base Points</label><input type="number" id="cp-pts" placeholder="300" class="w-full input-cyber p-2 text-sm" required></div>
               </div>
-              <div><label class="text-xs text-gray-400">Title</label><input type="text" id="cp-title" class="w-full input-cyber p-1.5 text-sm" required></div>
+              <div><label class="text-xs text-gray-400 uppercase">Title</label><input type="text" id="cp-title" placeholder="Problem Title" class="w-full input-cyber p-2 text-sm" required></div>
               <div>
-                <label class="text-xs text-gray-400">Difficulty</label>
-                <select id="cp-diff" class="w-full input-cyber p-1.5 text-sm">
-                  <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option>
+                <label class="text-xs text-gray-400 uppercase">Difficulty</label>
+                <select id="cp-diff" class="w-full input-cyber p-2 text-sm">
+                  <option value="EASY">EASY</option><option value="MEDIUM" selected>MEDIUM</option><option value="HARD">HARD</option>
                 </select>
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400">Time Lim (ms)</label><input type="number" id="cp-time" class="w-full input-cyber p-1.5 text-sm" required value="1000"></div>
-                <div><label class="text-xs text-gray-400">Mem Lim (MB)</label><input type="number" id="cp-mem" class="w-full input-cyber p-1.5 text-sm" required value="256"></div>
+                <div><label class="text-xs text-gray-400 uppercase">Time Limit (ms)</label><input type="number" id="cp-time" class="w-full input-cyber p-2 text-sm" required value="2000"></div>
+                <div><label class="text-xs text-gray-400 uppercase">Memory Limit (MB)</label><input type="number" id="cp-mem" class="w-full input-cyber p-2 text-sm" required value="256"></div>
               </div>
-              <div><label class="text-xs text-gray-400">Testcase Dir</label><input type="text" id="cp-dir" class="w-full input-cyber p-1.5 text-sm" required></div>
-              <button type="submit" class="w-full btn-cyber-magenta py-1.5 mt-2 text-sm">Deploy Target</button>
+              <div><label class="text-xs text-gray-400 uppercase">Testcase Directory Path</label><input type="text" id="cp-dir" placeholder="contest_data/testcases/CP-02" class="w-full input-cyber p-2 text-sm" required></div>
+              <button type="submit" class="w-full btn-cyber-yellow py-2 mt-2 text-sm font-bold uppercase">Deploy CP Target</button>
             </form>
           </div>
         </div>
 
-        <div class="flex justify-between items-end mb-4">
-          <h3 class="text-lg font-bold text-cyber-magenta">Audit Logs</h3>
-          <button id="btn-sync" class="btn-cyber-magenta px-4 py-1 text-xs">Force Sync Data</button>
-        </div>
-        <div class="overflow-x-auto bg-cyber-card border border-cyber-magenta p-1 h-64 overflow-y-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead class="sticky top-0 bg-cyber-card z-10">
-              <tr class="border-b border-cyber-magenta text-cyber-magenta uppercase">
-                <th class="p-2">Time</th>
-                <th class="p-2">User</th>
-                <th class="p-2">Chall ID</th>
-                <th class="p-2">Result</th>
-              </tr>
-            </thead>
-            <tbody id="audit-tbody" class="text-gray-400">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
+        <div>
+          <h3 class="text-lg font-bold text-cyber-magenta mb-3 uppercase">Submission Audit Log</h3>
+          <div class="overflow-x-auto bg-cyber-card border border-cyber-magenta p-1 h-64 overflow-y-auto rounded">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="sticky top-0 bg-cyber-card z-10">
+                <tr class="border-b border-cyber-magenta text-cyber-magenta uppercase">
+                  <th class="p-2">Timestamp</th>
+                  <th class="p-2">Submission ID</th>
+                  <th class="p-2">User</th>
+                  <th class="p-2">Team</th>
+                  <th class="p-2">Challenge</th>
+                  <th class="p-2">Status</th>
+                  <th class="p-2 text-right">Points</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody" class="text-gray-400 divide-y divide-cyber-border">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- CHALLENGE MODAL -->
+  <!-- ENGAGE / SUBMISSION MODAL -->
   <div id="modal-challenge" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-cyber-card neon-border max-w-2xl w-full p-6 relative">
-      <button id="btn-close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-cyber-red text-xl">&times;</button>
+    <div id="modal-card" class="bg-cyber-card neon-border max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl">
+      <button id="btn-close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-cyber-red text-2xl transition-colors">&times;</button>
       
-      <div class="mb-4">
-        <span id="mod-type" class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan mr-2"></span>
-        <span id="mod-diff" class="text-xs px-2 py-0.5 border border-gray-500 text-gray-400"></span>
-        <span id="mod-pts" class="text-xs text-cyber-magenta ml-2 font-bold"></span>
+      <!-- Modal Header -->
+      <div class="flex items-center gap-2 mb-3">
+        <span id="mod-type-badge" class="text-xs px-2.5 py-0.5 border border-cyber-cyan text-cyber-cyan font-bold uppercase"></span>
+        <span id="mod-diff-badge" class="text-xs px-2.5 py-0.5 border border-gray-600 text-gray-300 font-bold uppercase"></span>
+        <span id="mod-pts-badge" class="text-xs text-cyber-magenta font-extrabold ml-auto text-sm"></span>
       </div>
       
       <h2 id="mod-title" class="text-2xl font-bold text-white mb-2"></h2>
-      <p id="mod-desc" class="text-sm text-gray-400 mb-6 pb-4 border-b border-cyber-border">No description provided.</p>
-
-      <div class="mb-6 flex justify-between items-center">
-        <button id="btn-hint" class="text-xs border border-cyber-cyan text-cyber-cyan px-3 py-1 hover:bg-cyber-cyan hover:text-black transition-colors hidden">REQUEST HINT</button>
-        <div id="hint-display" class="text-sm text-cyber-magenta hidden italic"></div>
+      
+      <!-- Specs / Details Grid -->
+      <div id="mod-specs-box" class="bg-cyber-card2 p-3 border border-cyber-border rounded text-xs text-gray-300 mb-4 space-y-1">
+        <!-- Injected dynamically based on CTF vs CP -->
       </div>
 
-      <form id="form-submit-flag" class="space-y-4">
-        <input type="hidden" id="mod-id">
-        <div id="input-container-ctf" class="hidden">
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Flag Payload</label>
-          <input type="text" id="inp-flag" class="w-full input-cyber p-2" placeholder="cyber{...}">
+      <!-- Hint Section -->
+      <div id="mod-hint-section" class="mb-5 pb-4 border-b border-cyber-border">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-gray-400">HINT SYSTEM:</div>
+          <button id="btn-hint" class="text-xs border border-cyber-cyan text-cyber-cyan px-3 py-1 hover:bg-cyber-cyan hover:text-black transition-colors font-bold uppercase">UNLOCK HINT</button>
         </div>
-        <div id="input-container-cp" class="hidden">
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase">Output Directory Path</label>
-          <textarea id="inp-cp" class="w-full input-cyber p-2 text-sm h-24" placeholder="/path/to/solution/output"></textarea>
+        <div id="hint-display" class="mt-2 p-3 bg-[#0a1220] border border-cyber-cyan text-cyber-cyan text-xs rounded hidden italic"></div>
+      </div>
+
+      <!-- Submission Form -->
+      <form id="form-submit-solution" class="space-y-4">
+        <input type="hidden" id="mod-id">
+        
+        <!-- CTF Input -->
+        <div id="input-container-ctf" class="hidden">
+          <label class="block text-xs text-cyber-cyan mb-1.5 uppercase font-bold">Flag Payload</label>
+          <input type="text" id="inp-flag" class="w-full input-cyber p-2.5 text-sm rounded font-mono" placeholder="flag{...} or raw flag text">
         </div>
         
-        <button type="submit" id="btn-submit-flag" class="w-full btn-cyber p-2 text-sm font-bold flex justify-center items-center gap-2">
-          <span>TRANSMIT PAYLOAD</span>
+        <!-- CP Input -->
+        <div id="input-container-cp" class="hidden">
+          <label class="block text-xs text-cyber-yellow mb-1.5 uppercase font-bold">Solution Output Directory or Inline Answer</label>
+          <textarea id="inp-cp" class="w-full input-cyber p-2.5 text-sm h-24 rounded font-mono" placeholder="contest_data/testcases/CP-01 or output directory"></textarea>
+          <p class="text-[11px] text-gray-400 mt-1">Provide candidate directory containing output_1.txt, output_2.txt, etc.</p>
+        </div>
+        
+        <button type="submit" id="btn-submit-solution" class="w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded">
+          <span>TRANSMIT SOLUTION</span>
           <span id="spinner-submit" class="hidden animate-spin h-4 w-4 border-2 border-cyber-cyan border-t-transparent rounded-full"></span>
         </button>
       </form>
@@ -383,9 +527,10 @@
     // --- STATE ---
     let currentUser = null;
     let challengesData = [];
+    let activeSegment = 'CTF'; // 'CTF' or 'CP'
     let leaderboardInterval = null;
 
-    // --- DOM ELEMENTS ---
+    // --- DOM SELECTORS ---
     const vAuth = document.getElementById('view-auth');
     const vApp = document.getElementById('view-app');
     
@@ -399,9 +544,15 @@
     const navAdmin = document.getElementById('nav-admin');
     const navAdminMob = document.getElementById('nav-admin-mobile');
     const navUsername = document.getElementById('nav-username');
+    const navRoleBadge = document.getElementById('nav-role-badge');
     const btnLogout = document.getElementById('btn-logout');
 
-    // --- UTILS ---
+    const tabCtf = document.getElementById('tab-ctf');
+    const tabCp = document.getElementById('tab-cp');
+    const segCtfView = document.getElementById('segment-ctf-view');
+    const segCpView = document.getElementById('segment-cp-view');
+
+    // --- TOAST UTILITY ---
     function showToast(msg, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -416,6 +567,7 @@
       }, 4000);
     }
 
+    // --- VIEW CONTROLLER ---
     function switchView(viewName) {
       if(viewName === 'auth') {
         vAuth.classList.remove('hidden');
@@ -429,28 +581,48 @@
 
     function switchAppSection(targetId) {
       sections.forEach(sec => sec.classList.add('hidden'));
-      document.getElementById(`sec-${targetId}`).classList.remove('hidden');
+      const sec = document.getElementById(`sec-${targetId}`);
+      if(sec) sec.classList.remove('hidden');
       
       navLinks.forEach(link => {
         if(link.dataset.target === targetId) {
-          link.classList.add('text-cyber-cyan', 'neon-text-cyan');
+          link.classList.add('text-cyber-cyan', 'neon-text-cyan', 'font-bold');
           link.classList.remove('text-gray-400');
         } else {
-          link.classList.remove('text-cyber-cyan', 'neon-text-cyan');
+          link.classList.remove('text-cyber-cyan', 'neon-text-cyan', 'font-bold');
           link.classList.add('text-gray-400');
         }
       });
 
+      if(targetId === 'challenges') fetchChallenges();
       if(targetId === 'leaderboard') {
         fetchLeaderboard();
         leaderboardInterval = setInterval(fetchLeaderboard, 15000);
       } else {
         if(leaderboardInterval) clearInterval(leaderboardInterval);
       }
-
-      if(targetId === 'challenges') fetchChallenges();
-      if(targetId === 'admin' && currentUser?.role === 'Admin') fetchAuditLogs();
+      if(targetId === 'admin' && currentUser?.role === 'ADMIN') fetchAuditLogs();
     }
+
+    // --- SEGMENTED SWITCHER LOGIC ---
+    function setSegment(segment) {
+      activeSegment = segment;
+      if (segment === 'CTF') {
+        tabCtf.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-ctf";
+        tabCp.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-yellow border border-transparent";
+        segCtfView.classList.remove('hidden');
+        segCpView.classList.add('hidden');
+      } else {
+        tabCp.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-cp";
+        tabCtf.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-cyan border border-transparent";
+        segCpView.classList.remove('hidden');
+        segCtfView.classList.add('hidden');
+      }
+      renderSegmentData();
+    }
+
+    tabCtf.addEventListener('click', () => setSegment('CTF'));
+    tabCp.addEventListener('click', () => setSegment('CP'));
 
     // --- AUTH LOGIC ---
     async function checkSession() {
@@ -463,14 +635,14 @@
           switchView('auth');
         }
       } catch (err) {
-        console.warn("Session check failed, assuming unauthenticated.", err);
         switchView('auth');
       }
     }
 
     function initApp() {
       navUsername.textContent = currentUser.username;
-      if (currentUser.role === 'Admin') {
+      navRoleBadge.textContent = currentUser.role;
+      if (currentUser.role === 'ADMIN') {
         navAdmin.classList.remove('hidden');
         navAdminMob.classList.remove('hidden');
       } else {
@@ -491,9 +663,14 @@
         const res = await fetch('/api/auth/login', {
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
-        if (res.ok) { showToast('Authentication successful', 'success'); checkSession(); }
-        else { const d = await res.json(); showToast(d.message || 'Access Denied', 'error'); }
-      } catch (err) { showToast('Connection failed', 'error'); }
+        if (res.ok) {
+          showToast('Authentication confirmed. Welcome, Operative.', 'success');
+          checkSession();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Access Denied: Invalid credentials', 'error');
+        }
+      } catch (err) { showToast('Connection failure to auth server', 'error'); }
     });
 
     formRegister.addEventListener('submit', async (e) => {
@@ -508,157 +685,260 @@
         const res = await fetch('/api/auth/register', {
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
-        if (res.ok) { showToast('Registration successful. You may now login.', 'success'); linkToLogin.click(); }
-        else { const d = await res.json(); showToast(d.message || 'Registration failed', 'error'); }
-      } catch (err) { showToast('Connection failed', 'error'); }
+        if (res.ok) {
+          showToast('Identity established. Please login.', 'success');
+          linkToLogin.click();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Registration failed', 'error');
+        }
+      } catch (err) { showToast('Connection failure', 'error'); }
     });
 
     btnLogout.addEventListener('click', async () => {
       try {
         await fetch('/api/auth/logout', { method: 'POST' });
         currentUser = null;
-        showToast('Connection terminated', 'info');
+        showToast('Session terminated', 'info');
         switchView('auth');
-      } catch (err) { console.error(err); }
+      } catch (err) {}
     });
 
-    // --- NAVIGATION ---
+    // --- NAVIGATION BINDING ---
     navLinks.forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        switchAppSection(e.target.dataset.target);
+        switchAppSection(e.currentTarget.dataset.target);
       });
     });
 
-    // --- CHALLENGES ---
+    // --- CHALLENGES FETCH & RENDER ---
     async function fetchChallenges() {
       try {
         const res = await fetch('/api/challenges');
-        if(res.ok) {
+        if (res.ok) {
           challengesData = await res.json();
-          renderChallenges();
+          updateBadges();
+          renderSegmentData();
         }
       } catch (err) { console.warn("Failed to fetch challenges", err); }
     }
 
-    function renderChallenges() {
-      const tbody = document.getElementById('challenges-tbody');
+    function updateBadges() {
+      const ctfList = challengesData.filter(c => c.type === 'CTF');
+      const cpList = challengesData.filter(c => c.type === 'CP');
+      
+      $('#badge-ctf-count').textContent = ctfList.length;
+      $('#badge-cp-count').textContent = cpList.length;
+      $('#stat-total-badge').textContent = `${challengesData.length} ONLINE`;
+    }
+
+    function renderSegmentData() {
+      if (activeSegment === 'CTF') {
+        renderCtfTable();
+      } else {
+        renderCpTable();
+      }
+    }
+
+    function renderCtfTable() {
+      const tbody = document.getElementById('ctf-tbody');
       tbody.innerHTML = '';
-      challengesData.forEach(c => {
+      const ctfList = challengesData.filter(c => c.type === 'CTF');
+
+      if (ctfList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 italic">No CTF targets deployed.</td></tr>`;
+        return;
+      }
+
+      ctfList.forEach(c => {
         const tr = document.createElement('tr');
-        tr.className = "border-b border-cyber-border hover:bg-[rgba(0,240,255,0.05)] cursor-pointer transition-colors";
-        tr.onclick = () => openChallengeModal(c);
+        tr.className = "hover:bg-[rgba(0,240,255,0.05)] transition-colors cursor-pointer";
         
-        let statusHtml = '<span class="text-gray-500">-</span>';
-        if(c.solved === true) statusHtml = '<span class="text-cyber-green font-bold">YES</span>';
-        else if (c.solved === false) statusHtml = '<span class="text-cyber-red font-bold">NO</span>';
+        let statusBadge = c.solved
+          ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
+          : '<span class="px-2 py-0.5 bg-[#200a12] text-cyber-red border border-cyber-red text-xs font-bold">OPEN</span>';
 
         let diffColor = 'text-cyber-cyan';
-        if(c.difficulty === 'Medium') diffColor = 'text-yellow-400';
-        if(c.difficulty === 'Hard' || c.difficulty === 'Insane') diffColor = 'text-cyber-red';
+        if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
+        if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
 
         tr.innerHTML = `
-          <td class="p-3">${c.id}</td>
-          <td class="p-3"><span class="px-1.5 py-0.5 border border-cyber-cyan text-xs text-cyber-cyan">${c.type || 'CTF'}</span></td>
-          <td class="p-3 font-bold text-gray-200">${c.title}</td>
-          <td class="p-3 ${diffColor}">${c.difficulty}</td>
-          <td class="p-3 text-cyber-magenta">${c.points || c.basePoints}</td>
-          <td class="p-3 text-center">${statusHtml}</td>
+          <td class="p-3.5 font-bold text-cyber-cyan">${c.id}</td>
+          <td class="p-3.5 font-bold text-white">${c.title}</td>
+          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${c.category || 'SEC'}</span></td>
+          <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-magenta">${c.basePoints}</td>
+          <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${c.hintCost} pts` : 'Free'}</td>
+          <td class="p-3.5 text-center">${statusBadge}</td>
+          <td class="p-3.5 text-right">
+            <button class="btn-cyber px-3 py-1 text-xs font-bold uppercase rounded" onclick="openChallengeModal('${c.id}')">ENGAGE</button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // --- MODAL LOGIC ---
+    function renderCpTable() {
+      const tbody = document.getElementById('cp-tbody');
+      tbody.innerHTML = '';
+      const cpList = challengesData.filter(c => c.type === 'CP');
+
+      if (cpList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 italic">No CP problems deployed.</td></tr>`;
+        return;
+      }
+
+      cpList.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-[rgba(255,230,0,0.05)] transition-colors cursor-pointer";
+        
+        let statusBadge = c.solved
+          ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
+          : '<span class="px-2 py-0.5 bg-[#200a12] text-cyber-red border border-cyber-red text-xs font-bold">OPEN</span>';
+
+        let diffColor = 'text-cyber-cyan';
+        if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
+        if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
+
+        tr.innerHTML = `
+          <td class="p-3.5 font-bold text-cyber-yellow">${c.id}</td>
+          <td class="p-3.5 font-bold text-white">${c.title}</td>
+          <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${c.timeLimitMs} ms` : '-'}</td>
+          <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${c.memoryLimitMb} MB` : '-'}</td>
+          <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-yellow">${c.basePoints}</td>
+          <td class="p-3.5 text-center">${statusBadge}</td>
+          <td class="p-3.5 text-right">
+            <button class="btn-cyber-yellow px-3 py-1 text-xs font-bold uppercase rounded" onclick="openChallengeModal('${c.id}')">EXECUTE</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- MODAL CONTROLLER ---
     const modal = document.getElementById('modal-challenge');
+    const modalCard = document.getElementById('modal-card');
     document.getElementById('btn-close-modal').onclick = () => modal.classList.add('hidden');
     
-    async function openChallengeModal(shallowData) {
+    async function openChallengeModal(challengeId) {
       modal.classList.remove('hidden');
-      $('#mod-id').value = shallowData.id;
-      $('#mod-type').textContent = shallowData.type || 'CTF';
-      $('#mod-diff').textContent = shallowData.difficulty;
-      $('#mod-pts').textContent = `${shallowData.points || shallowData.basePoints} PTS`;
-      $('#mod-title').textContent = shallowData.title;
-      $('#mod-desc').innerHTML = 'Loading intelligence...';
+      $('#mod-id').value = challengeId;
       $('#hint-display').classList.add('hidden');
       $('#inp-flag').value = '';
       $('#inp-cp').value = '';
 
-      if(shallowData.type === 'CP') {
-        $('#input-container-ctf').classList.add('hidden');
-        $('#input-container-cp').classList.remove('hidden');
-      } else {
-        $('#input-container-ctf').classList.remove('hidden');
-        $('#input-container-cp').classList.add('hidden');
-      }
-
       try {
-        const res = await fetch(`/api/challenges/${shallowData.id}`);
+        const res = await fetch(`/api/challenges/${challengeId}`);
         if(res.ok) {
           const c = await res.json();
-          $('#mod-desc').innerHTML = c.description || 'No detailed briefing available.';
-          if (c.hintCost && c.hintCost > 0) {
-            $('#btn-hint').classList.remove('hidden');
-            $('#btn-hint').textContent = `REQUEST HINT (-${c.hintCost} PTS)`;
-            $('#btn-hint').onclick = (e) => { e.preventDefault(); requestHint(c.id); };
+          $('#mod-title').textContent = c.title;
+          $('#mod-type-badge').textContent = c.type;
+          $('#mod-diff-badge').textContent = c.difficulty;
+          $('#mod-pts-badge').textContent = `${c.basePoints} PTS`;
+
+          const specsBox = $('#mod-specs-box');
+          if (c.type === 'CTF') {
+            modalCard.className = "bg-cyber-card neon-border max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
+            $('#input-container-ctf').classList.remove('hidden');
+            $('#input-container-cp').classList.add('hidden');
+            $('#btn-submit-solution').className = "w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
+            
+            specsBox.innerHTML = `
+              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${c.category || 'Binary / Cryptography'}</div>
+              <div><strong class="text-cyber-cyan">EVALUATION:</strong> Constant-time SHA-256 Digest Verification</div>
+              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points per consumption` : 'Free'}</div>
+            `;
           } else {
-            $('#btn-hint').classList.add('hidden');
+            modalCard.className = "bg-cyber-card neon-border-yellow max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
+            $('#input-container-ctf').classList.add('hidden');
+            $('#input-container-cp').classList.remove('hidden');
+            $('#btn-submit-solution').className = "w-full btn-cyber-yellow p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
+            
+            specsBox.innerHTML = `
+              <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${c.timeLimitMs || 1000} ms</div>
+              <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${c.memoryLimitMb || 256} MB</div>
+              <div><strong class="text-cyber-yellow">TESTCASE DIRECTORY:</strong> ${c.testcaseDir || 'Automated file suite'}</div>
+            `;
           }
+
+          // Hint button setup
+          const btnHint = $('#btn-hint');
+          btnHint.classList.remove('hidden');
+          btnHint.textContent = c.hintCost > 0 ? `UNLOCK HINT (-${c.hintCost} PTS)` : 'REVEAL CP HINT (FREE)';
+          btnHint.onclick = (e) => { e.preventDefault(); requestHint(c.id, c.hintCost); };
         }
-      } catch (err) {}
+      } catch (err) {
+        showToast('Failed to load target intelligence', 'error');
+      }
     }
 
-    async function requestHint(id) {
+    async function requestHint(id, cost) {
+      if (cost > 0 && !confirm(`Unlocking this hint will deduct ${cost} points from your team score upon solve. Confirm?`)) {
+        return;
+      }
       try {
-        const res = await fetch(`/api/hints/${id}`, {method: 'POST'});
+        const res = await fetch(`/api/hints/${id}`, { method: 'POST' });
         const data = await res.json();
         if(res.ok) {
-          $('#hint-display').textContent = data.hint;
+          $('#hint-display').textContent = `[HINT REVEALED]: ${data.hint}`;
           $('#hint-display').classList.remove('hidden');
           $('#btn-hint').classList.add('hidden');
-          showToast('Hint acquired', 'info');
+          showToast('Hint intelligence acquired', 'info');
         } else {
-          showToast(data.message || 'Failed to acquire hint', 'error');
+          showToast(data.error || 'Failed to acquire hint', 'error');
         }
-      } catch(err){}
+      } catch(err) {
+        showToast('Network error on hint request', 'error');
+      }
     }
 
-    document.getElementById('form-submit-flag').addEventListener('submit', async (e) => {
+    // --- SUBMISSION HANDLER ---
+    document.getElementById('form-submit-solution').addEventListener('submit', async (e) => {
       e.preventDefault();
       const cid = $('#mod-id').value;
-      const type = $('#mod-type').textContent;
-      const payload = type === 'CP' ? $('#inp-cp').value : $('#inp-flag').value;
+      const c = challengesData.find(x => x.id === cid);
+      const payload = (c && c.type === 'CP') ? $('#inp-cp').value : $('#inp-flag').value;
       
-      const btn = $('#btn-submit-flag');
+      if (!payload || payload.trim() === '') {
+        return showToast('Payload cannot be empty', 'warning');
+      }
+
+      const btn = $('#btn-submit-solution');
       const spin = $('#spinner-submit');
       btn.disabled = true;
       spin.classList.remove('hidden');
 
       try {
         const res = await fetch('/api/submit', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ challengeId: cid, payload })
         });
         const data = await res.json();
         if(res.ok) {
-          if(data.status === 'ACCEPTED' || data.status === 'CORRECT') showToast('ACCEPTED! Points awarded.', 'success');
-          else if(data.status === 'WRONG_ANSWER' || data.status === 'INCORRECT') showToast('WRONG ANSWER.', 'error');
-          else showToast(data.status || 'Response received', 'warning');
+          if(data.status === 'ACCEPTED') {
+            showToast(`[ACCEPTED] +${data.pointsAwarded} PTS awarded! Team Score: ${data.teamScore}`, 'success');
+          } else if(data.status === 'WRONG_ANSWER') {
+            showToast(`[WRONG ANSWER] Payload evaluated as incorrect.`, 'error');
+          } else {
+            showToast(`[${data.status}] ${data.message || 'Processed'}`, 'warning');
+          }
           modal.classList.add('hidden');
           fetchChallenges();
         } else {
-          showToast(data.message || 'Submission rejected', 'warning');
+          showToast(data.error || 'Submission rejected by engine', 'error');
         }
       } catch (err) {
-        showToast('Transmission failed', 'error');
+        showToast('Transmission failure to engine', 'error');
       } finally {
         btn.disabled = false;
         spin.classList.add('hidden');
       }
     });
 
-    // --- LEADERBOARD ---
+    // --- LEADERBOARD FETCH ---
     async function fetchLeaderboard() {
       try {
         const res = await fetch('/api/leaderboard');
@@ -666,21 +946,27 @@
           const data = await res.json();
           const tbody = document.getElementById('leaderboard-tbody');
           tbody.innerHTML = '';
+
+          if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 italic">No registered teams yet.</td></tr>`;
+            return;
+          }
+
           data.forEach((row, i) => {
             const tr = document.createElement('tr');
-            tr.className = "border-b border-cyber-border";
+            tr.className = "border-b border-cyber-border hover:bg-[rgba(0,240,255,0.03)]";
             
-            let rankHtml = i + 1;
-            if(i===0) rankHtml = '<span class="text-yellow-400 text-lg">🥇 1</span>';
-            if(i===1) rankHtml = '<span class="text-gray-300 text-lg">🥈 2</span>';
-            if(i===2) rankHtml = '<span class="text-orange-400 text-lg">🥉 3</span>';
+            let rankHtml = `<span class="font-bold text-gray-400">#${i + 1}</span>`;
+            if(i===0) rankHtml = '<span class="text-cyber-yellow font-extrabold">🥇 1</span>';
+            if(i===1) rankHtml = '<span class="text-gray-300 font-extrabold">🥈 2</span>';
+            if(i===2) rankHtml = '<span class="text-orange-400 font-extrabold">🥉 3</span>';
 
             tr.innerHTML = `
-              <td class="p-3 font-bold">${rankHtml}</td>
-              <td class="p-3 text-cyber-cyan">${row.teamName || 'Unknown Entity'}</td>
-              <td class="p-3 text-center">${row.solves}</td>
-              <td class="p-3 text-center text-cyber-magenta font-bold">${row.score}</td>
-              <td class="p-3 text-right text-gray-500 text-xs">${row.lastSolveTime ? new Date(row.lastSolveTime).toLocaleTimeString() : '-'}</td>
+              <td class="p-3.5">${rankHtml}</td>
+              <td class="p-3.5 font-bold text-cyber-cyan">${row.teamName} <span class="text-[10px] text-gray-500 font-normal">(${row.teamId})</span></td>
+              <td class="p-3.5 text-center font-bold text-white">${row.solves}</td>
+              <td class="p-3.5 text-center text-cyber-magenta font-extrabold">${row.score}</td>
+              <td class="p-3.5 text-right text-gray-400 text-xs">${row.lastSolveTime ? new Date(row.lastSolveTime).toLocaleString() : '-'}</td>
             `;
             tbody.appendChild(tr);
           });
@@ -688,7 +974,7 @@
       } catch(err){}
     }
 
-    // --- ADMIN ---
+    // --- ADMIN ACTIONS ---
     async function fetchAuditLogs() {
       try {
         const res = await fetch('/api/admin/submissions');
@@ -697,13 +983,16 @@
           const tbody = document.getElementById('audit-tbody');
           tbody.innerHTML = '';
           logs.forEach(l => {
-            let resCol = l.result === 'ACCEPTED' ? 'text-cyber-green' : 'text-cyber-red';
+            let resCol = l.status === 'ACCEPTED' ? 'text-cyber-green font-bold' : (l.status === 'WRONG_ANSWER' ? 'text-cyber-red font-bold' : 'text-cyber-yellow font-bold');
             tbody.innerHTML += `
-              <tr class="border-b border-cyber-border hover:bg-cyber-border">
+              <tr class="hover:bg-cyber-card2">
                 <td class="p-2">${new Date(l.timestamp).toLocaleTimeString()}</td>
-                <td class="p-2">${l.username}</td>
-                <td class="p-2">${l.challengeId}</td>
-                <td class="p-2 font-bold ${resCol}">${l.result}</td>
+                <td class="p-2 font-mono">${l.id}</td>
+                <td class="p-2">${l.userId}</td>
+                <td class="p-2">${l.teamId}</td>
+                <td class="p-2 font-bold">${l.challengeId}</td>
+                <td class="p-2 ${resCol}">${l.status}</td>
+                <td class="p-2 text-right font-bold">${l.pointsAwarded}</td>
               </tr>
             `;
           });
@@ -713,43 +1002,55 @@
 
     $('#btn-sync').onclick = async () => {
       try {
-        await fetch('/api/admin/sync', {method:'POST'});
-        showToast('System synchronization triggered', 'success');
+        const res = await fetch('/api/admin/sync', { method:'POST' });
+        if (res.ok) showToast('System state synchronized to CSV files', 'success');
       } catch(e) { showToast('Sync failed', 'error'); }
-    }
+    };
 
     document.getElementById('form-add-ctf').onsubmit = async (e) => {
       e.preventDefault();
       const p = {
         id: $('#ctf-id').value, title: $('#ctf-title').value,
-        basePoints: parseInt($('#ctf-pts').value), difficulty: $('#ctf-diff').value,
-        category: $('#ctf-cat').value, rawFlag: $('#ctf-flag').value, hintCost: parseInt($('#ctf-hint').value)
+        basePoints: $('#ctf-pts').value, difficulty: $('#ctf-diff').value,
+        category: $('#ctf-cat').value, rawFlag: $('#ctf-flag').value, hintCost: $('#ctf-hint').value
       };
       try {
         const res = await fetch('/api/admin/challenges/ctf', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
-        if(res.ok) { showToast('CTF Target Deployed', 'success'); e.target.reset(); }
-        else showToast('Deployment failed', 'error');
-      } catch(err){}
-    }
+        if(res.ok) {
+          showToast('CTF Target Deployed Successfully', 'success');
+          e.target.reset();
+          fetchChallenges();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Deployment failed', 'error');
+        }
+      } catch(err){ showToast('Deployment error', 'error'); }
+    };
 
     document.getElementById('form-add-cp').onsubmit = async (e) => {
       e.preventDefault();
       const p = {
         id: $('#cp-id').value, title: $('#cp-title').value,
-        basePoints: parseInt($('#cp-pts').value), difficulty: $('#cp-diff').value,
-        timeLimitMs: parseInt($('#cp-time').value), memoryLimitMb: parseInt($('#cp-mem').value), testcaseDir: $('#cp-dir').value
+        basePoints: $('#cp-pts').value, difficulty: $('#cp-diff').value,
+        timeLimitMs: $('#cp-time').value, memoryLimitMb: $('#cp-mem').value, testcaseDir: $('#cp-dir').value
       };
       try {
         const res = await fetch('/api/admin/challenges/cp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
-        if(res.ok) { showToast('CP Target Deployed', 'success'); e.target.reset(); }
-        else showToast('Deployment failed', 'error');
-      } catch(err){}
-    }
+        if(res.ok) {
+          showToast('CP Target Deployed Successfully', 'success');
+          e.target.reset();
+          fetchChallenges();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Deployment failed', 'error');
+        }
+      } catch(err){ showToast('Deployment error', 'error'); }
+    };
 
-    // jQuery-like shorthand
+    // Shorthand selector helper
     function $(sel) { return document.querySelector(sel); }
 
-    // Init
+    // Init session check
     checkSession();
   </script>
 </body>
