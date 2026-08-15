@@ -8,14 +8,17 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * MongoDB connection and lifecycle manager for Cyber-Algo Arena.
- * Features automatic endpoint discovery (localhost, docker host, container networks)
- * and resilient connection validation.
+ * Features fast TCP port probing, automatic container/host discovery,
+ * and reliable connection initialization.
  */
 public final class MongoManager implements AutoCloseable {
 
@@ -34,32 +37,35 @@ public final class MongoManager implements AutoCloseable {
         MongoClient selectedClient = null;
         MongoDatabase selectedDb = null;
         boolean isConnected = false;
-        String establishedUri = DEFAULT_URI;
+        String establishedUri = null;
 
         for (String candidate : candidateUris) {
+            if (!isPortReachable(candidate)) {
+                continue;
+            }
+
             try {
                 MongoClientSettings settings = MongoClientSettings.builder()
                         .applyConnectionString(new ConnectionString(candidate))
                         .applyToClusterSettings(builder ->
-                                builder.serverSelectionTimeout(1200, TimeUnit.MILLISECONDS))
+                                builder.serverSelectionTimeout(4000, TimeUnit.MILLISECONDS))
                         .applyToSocketSettings(builder ->
-                                builder.connectTimeout(1200, TimeUnit.MILLISECONDS)
-                                       .readTimeout(3000, TimeUnit.MILLISECONDS))
+                                builder.connectTimeout(3000, TimeUnit.MILLISECONDS)
+                                       .readTimeout(5000, TimeUnit.MILLISECONDS))
                         .build();
 
                 MongoClient testClient = MongoClients.create(settings);
                 MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
                 testDb.runCommand(new Document("ping", 1));
 
-                // Success
                 selectedClient = testClient;
                 selectedDb = testDb;
                 isConnected = true;
                 establishedUri = candidate;
-                System.out.println("[MongoManager] Established connection to MongoDB at: " + candidate + " (DB: " + effectiveDbName + ")");
+                System.out.println("[MongoManager] Connected to MongoDB: " + candidate + " (DB: " + effectiveDbName + ")");
                 break;
             } catch (Exception ex) {
-                // Try next candidate
+                // Try next reachable candidate
             }
         }
 
@@ -71,11 +77,26 @@ public final class MongoManager implements AutoCloseable {
             initIndexes();
         } else {
             System.err.println("[MongoManager] Warning: No active MongoDB server reached on candidate endpoints: " + candidateUris);
-            System.err.println("[MongoManager] Operating in resilient fallback mode (in-memory persistence).");
+            System.err.println("[MongoManager] Operating in resilient in-memory fallback mode.");
             this.client = null;
             this.database = null;
             this.connected = false;
             this.activeUri = null;
+        }
+    }
+
+    private static boolean isPortReachable(String uriStr) {
+        try {
+            URI parsed = URI.create(uriStr.startsWith("mongodb://") ? uriStr.replace("mongodb://", "http://") : uriStr);
+            String host = parsed.getHost() != null ? parsed.getHost() : "localhost";
+            int port = parsed.getPort() > 0 ? parsed.getPort() : 27017;
+
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), 800);
+                return true;
+            }
+        } catch (Exception ex) {
+            return false;
         }
     }
 
@@ -89,11 +110,11 @@ public final class MongoManager implements AutoCloseable {
             list.add(envUri.trim());
         }
 
-        // Standard Docker & Local candidate endpoints
         String[] defaults = {
                 "mongodb://localhost:27017",
                 "mongodb://127.0.0.1:27017",
                 "mongodb://mongodb:27017",
+                "mongodb://arena-mongodb:27017",
                 "mongodb://172.17.0.1:27017",
                 "mongodb://host.docker.internal:27017"
         };
