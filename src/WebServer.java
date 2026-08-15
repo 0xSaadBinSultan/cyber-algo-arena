@@ -43,10 +43,24 @@ public final class WebServer {
             config.http.defaultContentType = "application/json";
         });
 
+        int effectivePort = resolvePort(port);
         registerSecurityMiddleware();
         registerRoutes();
-        app.start(port);
-        System.out.println("[WebServer] Running on http://localhost:" + port);
+        app.start(effectivePort);
+        System.out.println("[WebServer] Running on http://localhost:" + effectivePort);
+    }
+
+    public static int resolvePort(int defaultPort) {
+        if (defaultPort > 0) {
+            return defaultPort;
+        }
+        String envPort = System.getenv("PORT");
+        if (envPort != null && !envPort.isBlank()) {
+            try {
+                return Integer.parseInt(envPort.trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        return 8080;
     }
 
     private void registerSecurityMiddleware() {

@@ -819,12 +819,14 @@
     }
 
     function switchAppSection(targetId) {
+      const activeSec = targetId || 'challenges';
+      localStorage.setItem('cyber_active_section', activeSec);
       sections.forEach(sec => sec.classList.add('hidden'));
-      const sec = document.getElementById(`sec-${targetId}`);
+      const sec = document.getElementById(`sec-${activeSec}`);
       if(sec) sec.classList.remove('hidden');
       
       navLinks.forEach(link => {
-        if(link.dataset.target === targetId) {
+        if(link.dataset.target === activeSec) {
           link.classList.add('text-cyber-cyan', 'neon-text-cyan', 'font-bold');
           link.classList.remove('text-gray-400');
         } else {
@@ -833,17 +835,17 @@
         }
       });
 
-      if(targetId === 'challenges') fetchChallenges();
-      if(targetId === 'radar') fetchUpcomingRadar();
-      if(targetId === 'team') fetchMyTeam();
-      if(targetId === 'profile') fetchMyProfile();
-      if(targetId === 'leaderboard') {
+      if(activeSec === 'challenges') fetchChallenges();
+      if(activeSec === 'radar') fetchUpcomingRadar();
+      if(activeSec === 'team') fetchMyTeam();
+      if(activeSec === 'profile') fetchMyProfile();
+      if(activeSec === 'leaderboard') {
         fetchLeaderboard();
         leaderboardInterval = setInterval(fetchLeaderboard, 15000);
       } else {
         if(leaderboardInterval) clearInterval(leaderboardInterval);
       }
-      if(targetId === 'admin' && currentUser?.role === 'ADMIN') {
+      if(activeSec === 'admin' && currentUser?.role === 'ADMIN') {
         fetchAuditLogs();
         renderAdminChallenges();
       }
@@ -881,22 +883,40 @@
       });
     });
 
-    // --- AUTH LOGIC ---
+    // --- AUTH & LOCALSTORAGE SESSION PERSISTENCE ---
     async function checkSession() {
+      // 1. Instant hydration from localStorage
+      const cached = localStorage.getItem('cyber_user_session');
+      if (cached) {
+        try {
+          currentUser = JSON.parse(cached);
+          initApp(false);
+        } catch (e) {
+          localStorage.removeItem('cyber_user_session');
+        }
+      }
+
+      // 2. Validate against server session
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           currentUser = await res.json();
-          initApp();
+          localStorage.setItem('cyber_user_session', JSON.stringify(currentUser));
+          initApp(true);
         } else {
+          localStorage.removeItem('cyber_user_session');
+          currentUser = null;
           switchView('auth');
         }
       } catch (err) {
-        switchView('auth');
+        if (!currentUser) {
+          switchView('auth');
+        }
       }
     }
 
-    function initApp() {
+    function initApp(triggerFetch = true) {
+      if (!currentUser) return;
       navUsername.textContent = currentUser.username;
       navTeamBadge.textContent = currentUser.teamId ? `TEAM: ${currentUser.teamId}` : 'NO TEAM';
       if (currentUser.role === 'ADMIN') {
@@ -907,7 +927,8 @@
         navAdminMob.classList.add('hidden');
       }
       switchView('app');
-      switchAppSection('challenges');
+      const savedSection = localStorage.getItem('cyber_active_section') || 'challenges';
+      switchAppSection(savedSection);
     }
 
     linkToReg.addEventListener('click', (e) => { e.preventDefault(); formLogin.classList.add('hidden'); formRegister.classList.remove('hidden'); });
@@ -921,8 +942,11 @@
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
         if (res.ok) {
+          const user = await res.json();
+          currentUser = user;
+          localStorage.setItem('cyber_user_session', JSON.stringify(user));
           showToast('Authentication confirmed. Welcome, Operative.', 'success');
-          checkSession();
+          initApp();
         } else {
           const d = await res.json();
           showToast(d.error || 'Access Denied: Invalid credentials', 'error');
@@ -954,10 +978,12 @@
     btnLogout.addEventListener('click', async () => {
       try {
         await fetch('/api/auth/logout', { method: 'POST' });
-        currentUser = null;
-        showToast('Session terminated', 'info');
-        switchView('auth');
       } catch (err) {}
+      currentUser = null;
+      localStorage.removeItem('cyber_user_session');
+      localStorage.removeItem('cyber_active_section');
+      showToast('Session terminated', 'info');
+      switchView('auth');
     });
 
     navLinks.forEach(link => {

@@ -1,6 +1,36 @@
+# Maven Build Artifacts
 target/
 out/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE & Editor Files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test & Local Runtime Data
+*.log
+*.tmp
 contest_data_demo/
 .commandcode/
-*.log
-.DS_Store
+.system_generated/
+scratch/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Docker Local Overrides
+docker-compose.override.yml
