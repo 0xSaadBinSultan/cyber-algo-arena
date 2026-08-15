@@ -110,8 +110,8 @@ public final class WebServer {
 
     private void handleLogin(Context ctx) {
         String ip = ctx.ip();
-        if (!rateLimiter.allow("login:" + ip, 5, 60_000L)) {
-            ctx.status(429).json(errorMap("Too Many Requests: Rate limit exceeded. Max 5 login attempts per minute."));
+        if (!rateLimiter.allow("login:" + ip, 20, 60_000L)) {
+            ctx.status(429).json(errorMap("Too Many Requests: Rate limit exceeded. Try again in 60 seconds."));
             return;
         }
 
