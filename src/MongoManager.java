@@ -28,6 +28,8 @@ public final class MongoManager implements AutoCloseable {
 
         MongoClientSettings settings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(effectiveUri))
+                .applyToClusterSettings(builder ->
+                        builder.serverSelectionTimeout(5000, TimeUnit.MILLISECONDS))
                 .applyToSocketSettings(builder ->
                         builder.connectTimeout(5000, TimeUnit.MILLISECONDS)
                                .readTimeout(10000, TimeUnit.MILLISECONDS))
@@ -35,8 +37,15 @@ public final class MongoManager implements AutoCloseable {
 
         this.client = MongoClients.create(settings);
         this.database = client.getDatabase(effectiveDbName);
-        initIndexes();
-        System.out.println("[MongoManager] Connected to MongoDB: " + effectiveDbName);
+        
+        try {
+            // Verify connection
+            this.database.runCommand(new Document("ping", 1));
+            System.out.println("[MongoManager] Connected to MongoDB: " + effectiveDbName + " (" + effectiveUri + ")");
+            initIndexes();
+        } catch (Exception ex) {
+            System.err.println("[MongoManager] MongoDB ping warning: Could not reach " + effectiveUri + " (" + ex.getMessage() + ")");
+        }
     }
 
     private void initIndexes() {
