@@ -15,6 +15,7 @@ import java.util.*;
  * Lightweight REST layer wrapping ContestEngine for the web UI.
  * Serves static assets from ./public and JSON API from /api/*.
  * Session-based authentication via Javalin/Jetty sessions.
+ * Supports challenge attachments and category sub-segmentation.
  */
 public final class WebServer {
 
@@ -52,6 +53,7 @@ public final class WebServer {
         // ── Challenges ──
         app.get("/api/challenges", this::handleGetChallenges);
         app.get("/api/challenges/{id}", this::handleGetChallenge);
+        app.get("/api/challenges/{id}/download", this::handleDownloadAttachment);
 
         // ── Hints ──
         app.post("/api/hints/{challengeId}", this::handleRequestHint);
@@ -169,10 +171,11 @@ public final class WebServer {
             String teamId = user != null ? user.getTeamId() : null;
             Map<String, Object> map = challengeToMap(c, teamId);
 
-            // Add extra detail
             if (c instanceof CTFChallenge ctf) {
-                map.put("category", ctf.getCategory());
+                map.put("category", ctf.getCategoryName());
                 map.put("hintCost", ctf.getHintCost());
+                map.put("attachmentFileName", ctf.getAttachmentFileName());
+                map.put("hasAttachment", ctf.hasAttachment());
             } else if (c instanceof CPProblem cp) {
                 map.put("timeLimitMs", cp.getTimeLimitMillis());
                 map.put("memoryLimitMb", cp.getMemoryLimitMb());
@@ -185,6 +188,36 @@ public final class WebServer {
             ctx.json(map);
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    private void handleDownloadAttachment(Context ctx) {
+        String id = ctx.pathParam("id");
+        try {
+            Challenge c = engine.getChallenge(id);
+            if (!(c instanceof CTFChallenge ctf) || !ctf.hasAttachment()) {
+                ctx.status(404).json(errorMap("No attachment available for challenge " + id));
+                return;
+            }
+
+            String fileName = ctf.getAttachmentFileName();
+            Path path = Path.of("contest_data", "attachments", fileName);
+            if (!Files.exists(path)) {
+                path = Path.of(fileName);
+            }
+
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                ctx.status(404).json(errorMap("Attachment file not found: " + fileName));
+                return;
+            }
+
+            ctx.header("Content-Disposition", "attachment; filename=\"" + path.getFileName().toString() + "\"");
+            ctx.contentType("application/octet-stream");
+            ctx.result(Files.newInputStream(path));
+        } catch (ChallengeNotFoundException ex) {
+            ctx.status(404).json(errorMap(ex.getMessage()));
+        } catch (IOException ex) {
+            ctx.status(500).json(errorMap("Error reading attachment: " + ex.getMessage()));
         }
     }
 
@@ -241,14 +274,10 @@ public final class WebServer {
         }
 
         try {
-            // For CTF: payload is the raw flag
-            // For CP: payload is candidate output directory path
             Challenge challenge = engine.getChallenge(challengeId);
 
-            // For CP via web: if payload doesn't look like a path, create temp output files
             String effectivePayload = payload;
             if (challenge instanceof CPProblem && !payload.contains("/") && !payload.contains("\\")) {
-                // Treat as inline answer — create temp dir with output file
                 Path tempDir = Files.createTempDirectory("cyber-algo-web-cp-");
                 Files.writeString(tempDir.resolve("output_1.txt"), payload);
                 effectivePayload = tempDir.toString();
@@ -346,8 +375,12 @@ public final class WebServer {
             String category = requireField(body, "category");
             String rawFlag = requireField(body, "rawFlag");
             int hintCost = Integer.parseInt(requireField(body, "hintCost"));
+            String attachmentFileName = body.get("attachmentFileName");
+            if (attachmentFileName == null || attachmentFileName.isBlank()) {
+                attachmentFileName = body.get("attachment");
+            }
 
-            CTFChallenge ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost);
+            CTFChallenge ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, attachmentFileName);
             ctx.status(201).json(Map.of("message", "CTF challenge created", "id", ctf.getId()));
         } catch (IllegalArgumentException ex) {
             ctx.status(400).json(errorMap(ex.getMessage()));
@@ -468,7 +501,20 @@ public final class WebServer {
         map.put("hintCost", c.getHintCost());
 
         if (c instanceof CTFChallenge ctf) {
-            map.put("category", ctf.getCategory());
+            map.put("category", ctf.getCategoryName());
+            map.put("attachmentFileName", ctf.getAttachmentFileName());
+            map.put("hasAttachment", ctf.hasAttachment());
+            if (ctf.hasAttachment()) {
+                Path p = Path.of("contest_data", "attachments", ctf.getAttachmentFileName());
+                if (!Files.exists(p)) {
+                    p = Path.of(ctf.getAttachmentFileName());
+                }
+                if (Files.exists(p)) {
+                    try {
+                        map.put("attachmentSize", Files.size(p));
+                    } catch (Exception ignored) {}
+                }
+            }
         } else if (c instanceof CPProblem cp) {
             map.put("timeLimitMs", cp.getTimeLimitMillis());
             map.put("memoryLimitMb", cp.getMemoryLimitMb());

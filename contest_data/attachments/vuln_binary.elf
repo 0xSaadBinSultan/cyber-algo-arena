@@ -1,0 +1,3 @@
+ELF_BINARY_STUB_BUFFER_OVERFLOW_VULN_DEMO
+[DEBUG] Buffer allocated at 0x7fffffffe000
+[DEBUG] Target return address overwrite required

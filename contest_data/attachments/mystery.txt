@@ -1,0 +1,2 @@
+Encoded cipher string: cGFzc3dvcmQ=
+Decrypt with standard Base64 decoding algorithm.

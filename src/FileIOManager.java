@@ -19,7 +19,7 @@ import java.util.Objects;
  */
 public final class FileIOManager {
 
-    public static final String CHALLENGES_CSV_HEADER = "TYPE,ID,TITLE,POINTS,DIFFICULTY,PARAM1,PARAM2,PARAM3";
+    public static final String CHALLENGES_CSV_HEADER = "TYPE,ID,TITLE,POINTS,DIFFICULTY,PARAM1,PARAM2,PARAM3,PARAM4";
     public static final String USERS_CSV_HEADER = "USER_ID,USERNAME,PASSWORD_HASH,ROLE,TEAM_ID";
     public static final String TEAMS_CSV_HEADER = "TEAM_ID,TEAM_NAME,MEMBER_IDS,TOTAL_SCORE,LAST_SOLVE_TIME";
     public static final String SUBMISSIONS_CSV_HEADER =
@@ -51,9 +51,10 @@ public final class FileIOManager {
     }
 
     public List<Challenge> loadChallenges() throws IOException, CorruptedFileException {
-        return loadRecords(
+        return loadRecordsFlex(
                 challengesCsvPath,
                 "challenges.csv",
+                8,
                 Challenge.CSV_FIELD_COUNT,
                 "TYPE",
                 "ID",
@@ -166,6 +167,7 @@ public final class FileIOManager {
         String title = requiredField(fields, 2, lineNumber, "TITLE");
         int points = parseIntField(fields.get(3), lineNumber, "POINTS");
         Challenge.Difficulty difficulty = parseDifficulty(fields.get(4), lineNumber);
+        String param4 = fields.size() > 8 ? optionalField(fields, 8) : null;
 
         try {
             switch (type) {
@@ -177,7 +179,8 @@ public final class FileIOManager {
                             difficulty,
                             requiredField(fields, 5, lineNumber, "CATEGORY"),
                             requiredField(fields, 6, lineNumber, "FLAG_HASH"),
-                            parseIntField(fields.get(7), lineNumber, "HINT_COST"));
+                            parseIntField(fields.get(7), lineNumber, "HINT_COST"),
+                            param4);
                 case "CP":
                     return new CPProblem(
                             id,
@@ -277,6 +280,49 @@ public final class FileIOManager {
                 if (fields.size() != expectedFieldCount) {
                     throw new CorruptedFileException(
                             "Expected " + expectedFieldCount + " CSV fields at line " + lineNumber
+                                    + " but found " + fields.size());
+                }
+                records.add(parser.parse(fields, lineNumber));
+            }
+        }
+        return records;
+    }
+
+    private static <T> List<T> loadRecordsFlex(
+            Path path,
+            String label,
+            int minFieldCount,
+            int maxFieldCount,
+            String firstHeader,
+            String secondHeader,
+            RowParser<T> parser) throws IOException, CorruptedFileException {
+        List<T> records = new ArrayList<>();
+        if (Files.notExists(path)) {
+            return records;
+        }
+
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            String line = reader.readLine();
+            if (line == null) {
+                return records;
+            }
+            List<String> headerFields = CsvCodec.parseLine(line, 1);
+            if (headerFields.size() < minFieldCount || headerFields.size() > maxFieldCount
+                    || !headerFields.get(0).trim().equalsIgnoreCase(firstHeader)
+                    || !headerFields.get(1).trim().equalsIgnoreCase(secondHeader)) {
+                throw new CorruptedFileException("Invalid " + label + " header at line 1");
+            }
+
+            int lineNumber = 1;
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                List<String> fields = CsvCodec.parseLine(line, lineNumber);
+                if (fields.size() < minFieldCount || fields.size() > maxFieldCount) {
+                    throw new CorruptedFileException(
+                            "Expected " + minFieldCount + "-" + maxFieldCount + " CSV fields at line " + lineNumber
                                     + " but found " + fields.size());
                 }
                 records.add(parser.parse(fields, lineNumber));

@@ -2,18 +2,75 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * CTF challenge that validates raw flags through SHA-256 hex comparison.
  * The clear-text flag is never retained by this class.
+ * Supports categorization (Crypto, Web, Reverse Engineering, Pwn, OSINT, Misc)
+ * and optional challenge file attachments.
  */
 public final class CTFChallenge extends Challenge {
 
     private static final int WRONG_ATTEMPT_PENALTY = 10;
 
-    private final String category;
+    /** Supported CTF challenge categories. */
+    public enum Category {
+        CRYPTO,
+        WEB,
+        REVERSE_ENGINEERING,
+        PWN,
+        OSINT,
+        MISC;
+
+        public static Category fromToken(String token) {
+            if (token == null || token.trim().isEmpty()) {
+                return MISC;
+            }
+            String normalized = token.trim().toUpperCase(Locale.ROOT).replace(" ", "_").replace("-", "_");
+            if (normalized.equals("REVERSE") || normalized.equals("REV")) {
+                return REVERSE_ENGINEERING;
+            }
+            try {
+                return Category.valueOf(normalized);
+            } catch (IllegalArgumentException ex) {
+                return MISC;
+            }
+        }
+    }
+
+    private final Category category;
     private final String flagHash;
     private final int hintCost;
+    private final String attachmentFileName;
+
+    public CTFChallenge(
+            String id,
+            String title,
+            int basePoints,
+            Difficulty difficulty,
+            Category category,
+            String flagHash,
+            int hintCost,
+            String attachmentFileName) {
+        super(id, title, basePoints, difficulty);
+        this.category = Objects.requireNonNull(category, "category must not be null");
+        this.flagHash = normalizeHash(flagHash);
+        this.hintCost = requireNonNegative(hintCost, "hintCost");
+        this.attachmentFileName = normalizeAttachment(attachmentFileName);
+    }
+
+    public CTFChallenge(
+            String id,
+            String title,
+            int basePoints,
+            Difficulty difficulty,
+            String category,
+            String flagHash,
+            int hintCost,
+            String attachmentFileName) {
+        this(id, title, basePoints, difficulty, Category.fromToken(category), flagHash, hintCost, attachmentFileName);
+    }
 
     public CTFChallenge(
             String id,
@@ -23,10 +80,7 @@ public final class CTFChallenge extends Challenge {
             String category,
             String flagHash,
             int hintCost) {
-        super(id, title, basePoints, difficulty);
-        this.category = requireText(category, "category");
-        this.flagHash = normalizeHash(flagHash);
-        this.hintCost = requireNonNegative(hintCost, "hintCost");
+        this(id, title, basePoints, difficulty, Category.fromToken(category), flagHash, hintCost, null);
     }
 
     @Override
@@ -64,16 +118,33 @@ public final class CTFChallenge extends Challenge {
 
     @Override
     protected String[] getTypeSpecificCsvFields() {
-        return new String[] {category, flagHash, String.valueOf(hintCost)};
+        return new String[] {
+            category.name(),
+            flagHash,
+            String.valueOf(hintCost),
+            attachmentFileName == null ? "" : attachmentFileName
+        };
     }
 
-    public String getCategory() {
+    public Category getCategory() {
         return category;
+    }
+
+    public String getCategoryName() {
+        return category.name();
     }
 
     /** Returns only the stored digest; no raw-flag accessor exists by design. */
     public String getFlagHash() {
         return flagHash;
+    }
+
+    public String getAttachmentFileName() {
+        return attachmentFileName;
+    }
+
+    public boolean hasAttachment() {
+        return attachmentFileName != null && !attachmentFileName.isBlank();
     }
 
     @Override
@@ -111,5 +182,12 @@ public final class CTFChallenge extends Challenge {
             throw new IllegalArgumentException("flagHash must be a 64-character SHA-256 hex string");
         }
         return normalized;
+    }
+
+    private static String normalizeAttachment(String attachment) {
+        if (attachment == null || attachment.trim().isEmpty()) {
+            return null;
+        }
+        return attachment.trim();
     }
 }

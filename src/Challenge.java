@@ -9,7 +9,7 @@ import java.util.Objects;
  */
 public abstract class Challenge implements Persistable, Scorable {
 
-    public static final int CSV_FIELD_COUNT = 8;
+    public static final int CSV_FIELD_COUNT = 9;
 
     /** Normalized difficulty values persisted in challenges.csv. */
     public enum Difficulty {
@@ -57,14 +57,14 @@ public abstract class Challenge implements Persistable, Scorable {
     /** Returns points deducted per hint; zero means hints are free or unsupported. */
     public abstract int getHintCost();
 
-    /** Supplies EXTRA_PARAM_1..3 for the concrete challenge type. */
+    /** Supplies EXTRA_PARAM_1..4 for the concrete challenge type. */
     protected abstract String[] getTypeSpecificCsvFields();
 
     @Override
     public final String toCsvRow() {
         String[] specificFields = getTypeSpecificCsvFields();
-        if (specificFields == null || specificFields.length != 3) {
-            throw new IllegalStateException("Challenge must provide exactly three type-specific CSV fields");
+        if (specificFields == null || specificFields.length != 4) {
+            throw new IllegalStateException("Challenge must provide exactly four type-specific CSV fields");
         }
 
         List<String> fields = new ArrayList<>(CSV_FIELD_COUNT);
@@ -76,6 +76,7 @@ public abstract class Challenge implements Persistable, Scorable {
         fields.add(specificFields[0]);
         fields.add(specificFields[1]);
         fields.add(specificFields[2]);
+        fields.add(specificFields[3]);
 
         return CsvCodec.join(fields);
     }

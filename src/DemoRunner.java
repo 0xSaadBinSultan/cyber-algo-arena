@@ -69,6 +69,7 @@ public final class DemoRunner {
         // Phase 2: Admin creates challenges
         section("Phase 2: Admin Challenge Creation");
 
+        setupAttachments();
         CTFChallenge ctfDemo = engine.addCtfChallenge(
                 "DEMO-CTF01",
                 "Demo Flag Hunt",
@@ -76,9 +77,12 @@ public final class DemoRunner {
                 Challenge.Difficulty.MEDIUM,
                 "CRYPTO",
                 "flag{demo_secret_2025}",
-                25);
+                25,
+                "demo_packet.pcap");
         System.out.println("  Created CTF: " + ctfDemo.getId()
-                + " [hash=" + ctfDemo.getFlagHash().substring(0, 12) + "...]");
+                + " [cat=" + ctfDemo.getCategory() + ", attachment=" + ctfDemo.getAttachmentFileName() + "]");
+        assertTrue("CTF has attachment", ctfDemo.hasAttachment());
+        assertTrue("CTF category is CRYPTO", ctfDemo.getCategory() == CTFChallenge.Category.CRYPTO);
 
         setupCpTestcases();
         CPProblem cpDemo = engine.addCpChallenge(
@@ -215,6 +219,11 @@ public final class DemoRunner {
         assertTrue("Bravo CP solve persisted",
                 freshEngine.isSolvedByTeam("T-BRAVO", "DEMO-CP01"));
 
+        // Verify attachment persisted
+        CTFChallenge reloadedCtf = (CTFChallenge) freshEngine.getChallenge("DEMO-CTF01");
+        assertTrue("Reloaded CTF retains attachment", reloadedCtf.hasAttachment());
+        assertTrue("Reloaded CTF category is CRYPTO", reloadedCtf.getCategory() == CTFChallenge.Category.CRYPTO);
+
         // Verify CSV files exist
         assertTrue("challenges.csv exists", Files.exists(CHALLENGES_CSV));
         assertTrue("users.csv exists", Files.exists(DATA_DIR.resolve("users.csv")));
@@ -255,6 +264,13 @@ public final class DemoRunner {
         }
         Files.createDirectories(DATA_DIR);
         System.out.println("[Setup] Clean data directory: " + DATA_DIR.toAbsolutePath());
+    }
+
+    private static void setupAttachments() throws IOException {
+        Path attachDir = DATA_DIR.resolve("attachments");
+        Files.createDirectories(attachDir);
+        Files.writeString(attachDir.resolve("demo_packet.pcap"), "PCAP_SAMPLE_PACKET_DUMP_DATA\n", StandardCharsets.UTF_8);
+        System.out.println("  Attachment created in " + attachDir);
     }
 
     private static void setupCpTestcases() throws IOException {

@@ -156,7 +156,8 @@ public final class ContestEngine {
             Challenge.Difficulty difficulty,
             String category,
             String rawFlag,
-            int hintCost) throws IOException {
+            int hintCost,
+            String attachmentFileName) throws IOException {
         CTFChallenge challenge = new CTFChallenge(
                 id,
                 title,
@@ -164,9 +165,21 @@ public final class ContestEngine {
                 difficulty,
                 category,
                 CTFChallenge.sha256Hex(rawFlag),
-                hintCost);
+                hintCost,
+                attachmentFileName);
         addChallenge(challenge);
         return challenge;
+    }
+
+    public synchronized CTFChallenge addCtfChallenge(
+            String id,
+            String title,
+            int basePoints,
+            Challenge.Difficulty difficulty,
+            String category,
+            String rawFlag,
+            int hintCost) throws IOException {
+        return addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, null);
     }
 
     /** Admin helper: registers an existing testcase directory as a CP problem. */
@@ -206,7 +219,8 @@ public final class ContestEngine {
                     ctf.getDifficulty(),
                     ctf.getCategory(),
                     ctf.getFlagHash(),
-                    ctf.getHintCost());
+                    ctf.getHintCost(),
+                    ctf.getAttachmentFileName());
         } else if (existing instanceof CPProblem) {
             CPProblem cp = (CPProblem) existing;
             updated = new CPProblem(

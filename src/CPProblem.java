@@ -137,7 +137,8 @@ public final class CPProblem extends Challenge {
         return new String[] {
             String.valueOf(timeLimitMillis),
             String.valueOf(memoryLimitMb),
-            testcaseDirectory.toString()
+            testcaseDirectory.toString(),
+            ""
         };
     }
 

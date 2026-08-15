@@ -140,7 +140,6 @@
       backdrop-filter: blur(4px);
     }
 
-    /* Segment tab active styles */
     .segment-tab-active-ctf {
       background: linear-gradient(135deg, rgba(0,240,255,0.2) 0%, rgba(0,240,255,0.05) 100%);
       border-color: #00f0ff;
@@ -152,6 +151,12 @@
       border-color: #ffe600;
       color: #ffe600;
       box-shadow: 0 0 15px rgba(255,230,0,0.3), inset 0 0 10px rgba(255,230,0,0.1);
+    }
+    .cat-pill-active {
+      background: rgba(0, 240, 255, 0.2);
+      border-color: #00f0ff;
+      color: #00f0ff;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
     }
   </style>
 </head>
@@ -269,19 +274,19 @@
               <span>ACTIVE TARGETS</span>
               <span id="stat-total-badge" class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan">3 ONLINE</span>
             </h2>
-            <p class="text-xs text-gray-400 mt-1">Select operation protocol to inspect and engage challenges</p>
+            <p class="text-xs text-gray-400 mt-1">Click any problem row to view briefing, download attachments, and transmit solutions</p>
           </div>
 
           <!-- Segmented Pill Switcher -->
           <div class="inline-flex bg-cyber-card border border-cyber-border p-1 rounded-lg space-x-1 shadow-lg">
             <button id="tab-ctf" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-ctf">
               <span>🛡️</span>
-              <span>CTF Operations (Security)</span>
+              <span>CTF Operations</span>
               <span id="badge-ctf-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-cyan rounded border border-cyber-cyan">2</span>
             </button>
             <button id="tab-cp" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-yellow border border-transparent">
               <span>⚡</span>
-              <span>CP Arena (Algorithmic)</span>
+              <span>CP Arena</span>
               <span id="badge-cp-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-yellow rounded border border-cyber-yellow">1</span>
             </button>
           </div>
@@ -289,12 +294,17 @@
 
         <!-- 1. CTF DEDICATED VIEW -->
         <div id="segment-ctf-view" class="space-y-4">
-          <div class="flex items-center justify-between text-xs text-gray-400 px-1">
-            <div class="flex items-center gap-2">
-              <span class="text-cyber-cyan font-bold">SECURITY PROTOCOL:</span>
-              <span>Capture flags through exploit analysis & cryptanalysis. SHA-256 verified.</span>
-            </div>
-            <span class="text-cyber-magenta">Wrong Attempt Penalty: -10 pts</span>
+          
+          <!-- Category Filter Pills -->
+          <div class="flex flex-wrap items-center gap-2 pt-1 pb-2">
+            <span class="text-xs text-gray-400 uppercase font-semibold mr-1">Category:</span>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active" data-cat="ALL">ALL</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="CRYPTO">CRYPTO</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="WEB">WEB</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="REVERSE_ENGINEERING">REVERSE</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="PWN">PWN</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="OSINT">OSINT</button>
+            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="MISC">MISC</button>
           </div>
 
           <div class="overflow-x-auto bg-cyber-card neon-border rounded">
@@ -307,8 +317,9 @@
                   <th class="p-3.5">Difficulty</th>
                   <th class="p-3.5 text-center">Base Points</th>
                   <th class="p-3.5 text-center">Hint Cost</th>
+                  <th class="p-3.5 text-center">Files</th>
                   <th class="p-3.5 text-center">Status</th>
-                  <th class="p-3.5 text-right">Action</th>
+                  <th class="p-3.5 text-right w-16"></th>
                 </tr>
               </thead>
               <tbody id="ctf-tbody" class="text-sm divide-y divide-cyber-border">
@@ -323,9 +334,9 @@
           <div class="flex items-center justify-between text-xs text-gray-400 px-1">
             <div class="flex items-center gap-2">
               <span class="text-cyber-yellow font-bold">ALGORITHMIC PROTOCOL:</span>
-              <span>Evaluate candidate solution outputs against hidden testcases.</span>
+              <span>Evaluate candidate solution outputs against hidden testcases. Click problem row to engage.</span>
             </div>
-            <span class="text-cyber-yellow">Time / Memory Enforced</span>
+            <span class="text-cyber-yellow">Time & Memory Limits Enforced</span>
           </div>
 
           <div class="overflow-x-auto bg-cyber-card neon-border-yellow rounded">
@@ -339,7 +350,7 @@
                   <th class="p-3.5">Difficulty</th>
                   <th class="p-3.5 text-center">Points</th>
                   <th class="p-3.5 text-center">Status</th>
-                  <th class="p-3.5 text-right">Action</th>
+                  <th class="p-3.5 text-right w-16"></th>
                 </tr>
               </thead>
               <tbody id="cp-tbody" class="text-sm divide-y divide-cyber-border">
@@ -385,7 +396,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-cyber-magenta pb-3">
           <div>
             <h2 class="text-2xl font-bold text-cyber-magenta neon-text-magenta uppercase">Command Center</h2>
-            <p class="text-xs text-gray-400">Challenge Deployment, Audit Logs & System Sync</p>
+            <p class="text-xs text-gray-400">Challenge Deployment, Attachments, Audit Logs & System Sync</p>
           </div>
           <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Force Sync All Data</button>
         </div>
@@ -409,11 +420,24 @@
                     <option value="EASY">EASY</option><option value="MEDIUM" selected>MEDIUM</option><option value="HARD">HARD</option>
                   </select>
                 </div>
-                <div><label class="text-xs text-gray-400 uppercase">Category</label><input type="text" id="ctf-cat" placeholder="CRYPTO / PWN / WEB" class="w-full input-cyber p-2 text-sm" required></div>
+                <div>
+                  <label class="text-xs text-gray-400 uppercase">Category</label>
+                  <select id="ctf-cat" class="w-full input-cyber p-2 text-sm">
+                    <option value="CRYPTO">CRYPTO</option>
+                    <option value="WEB">WEB</option>
+                    <option value="REVERSE_ENGINEERING">REVERSE_ENGINEERING</option>
+                    <option value="PWN">PWN</option>
+                    <option value="OSINT">OSINT</option>
+                    <option value="MISC">MISC</option>
+                  </select>
+                </div>
               </div>
               <div><label class="text-xs text-gray-400 uppercase">Raw Flag (SHA-256 Auto-hashed)</label><input type="text" id="ctf-flag" placeholder="flag{secret_token}" class="w-full input-cyber p-2 text-sm" required></div>
-              <div><label class="text-xs text-gray-400 uppercase">Hint Cost (Pts)</label><input type="number" id="ctf-hint" class="w-full input-cyber p-2 text-sm" value="25"></div>
-              <button type="submit" class="w-full btn-cyber py-2 mt-2 text-sm font-bold uppercase">Deploy CTF Target</button>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-400 uppercase">Hint Cost (Pts)</label><input type="number" id="ctf-hint" class="w-full input-cyber p-2 text-sm" value="25"></div>
+                <div><label class="text-xs text-gray-400 uppercase">Attachment Filename</label><input type="text" id="ctf-attachment" placeholder="vuln.zip or dump.pcap" class="w-full input-cyber p-2 text-sm"></div>
+              </div>
+              <button type="submit" class="w-full btn-cyber py-2.5 mt-2 text-sm font-bold uppercase">Deploy CTF Target</button>
             </form>
           </div>
 
@@ -439,7 +463,7 @@
                 <div><label class="text-xs text-gray-400 uppercase">Memory Limit (MB)</label><input type="number" id="cp-mem" class="w-full input-cyber p-2 text-sm" required value="256"></div>
               </div>
               <div><label class="text-xs text-gray-400 uppercase">Testcase Directory Path</label><input type="text" id="cp-dir" placeholder="contest_data/testcases/CP-02" class="w-full input-cyber p-2 text-sm" required></div>
-              <button type="submit" class="w-full btn-cyber-yellow py-2 mt-2 text-sm font-bold uppercase">Deploy CP Target</button>
+              <button type="submit" class="w-full btn-cyber-yellow py-2.5 mt-2 text-sm font-bold uppercase">Deploy CP Target</button>
             </form>
           </div>
         </div>
@@ -484,8 +508,23 @@
       <h2 id="mod-title" class="text-2xl font-bold text-white mb-2"></h2>
       
       <!-- Specs / Details Grid -->
-      <div id="mod-specs-box" class="bg-cyber-card2 p-3 border border-cyber-border rounded text-xs text-gray-300 mb-4 space-y-1">
+      <div id="mod-specs-box" class="bg-cyber-card2 p-3.5 border border-cyber-border rounded text-xs text-gray-300 mb-4 space-y-1.5">
         <!-- Injected dynamically based on CTF vs CP -->
+      </div>
+
+      <!-- Attachment Download Box (CTF only if exists) -->
+      <div id="mod-attachment-box" class="mb-4 p-3 bg-[#081525] border border-cyber-cyan rounded flex items-center justify-between hidden">
+        <div class="flex items-center gap-2.5">
+          <span class="text-lg">📦</span>
+          <div>
+            <div class="text-xs font-bold text-cyber-cyan" id="mod-attachment-name">challenge_files.zip</div>
+            <div class="text-[10px] text-gray-400" id="mod-attachment-size">Attachment Available</div>
+          </div>
+        </div>
+        <a id="btn-download-attachment" href="#" target="_blank" class="btn-cyber px-3 py-1 text-xs font-bold uppercase rounded flex items-center gap-1.5">
+          <span>DOWNLOAD</span>
+          <span>↓</span>
+        </a>
       </div>
 
       <!-- Hint Section -->
@@ -528,6 +567,7 @@
     let currentUser = null;
     let challengesData = [];
     let activeSegment = 'CTF'; // 'CTF' or 'CP'
+    let selectedCategory = 'ALL'; // 'ALL', 'CRYPTO', 'WEB', 'REVERSE_ENGINEERING', 'PWN', 'OSINT', 'MISC'
     let leaderboardInterval = null;
 
     // --- DOM SELECTORS ---
@@ -551,6 +591,7 @@
     const tabCp = document.getElementById('tab-cp');
     const segCtfView = document.getElementById('segment-ctf-view');
     const segCpView = document.getElementById('segment-cp-view');
+    const catPills = document.querySelectorAll('.cat-pill');
 
     // --- TOAST UTILITY ---
     function showToast(msg, type = 'info') {
@@ -565,6 +606,14 @@
         toast.style.transition = 'all 0.3s ease-out';
         setTimeout(() => toast.remove(), 300);
       }, 4000);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     // --- VIEW CONTROLLER ---
@@ -623,6 +672,18 @@
 
     tabCtf.addEventListener('click', () => setSegment('CTF'));
     tabCp.addEventListener('click', () => setSegment('CP'));
+
+    // --- CATEGORY PILL FILTERING ---
+    catPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        catPills.forEach(p => {
+          p.className = "cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all";
+        });
+        pill.className = "cat-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active";
+        selectedCategory = pill.dataset.cat;
+        renderCtfTable();
+      });
+    });
 
     // --- AUTH LOGIC ---
     async function checkSession() {
@@ -744,16 +805,21 @@
     function renderCtfTable() {
       const tbody = document.getElementById('ctf-tbody');
       tbody.innerHTML = '';
-      const ctfList = challengesData.filter(c => c.type === 'CTF');
+      
+      let ctfList = challengesData.filter(c => c.type === 'CTF');
+      if (selectedCategory !== 'ALL') {
+        ctfList = ctfList.filter(c => (c.category || '').toUpperCase() === selectedCategory);
+      }
 
       if (ctfList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 italic">No CTF targets deployed.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500 italic">No CTF targets deployed in category '${selectedCategory}'.</td></tr>`;
         return;
       }
 
       ctfList.forEach(c => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-[rgba(0,240,255,0.05)] transition-colors cursor-pointer";
+        tr.className = "group hover:bg-[rgba(0,240,255,0.06)] transition-all cursor-pointer select-none";
+        tr.onclick = () => openChallengeModal(c.id);
         
         let statusBadge = c.solved
           ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
@@ -763,16 +829,21 @@
         if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
         if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
 
+        let attachmentBadge = c.hasAttachment
+          ? '<span class="text-xs text-cyber-cyan" title="Attachment available">📦 YES</span>'
+          : '<span class="text-xs text-gray-600">-</span>';
+
         tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-cyan">${c.id}</td>
-          <td class="p-3.5 font-bold text-white">${c.title}</td>
-          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${c.category || 'SEC'}</span></td>
+          <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${c.id}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">${c.title}</td>
+          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${c.category || 'MISC'}</span></td>
           <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
           <td class="p-3.5 text-center font-bold text-cyber-magenta">${c.basePoints}</td>
           <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${c.hintCost} pts` : 'Free'}</td>
+          <td class="p-3.5 text-center">${attachmentBadge}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
           <td class="p-3.5 text-right">
-            <button class="btn-cyber px-3 py-1 text-xs font-bold uppercase rounded" onclick="openChallengeModal('${c.id}')">ENGAGE</button>
+            <span class="text-cyber-cyan font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
           </td>
         `;
         tbody.appendChild(tr);
@@ -785,13 +856,14 @@
       const cpList = challengesData.filter(c => c.type === 'CP');
 
       if (cpList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 italic">No CP problems deployed.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-500 italic">No CP problems deployed.</td></tr>`;
         return;
       }
 
       cpList.forEach(c => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-[rgba(255,230,0,0.05)] transition-colors cursor-pointer";
+        tr.className = "group hover:bg-[rgba(255,230,0,0.06)] transition-all cursor-pointer select-none";
+        tr.onclick = () => openChallengeModal(c.id);
         
         let statusBadge = c.solved
           ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
@@ -802,15 +874,15 @@
         if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
 
         tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-yellow">${c.id}</td>
-          <td class="p-3.5 font-bold text-white">${c.title}</td>
+          <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${c.id}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">${c.title}</td>
           <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${c.timeLimitMs} ms` : '-'}</td>
           <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${c.memoryLimitMb} MB` : '-'}</td>
           <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
           <td class="p-3.5 text-center font-bold text-cyber-yellow">${c.basePoints}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
           <td class="p-3.5 text-right">
-            <button class="btn-cyber-yellow px-3 py-1 text-xs font-bold uppercase rounded" onclick="openChallengeModal('${c.id}')">EXECUTE</button>
+            <span class="text-cyber-yellow font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
           </td>
         `;
         tbody.appendChild(tr);
@@ -828,6 +900,7 @@
       $('#hint-display').classList.add('hidden');
       $('#inp-flag').value = '';
       $('#inp-cp').value = '';
+      $('#mod-attachment-box').classList.add('hidden');
 
       try {
         const res = await fetch(`/api/challenges/${challengeId}`);
@@ -846,10 +919,18 @@
             $('#btn-submit-solution').className = "w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
             
             specsBox.innerHTML = `
-              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${c.category || 'Binary / Cryptography'}</div>
-              <div><strong class="text-cyber-cyan">EVALUATION:</strong> Constant-time SHA-256 Digest Verification</div>
-              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points per consumption` : 'Free'}</div>
+              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${c.category || 'MISC'}</div>
+              <div><strong class="text-cyber-cyan">VERIFICATION:</strong> SHA-256 Digest Match</div>
+              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points deduction on solve` : 'Free Hint'}</div>
             `;
+
+            // Attachment rendering
+            if (c.hasAttachment && c.attachmentFileName) {
+              $('#mod-attachment-box').classList.remove('hidden');
+              $('#mod-attachment-name').textContent = c.attachmentFileName;
+              $('#mod-attachment-size').textContent = c.attachmentSize ? `File Size: ${formatBytes(c.attachmentSize)}` : 'File Ready for Inspection';
+              $('#btn-download-attachment').href = `/api/challenges/${c.id}/download`;
+            }
           } else {
             modalCard.className = "bg-cyber-card neon-border-yellow max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
             $('#input-container-ctf').classList.add('hidden');
@@ -859,7 +940,7 @@
             specsBox.innerHTML = `
               <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${c.timeLimitMs || 1000} ms</div>
               <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${c.memoryLimitMb || 256} MB</div>
-              <div><strong class="text-cyber-yellow">TESTCASE DIRECTORY:</strong> ${c.testcaseDir || 'Automated file suite'}</div>
+              <div><strong class="text-cyber-yellow">TESTCASE DIRECTORY:</strong> ${c.testcaseDir || 'Standard Suite'}</div>
             `;
           }
 
@@ -1012,7 +1093,8 @@
       const p = {
         id: $('#ctf-id').value, title: $('#ctf-title').value,
         basePoints: $('#ctf-pts').value, difficulty: $('#ctf-diff').value,
-        category: $('#ctf-cat').value, rawFlag: $('#ctf-flag').value, hintCost: $('#ctf-hint').value
+        category: $('#ctf-cat').value, rawFlag: $('#ctf-flag').value,
+        hintCost: $('#ctf-hint').value, attachmentFileName: $('#ctf-attachment').value
       };
       try {
         const res = await fetch('/api/admin/challenges/ctf', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
