@@ -8,11 +8,14 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * MongoDB connection and lifecycle manager for Cyber-Algo Arena.
- * Manages singleton MongoClient, database access, and schema index initialization.
+ * Features automatic endpoint discovery (localhost, docker host, container networks)
+ * and resilient connection validation.
  */
 public final class MongoManager implements AutoCloseable {
 
@@ -21,56 +24,103 @@ public final class MongoManager implements AutoCloseable {
 
     private final MongoClient client;
     private final MongoDatabase database;
+    private final boolean connected;
+    private final String activeUri;
 
     public MongoManager(String uri, String dbName) {
-        String effectiveUri = (uri != null && !uri.isBlank()) ? uri : DEFAULT_URI;
         String effectiveDbName = (dbName != null && !dbName.isBlank()) ? dbName : DEFAULT_DB_NAME;
 
-        MongoClientSettings settings = MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(effectiveUri))
-                .applyToClusterSettings(builder ->
-                        builder.serverSelectionTimeout(5000, TimeUnit.MILLISECONDS))
-                .applyToSocketSettings(builder ->
-                        builder.connectTimeout(5000, TimeUnit.MILLISECONDS)
-                               .readTimeout(10000, TimeUnit.MILLISECONDS))
-                .build();
+        List<String> candidateUris = buildCandidateUris(uri);
+        MongoClient selectedClient = null;
+        MongoDatabase selectedDb = null;
+        boolean isConnected = false;
+        String establishedUri = DEFAULT_URI;
 
-        this.client = MongoClients.create(settings);
-        this.database = client.getDatabase(effectiveDbName);
-        
-        try {
-            // Verify connection
-            this.database.runCommand(new Document("ping", 1));
-            System.out.println("[MongoManager] Connected to MongoDB: " + effectiveDbName + " (" + effectiveUri + ")");
+        for (String candidate : candidateUris) {
+            try {
+                MongoClientSettings settings = MongoClientSettings.builder()
+                        .applyConnectionString(new ConnectionString(candidate))
+                        .applyToClusterSettings(builder ->
+                                builder.serverSelectionTimeout(1200, TimeUnit.MILLISECONDS))
+                        .applyToSocketSettings(builder ->
+                                builder.connectTimeout(1200, TimeUnit.MILLISECONDS)
+                                       .readTimeout(3000, TimeUnit.MILLISECONDS))
+                        .build();
+
+                MongoClient testClient = MongoClients.create(settings);
+                MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
+                testDb.runCommand(new Document("ping", 1));
+
+                // Success
+                selectedClient = testClient;
+                selectedDb = testDb;
+                isConnected = true;
+                establishedUri = candidate;
+                System.out.println("[MongoManager] Established connection to MongoDB at: " + candidate + " (DB: " + effectiveDbName + ")");
+                break;
+            } catch (Exception ex) {
+                // Try next candidate
+            }
+        }
+
+        if (isConnected) {
+            this.client = selectedClient;
+            this.database = selectedDb;
+            this.connected = true;
+            this.activeUri = establishedUri;
             initIndexes();
-        } catch (Exception ex) {
-            System.err.println("[MongoManager] MongoDB ping warning: Could not reach " + effectiveUri + " (" + ex.getMessage() + ")");
+        } else {
+            System.err.println("[MongoManager] Warning: No active MongoDB server reached on candidate endpoints: " + candidateUris);
+            System.err.println("[MongoManager] Operating in resilient fallback mode (in-memory persistence).");
+            this.client = null;
+            this.database = null;
+            this.connected = false;
+            this.activeUri = null;
         }
     }
 
+    private static List<String> buildCandidateUris(String explicitUri) {
+        List<String> list = new ArrayList<>();
+        if (explicitUri != null && !explicitUri.isBlank()) {
+            list.add(explicitUri.trim());
+        }
+        String envUri = System.getenv("MONGODB_URI");
+        if (envUri != null && !envUri.isBlank() && !list.contains(envUri.trim())) {
+            list.add(envUri.trim());
+        }
+
+        // Standard Docker & Local candidate endpoints
+        String[] defaults = {
+                "mongodb://localhost:27017",
+                "mongodb://127.0.0.1:27017",
+                "mongodb://mongodb:27017",
+                "mongodb://172.17.0.1:27017",
+                "mongodb://host.docker.internal:27017"
+        };
+        for (String d : defaults) {
+            if (!list.contains(d)) {
+                list.add(d);
+            }
+        }
+        return list;
+    }
+
     private void initIndexes() {
+        if (!connected || database == null) return;
         try {
-            // users: unique on username, index on email
             getUsersCollection().createIndex(Indexes.ascending("username"), new IndexOptions().unique(true));
             getUsersCollection().createIndex(Indexes.ascending("email"));
 
-            // teams: unique on id and teamName
             getTeamsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
             getTeamsCollection().createIndex(Indexes.ascending("teamName"), new IndexOptions().unique(true));
 
-            // challenges: unique on id
             getChallengesCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
-
-            // contests: unique on id
             getContestsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
 
-            // contest_participations: unique compound on (contestId, userId)
-            // Enforces: 1 player cannot join multiple teams in the same contest
             getParticipationsCollection().createIndex(
                     Indexes.compoundIndex(Indexes.ascending("contestId"), Indexes.ascending("userId")),
                     new IndexOptions().unique(true));
 
-            // submissions: compound query index
             getSubmissionsCollection().createIndex(
                     Indexes.compoundIndex(
                             Indexes.ascending("contestId"),
@@ -81,32 +131,40 @@ public final class MongoManager implements AutoCloseable {
         }
     }
 
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public String getActiveUri() {
+        return activeUri;
+    }
+
     public MongoDatabase getDatabase() {
         return database;
     }
 
     public MongoCollection<Document> getUsersCollection() {
-        return database.getCollection("users");
+        return database != null ? database.getCollection("users") : null;
     }
 
     public MongoCollection<Document> getTeamsCollection() {
-        return database.getCollection("teams");
+        return database != null ? database.getCollection("teams") : null;
     }
 
     public MongoCollection<Document> getChallengesCollection() {
-        return database.getCollection("challenges");
+        return database != null ? database.getCollection("challenges") : null;
     }
 
     public MongoCollection<Document> getContestsCollection() {
-        return database.getCollection("contests");
+        return database != null ? database.getCollection("contests") : null;
     }
 
     public MongoCollection<Document> getParticipationsCollection() {
-        return database.getCollection("contest_participations");
+        return database != null ? database.getCollection("contest_participations") : null;
     }
 
     public MongoCollection<Document> getSubmissionsCollection() {
-        return database.getCollection("submissions");
+        return database != null ? database.getCollection("submissions") : null;
     }
 
     @Override

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: arena-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - arena_net
+
+  arena:
+    build: .
+    container_name: arena-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE_NAME=cyber_algo_arena
+    depends_on:
+      - mongodb
+    volumes:
+      - ./contest_data:/app/contest_data
+    networks:
+      - arena_net
+
+volumes:
+  mongo_data:
+
+networks:
+  arena_net:
+    driver: bridge
