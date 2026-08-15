@@ -36,14 +36,22 @@ public final class SubmissionResult implements Persistable {
             int pointsAwarded,
             Instant evaluatedAt,
             String message) {
-        this.submissionId = requireText(submissionId, "submissionId");
+        this.submissionId = submissionId != null && !submissionId.isBlank() ? submissionId.trim() : "SUB-ANON";
         this.status = Objects.requireNonNull(status, "status must not be null");
         if (pointsAwarded < 0) {
             throw new IllegalArgumentException("pointsAwarded must not be negative");
         }
         this.pointsAwarded = pointsAwarded;
-        this.evaluatedAt = evaluatedAt;
+        this.evaluatedAt = evaluatedAt != null ? evaluatedAt : Instant.now();
         this.message = message == null ? "" : message;
+    }
+
+    public SubmissionResult(Status status, int pointsAwarded, String message) {
+        this("SUB-ANON", status, pointsAwarded, Instant.now(), message);
+    }
+
+    public SubmissionResult(String submissionId, Status status, int pointsAwarded, String message) {
+        this(submissionId, status, pointsAwarded, Instant.now(), message);
     }
 
     public static SubmissionResult pending(String submissionId) {

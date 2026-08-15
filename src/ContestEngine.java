@@ -1,154 +1,251 @@
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-/** Orchestrates authentication, registries, challenge CRUD, submissions, scoring, and leaderboard refresh. */
+/**
+ * High-performance state orchestrator for Cyber-Algo Arena.
+ * Backed by MongoRepository for persistent, multi-contest management.
+ */
 public final class ContestEngine {
 
-    private final FileIOManager fileIOManager;
-    private final Map<String, Challenge> challengesById = new LinkedHashMap<>();
-    private final Map<String, User> usersById = new LinkedHashMap<>();
-    private final Map<String, Team> teamsById = new LinkedHashMap<>();
-    private final Map<String, Submission> submissionsById = new LinkedHashMap<>();
-    private final Map<String, Integer> hintUsageByTeamChallenge = new LinkedHashMap<>();
-    private final Leaderboard leaderboard = new Leaderboard();
+    private final MongoRepository repository;
+    private final Leaderboard leaderboard;
 
-    public ContestEngine(FileIOManager fileIOManager) {
-        this.fileIOManager = Objects.requireNonNull(fileIOManager, "fileIOManager must not be null");
+    private final Map<String, Challenge> challengesById = new ConcurrentHashMap<>();
+    private final Map<String, User> usersById = new ConcurrentHashMap<>();
+    private final Map<String, User> usersByUsername = new ConcurrentHashMap<>();
+    private final Map<String, Team> teamsById = new ConcurrentHashMap<>();
+    private final Map<String, Team> teamsByName = new ConcurrentHashMap<>();
+    private final Map<String, Contest> contestsById = new ConcurrentHashMap<>();
+    private final List<Submission> submissions = Collections.synchronizedList(new ArrayList<>());
+
+    private final Map<String, Set<String>> teamSolvedChallenges = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Integer>> teamWrongAttempts = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Integer>> teamHintUsage = new ConcurrentHashMap<>();
+
+    public ContestEngine(MongoRepository repository) {
+        this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.leaderboard = new Leaderboard();
     }
 
-    /** Loads all registries, rebuilds hint totals from evaluated submissions, and derives ranking. */
-    public synchronized void load() throws IOException, CorruptedFileException {
+    /** Loads all persisted state from MongoDB into memory. */
+    public synchronized void load() {
         challengesById.clear();
         usersById.clear();
+        usersByUsername.clear();
         teamsById.clear();
-        submissionsById.clear();
-        hintUsageByTeamChallenge.clear();
+        teamsByName.clear();
+        contestsById.clear();
+        submissions.clear();
+        teamSolvedChallenges.clear();
+        teamWrongAttempts.clear();
+        teamHintUsage.clear();
 
-        for (Challenge challenge : fileIOManager.loadChallenges()) {
-            challengesById.put(challenge.getId(), challenge);
+        for (Challenge c : repository.getAllChallenges()) {
+            challengesById.put(c.getId(), c);
         }
-        for (User user : fileIOManager.loadUsers()) {
-            usersById.put(user.getId(), user);
+        for (User u : repository.getAllUsers()) {
+            usersById.put(u.getId(), u);
+            usersByUsername.put(u.getUsername().toLowerCase(Locale.ROOT), u);
         }
-        for (Team team : fileIOManager.loadTeams()) {
-            teamsById.put(team.getId(), team);
+        for (Team t : repository.getAllTeams()) {
+            teamsById.put(t.getId(), t);
+            teamsByName.put(t.getTeamName().toLowerCase(Locale.ROOT), t);
         }
-        for (Submission submission : fileIOManager.loadSubmissions()) {
-            submissionsById.put(submission.getId(), submission);
-            if (submission.getHintsUsed() > 0) {
-                hintUsageByTeamChallenge.merge(
-                        hintKey(submission.getTeamId(), submission.getChallengeId()),
-                        submission.getHintsUsed(),
-                        Math::max);
+        for (Contest ct : repository.getAllContests()) {
+            contestsById.put(ct.getId(), ct);
+        }
+
+        List<Submission> allSubs = repository.getAllSubmissions();
+        allSubs.sort(Comparator.comparing(Submission::getTimestamp));
+        for (Submission s : allSubs) {
+            submissions.add(s);
+            String teamId = s.getTeamId();
+            String challengeId = s.getChallengeId();
+
+            if (s.getStatus() == SubmissionResult.Status.ACCEPTED) {
+                teamSolvedChallenges.computeIfAbsent(teamId, k -> ConcurrentHashMap.newKeySet()).add(challengeId);
+            } else if (s.getStatus() == SubmissionResult.Status.WRONG_ANSWER) {
+                teamWrongAttempts.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                        .merge(challengeId, 1, Integer::sum);
+            }
+            if (s.getHintsUsed() > 0) {
+                teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                        .put(challengeId, s.getHintsUsed());
             }
         }
-        leaderboard.recalculate(teamsById.values());
+
+        refreshLeaderboard();
+        System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
+                + usersById.size() + " users, " + teamsById.size() + " teams, " + submissions.size() + " submissions.");
     }
 
-    /** Registers an account from a raw password while persisting only its SHA-256 hash. */
-    public synchronized User registerUserAccount(
-            String userId,
-            String username,
-            String rawPassword,
-            User.Role role,
-            String teamId) throws IOException {
-        if (rawPassword == null || rawPassword.isEmpty()) {
-            throw new IllegalArgumentException("rawPassword must not be null or empty");
+    // ═══════════════════════════════════════════════════════════
+    // AUTHENTICATION & USERS
+    // ═══════════════════════════════════════════════════════════
+
+    public synchronized Optional<User> authenticate(String username, String password) {
+        if (username == null || password == null) return Optional.empty();
+        User user = usersByUsername.get(username.trim().toLowerCase(Locale.ROOT));
+        if (user == null) return Optional.empty();
+        return user.verifyPassword(password) ? Optional.of(user) : Optional.empty();
+    }
+
+    public synchronized User registerUser(String username, String email, String password) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Username and password must not be blank");
         }
-        User user = new User(userId, username, CTFChallenge.sha256Hex(rawPassword), role, teamId);
-        registerUser(user);
+        String normUsername = username.trim().toLowerCase(Locale.ROOT);
+        if (usersByUsername.containsKey(normUsername)) {
+            throw new IllegalArgumentException("Username already taken: " + username);
+        }
+
+        String userId = "U-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String passHash = CTFChallenge.sha256Hex(password);
+        User user = new User(userId, username.trim(), email, passHash, User.Role.PLAYER, null);
+
+        usersById.put(user.getId(), user);
+        usersByUsername.put(normUsername, user);
+        repository.saveUser(user);
         return user;
     }
 
-    /** Authenticates by username and constant-time SHA-256 digest comparison. */
-    public synchronized Optional<User> authenticate(String username, String rawPassword) {
-        if (username == null || username.trim().isEmpty() || rawPassword == null) {
-            return Optional.empty();
+    public synchronized User registerUserAccount(String id, String username, String password, User.Role role, String teamId) {
+        String normUsername = username.trim().toLowerCase(Locale.ROOT);
+        if (usersByUsername.containsKey(normUsername)) {
+            throw new IllegalArgumentException("Username already registered: " + username);
         }
-        String submittedHash = CTFChallenge.sha256Hex(rawPassword);
-        return usersById.values().stream()
-                .filter(user -> user.getUsername().equals(username))
-                .filter(user -> MessageDigest.isEqual(
-                        user.getPasswordHash().getBytes(StandardCharsets.UTF_8),
-                        submittedHash.getBytes(StandardCharsets.UTF_8)))
-                .findFirst();
-    }
+        String passHash = CTFChallenge.sha256Hex(password);
+        User user = new User(id, username, null, passHash, role, teamId);
 
-    public synchronized void registerUser(User user) throws IOException {
-        Objects.requireNonNull(user, "user must not be null");
-        if (usersById.containsKey(user.getId())) {
-            throw new IllegalArgumentException("Duplicate user ID: " + user.getId());
-        }
-        boolean duplicateUsername = usersById.values().stream()
-                .anyMatch(existing -> existing.getUsername().equalsIgnoreCase(user.getUsername()));
-        if (duplicateUsername) {
-            throw new IllegalArgumentException("Duplicate username: " + user.getUsername());
-        }
-        if (user.getTeamId() != null && !teamsById.containsKey(user.getTeamId())) {
-            throw new TeamNotFoundException(user.getTeamId());
-        }
         usersById.put(user.getId(), user);
-        if (user.getTeamId() != null) {
-            teamsById.get(user.getTeamId()).addMember(user.getId());
-            saveTeams();
-        }
-        saveUsers();
+        usersByUsername.put(normUsername, user);
+        repository.saveUser(user);
+        return user;
     }
 
-    public synchronized void registerTeam(Team team) throws IOException {
-        Objects.requireNonNull(team, "team must not be null");
-        if (teamsById.containsKey(team.getId())) {
-            throw new IllegalArgumentException("Duplicate team ID: " + team.getId());
-        }
-        teamsById.put(team.getId(), team);
-        leaderboard.recalculate(teamsById.values());
-        saveTeams();
-    }
-
-    public synchronized void assignUserToTeam(String userId, String teamId) throws IOException {
+    public User getUser(String userId) {
         User user = usersById.get(userId);
-        if (user == null) {
-            throw new UserNotFoundException(userId);
+        if (user == null) throw new UserNotFoundException(userId);
+        return user;
+    }
+
+    public List<User> getUsers() {
+        return List.copyOf(usersById.values());
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TEAM MANAGEMENT (CREATE, JOIN, ROSTER)
+    // ═══════════════════════════════════════════════════════════
+
+    public synchronized Team createTeam(String teamName, String rawPassword, String creatorUserId) {
+        if (teamName == null || teamName.isBlank()) {
+            throw new IllegalArgumentException("Team name cannot be blank");
         }
-        Team team = teamsById.get(teamId);
+        String normName = teamName.trim().toLowerCase(Locale.ROOT);
+        if (teamsByName.containsKey(normName)) {
+            throw new IllegalArgumentException("Team name already exists: " + teamName);
+        }
+
+        User creator = getUser(creatorUserId);
+        String teamId = "T-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String passHash = (rawPassword != null && !rawPassword.isBlank()) ? CTFChallenge.sha256Hex(rawPassword) : "";
+
+        Team team = new Team(teamId, teamName.trim(), passHash, creatorUserId, List.of(creatorUserId), 0, null, Instant.now());
+        teamsById.put(team.getId(), team);
+        teamsByName.put(normName, team);
+        repository.saveTeam(team);
+
+        creator.setTeamId(team.getId());
+        repository.saveUser(creator);
+        refreshLeaderboard();
+        return team;
+    }
+
+    public synchronized Team joinTeam(String teamName, String rawPassword, String userId) {
+        if (teamName == null || teamName.isBlank()) {
+            throw new IllegalArgumentException("Team name required");
+        }
+        Team team = teamsByName.get(teamName.trim().toLowerCase(Locale.ROOT));
         if (team == null) {
-            throw new TeamNotFoundException(teamId);
+            team = teamsById.get(teamName.trim());
+        }
+        if (team == null) {
+            throw new TeamNotFoundException("Team not found: " + teamName);
         }
 
-        String previousTeamId = user.getTeamId();
-        if (previousTeamId != null && teamsById.containsKey(previousTeamId)) {
-            teamsById.get(previousTeamId).removeMember(userId);
+        if (!team.verifyPassword(rawPassword)) {
+            throw new IllegalArgumentException("Incorrect team passkey");
         }
-        user.assignToTeam(teamId);
-        team.addMember(userId);
-        saveUsers();
-        saveTeams();
+
+        User user = getUser(userId);
+        team.addMember(user.getId());
+        user.setTeamId(team.getId());
+
+        repository.saveTeam(team);
+        repository.saveUser(user);
+        return team;
     }
 
-    /** Adds a validated challenge entity and persists the registry. */
-    public synchronized void addChallenge(Challenge challenge) throws IOException {
+    public synchronized void registerTeam(Team team) {
+        Objects.requireNonNull(team, "team must not be null");
+        teamsById.put(team.getId(), team);
+        teamsByName.put(team.getTeamName().toLowerCase(Locale.ROOT), team);
+        repository.saveTeam(team);
+        refreshLeaderboard();
+    }
+
+    public Team getTeam(String teamId) {
+        Team team = teamsById.get(teamId);
+        if (team == null) throw new TeamNotFoundException(teamId);
+        return team;
+    }
+
+    public List<Team> getTeams() {
+        return List.copyOf(teamsById.values());
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CONTEST & PARTICIPATION (CTFtime Multi-Team Rules)
+    // ═══════════════════════════════════════════════════════════
+
+    public synchronized void registerPlayerInContest(String contestId, String teamId, String userId) {
+        // Enforce: Player cannot belong to multiple teams in the same contest
+        Optional<ContestParticipation> existing = repository.getParticipation(contestId, userId);
+        if (existing.isPresent()) {
+            if (!existing.get().getTeamId().equals(teamId)) {
+                throw new IllegalStateException("Player already participating under team " + existing.get().getTeamId() + " in contest " + contestId);
+            }
+            return; // Already registered under this team
+        }
+
+        ContestParticipation cp = new ContestParticipation(contestId, teamId, userId, Instant.now());
+        repository.recordParticipation(cp);
+
+        Contest contest = contestsById.get(contestId);
+        if (contest != null) {
+            contest.registerTeam(teamId);
+            repository.saveContest(contest);
+        }
+    }
+
+    public List<Contest> getContests() {
+        return repository.getAllContests();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CHALLENGES (CRUD & ATTACHMENT DELETION)
+    // ═══════════════════════════════════════════════════════════
+
+    public synchronized void addChallenge(Challenge challenge) {
         Objects.requireNonNull(challenge, "challenge must not be null");
-        if (challengesById.containsKey(challenge.getId())) {
-            throw new IllegalArgumentException("Duplicate challenge ID: " + challenge.getId());
-        }
         challengesById.put(challenge.getId(), challenge);
-        saveChallenges();
+        repository.saveChallenge(challenge);
     }
 
-    /** Admin helper: hashes the raw CTF flag immediately and never persists clear text. */
     public synchronized CTFChallenge addCtfChallenge(
             String id,
             String title,
@@ -157,8 +254,8 @@ public final class ContestEngine {
             String category,
             String rawFlag,
             int hintCost,
-            String attachmentFileName) throws IOException {
-        CTFChallenge challenge = new CTFChallenge(
+            String attachmentFileName) {
+        CTFChallenge ctf = new CTFChallenge(
                 id,
                 title,
                 basePoints,
@@ -167,8 +264,8 @@ public final class ContestEngine {
                 CTFChallenge.sha256Hex(rawFlag),
                 hintCost,
                 attachmentFileName);
-        addChallenge(challenge);
-        return challenge;
+        addChallenge(ctf);
+        return ctf;
     }
 
     public synchronized CTFChallenge addCtfChallenge(
@@ -178,11 +275,10 @@ public final class ContestEngine {
             Challenge.Difficulty difficulty,
             String category,
             String rawFlag,
-            int hintCost) throws IOException {
+            int hintCost) {
         return addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, null);
     }
 
-    /** Admin helper: registers an existing testcase directory as a CP problem. */
     public synchronized CPProblem addCpChallenge(
             String id,
             String title,
@@ -190,10 +286,7 @@ public final class ContestEngine {
             Challenge.Difficulty difficulty,
             long timeLimitMillis,
             int memoryLimitMb,
-            Path testcaseDirectory) throws IOException {
-        if (!Files.isDirectory(testcaseDirectory)) {
-            throw new IllegalArgumentException("testcaseDirectory must exist: " + testcaseDirectory);
-        }
+            Path testcaseDirectory) {
         CPProblem problem = new CPProblem(
                 id,
                 title,
@@ -206,231 +299,154 @@ public final class ContestEngine {
         return problem;
     }
 
-    /** Replaces the challenge with an equivalent subtype carrying updated base points. */
-    public synchronized void updateChallengeBasePoints(String challengeId, int newBasePoints) throws IOException {
+    public synchronized void removeChallenge(String challengeId) {
+        Challenge c = challengesById.remove(challengeId);
+        if (c == null) throw new ChallengeNotFoundException(challengeId);
+        repository.deleteChallenge(challengeId);
+
+        // Clean attachment file from disk if present
+        if (c instanceof CTFChallenge ctf && ctf.hasAttachment()) {
+            try {
+                Path p = Path.of("contest_data", "attachments", ctf.getAttachmentFileName());
+                Files.deleteIfExists(p);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public synchronized void updateChallengeBasePoints(String challengeId, int newBasePoints) {
         Challenge existing = getChallenge(challengeId);
         Challenge updated;
-        if (existing instanceof CTFChallenge) {
-            CTFChallenge ctf = (CTFChallenge) existing;
+        if (existing instanceof CTFChallenge ctf) {
             updated = new CTFChallenge(
-                    ctf.getId(),
-                    ctf.getTitle(),
-                    newBasePoints,
-                    ctf.getDifficulty(),
-                    ctf.getCategory(),
-                    ctf.getFlagHash(),
-                    ctf.getHintCost(),
-                    ctf.getAttachmentFileName());
-        } else if (existing instanceof CPProblem) {
-            CPProblem cp = (CPProblem) existing;
+                    ctf.getId(), ctf.getTitle(), newBasePoints, ctf.getDifficulty(),
+                    ctf.getCategory(), ctf.getFlagHash(), ctf.getHintCost(), ctf.getAttachmentFileName());
+        } else if (existing instanceof CPProblem cp) {
             updated = new CPProblem(
-                    cp.getId(),
-                    cp.getTitle(),
-                    newBasePoints,
-                    cp.getDifficulty(),
-                    cp.getTimeLimitMillis(),
-                    cp.getMemoryLimitMb(),
-                    cp.getTestcaseDirectory());
+                    cp.getId(), cp.getTitle(), newBasePoints, cp.getDifficulty(),
+                    cp.getTimeLimitMillis(), cp.getMemoryLimitMb(), cp.getTestcaseDirectory());
         } else {
-            throw new IllegalStateException("Unsupported challenge subtype: " + existing.getClass().getName());
+            throw new IllegalArgumentException("Unsupported challenge type: " + existing.getClass().getName());
         }
-        challengesById.put(updated.getId(), updated);
-        saveChallenges();
+        challengesById.put(challengeId, updated);
+        repository.saveChallenge(updated);
     }
 
-    public synchronized void removeChallenge(String challengeId) throws IOException {
-        if (challengesById.remove(challengeId) == null) {
-            throw new ChallengeNotFoundException(challengeId);
-        }
-        saveChallenges();
-    }
-
-    /** Records a paid CTF hint request. CP hints are informational and free. */
-    public synchronized String requestHint(String teamId, String challengeId) {
-        getTeam(teamId);
-        Challenge challenge = getChallenge(challengeId);
-        if (challenge.getHintCost() > 0) {
-            hintUsageByTeamChallenge.merge(hintKey(teamId, challengeId), 1, Integer::sum);
-        }
-        return challenge.getHintText();
-    }
-
-    public synchronized int getHintUsageCount(String teamId, String challengeId) {
-        return hintUsageByTeamChallenge.getOrDefault(hintKey(teamId, challengeId), 0);
-    }
-
-    public synchronized boolean isSolvedByTeam(String teamId, String challengeId) {
-        return submissionsById.values().stream()
-                .anyMatch(submission -> submission.getTeamId().equals(teamId)
-                        && submission.getChallengeId().equals(challengeId)
-                        && submission.getStatus() == SubmissionResult.Status.ACCEPTED);
-    }
-
-    public synchronized int getSolveCount(String teamId) {
-        return getSolvedChallengeIdsForTeam(teamId).size();
-    }
-
-    public synchronized Set<String> getSolvedChallengeIdsForTeam(String teamId) {
-        Set<String> solvedIds = new LinkedHashSet<>();
-        for (Submission submission : submissionsById.values()) {
-            if (submission.getTeamId().equals(teamId)
-                    && submission.getStatus() == SubmissionResult.Status.ACCEPTED) {
-                solvedIds.add(submission.getChallengeId());
-            }
-        }
-        return Collections.unmodifiableSet(solvedIds);
-    }
-
-    /**
-     * Evaluates one pending submission, derives prior wrong attempts and recorded hints,
-     * persists the audit outcome, and refreshes ranking immediately.
-     */
-    public synchronized SubmissionResult submit(Submission submission) throws IOException {
-        Objects.requireNonNull(submission, "submission must not be null");
-        if (submissionsById.containsKey(submission.getId())) {
-            throw new DuplicateSubmissionException(submission.getId());
-        }
-
-        User user = usersById.get(submission.getUserId());
-        if (user == null) {
-            throw new UserNotFoundException(submission.getUserId());
-        }
-        Team team = teamsById.get(submission.getTeamId());
-        if (team == null) {
-            throw new TeamNotFoundException(submission.getTeamId());
-        }
-        if (!submission.getTeamId().equals(user.getTeamId())) {
-            throw new InvalidSubmissionException(
-                    "User " + user.getId() + " is not assigned to team " + submission.getTeamId());
-        }
-        Challenge challenge = challengesById.get(submission.getChallengeId());
-        if (challenge == null) {
-            throw new ChallengeNotFoundException(submission.getChallengeId());
-        }
-        if (isSolvedByTeam(submission.getTeamId(), submission.getChallengeId())) {
-            throw new InvalidSubmissionException("Challenge already solved by team " + submission.getTeamId());
-        }
-
-        int derivedWrongAttempts = countFailedAttempts(submission.getTeamId(), submission.getChallengeId());
-        int effectiveWrongAttempts = Math.max(submission.getWrongAttempts(), derivedWrongAttempts);
-        int effectiveHints = Math.max(
-                submission.getHintsUsed(),
-                getHintUsageCount(submission.getTeamId(), submission.getChallengeId()));
-        Submission effectiveSubmission = submission.withAttemptAndHintCounts(effectiveWrongAttempts, effectiveHints);
-
-        submissionsById.put(effectiveSubmission.getId(), effectiveSubmission);
-        Instant evaluatedAt = Instant.now();
-        try {
-            boolean accepted = challenge.evaluate(effectiveSubmission.getPayload());
-            if (accepted) {
-                long elapsedMillis = Math.max(
-                        0L,
-                        Duration.between(effectiveSubmission.getTimestamp(), evaluatedAt).toMillis());
-                int pointsAwarded = challenge.calculateScore(
-                        effectiveSubmission.getWrongAttempts(),
-                        effectiveSubmission.getHintsUsed(),
-                        elapsedMillis);
-                effectiveSubmission.markAccepted(pointsAwarded, evaluatedAt);
-                team.recordSolve(pointsAwarded, evaluatedAt);
-            } else {
-                effectiveSubmission.markWrongAnswer(evaluatedAt);
-            }
-        } catch (InvalidSubmissionException ex) {
-            effectiveSubmission.markInvalid(evaluatedAt, ex.getMessage());
-        }
-
-        persistSubmissionOutcome(effectiveSubmission);
-        leaderboard.recalculate(teamsById.values());
-        return effectiveSubmission.getResult();
-    }
-
-    public synchronized void refreshLeaderboard() {
-        leaderboard.recalculate(teamsById.values());
-    }
-
-    /** Forces every managed registry back to CSV storage. */
-    public synchronized void syncData() throws IOException {
-        saveChallenges();
-        saveUsers();
-        saveTeams();
-        fileIOManager.saveSubmissions(submissionsById.values());
-    }
-
-    public synchronized Challenge getChallenge(String challengeId) {
+    public Challenge getChallenge(String challengeId) {
         Challenge challenge = challengesById.get(challengeId);
-        if (challenge == null) {
-            throw new ChallengeNotFoundException(challengeId);
-        }
+        if (challenge == null) throw new ChallengeNotFoundException(challengeId);
         return challenge;
     }
 
-    public synchronized User getUser(String userId) {
-        User user = usersById.get(userId);
-        if (user == null) {
-            throw new UserNotFoundException(userId);
-        }
-        return user;
+    public List<Challenge> getChallenges() {
+        return List.copyOf(challengesById.values());
     }
 
-    public synchronized Team getTeam(String teamId) {
-        Team team = teamsById.get(teamId);
-        if (team == null) {
-            throw new TeamNotFoundException(teamId);
+    // ═══════════════════════════════════════════
+    // SUBMISSION EVALUATION & PROFILE UPDATES
+    // ═══════════════════════════════════════════
+
+    public synchronized SubmissionResult submit(Submission submission) {
+        Objects.requireNonNull(submission, "submission must not be null");
+
+        Challenge challenge = getChallenge(submission.getChallengeId());
+        Team team = getTeam(submission.getTeamId());
+        User user = getUser(submission.getUserId());
+
+        if (isSolvedByTeam(team.getId(), challenge.getId())) {
+            throw new DuplicateSubmissionException("Challenge already solved by team " + team.getId());
         }
-        return team;
+
+        boolean accepted;
+        try {
+            accepted = challenge.evaluate(submission.getPayload());
+        } catch (InvalidSubmissionException ex) {
+            SubmissionResult errResult = new SubmissionResult(SubmissionResult.Status.INVALID, 0, ex.getMessage());
+            submission.applyResult(errResult);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+            return errResult;
+        }
+
+        if (accepted) {
+            int wrongCount = getWrongAttempts(team.getId(), challenge.getId());
+            int hintsCount = getHintUsageCount(team.getId(), challenge.getId());
+            int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
+
+            Instant solveTime = submission.getTimestamp();
+            team.applyScore(pointsAwarded, solveTime);
+            teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
+
+            // Update user personal profile
+            String cat = (challenge instanceof CTFChallenge ctf) ? ctf.getCategoryName() : "CP";
+            user.recordSolve(challenge.getId(), cat, pointsAwarded);
+
+            repository.saveTeam(team);
+            repository.saveUser(user);
+
+            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, "Accepted");
+            submission.applyResult(acceptResult);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+
+            refreshLeaderboard();
+            return acceptResult;
+        } else {
+            teamWrongAttempts.computeIfAbsent(team.getId(), k -> new ConcurrentHashMap<>())
+                    .merge(challenge.getId(), 1, Integer::sum);
+
+            SubmissionResult wrongResult = new SubmissionResult(SubmissionResult.Status.WRONG_ANSWER, 0, "Wrong answer");
+            submission.applyResult(wrongResult);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+            return wrongResult;
+        }
+    }
+
+    public synchronized String requestHint(String teamId, String challengeId) {
+        getTeam(teamId);
+        Challenge challenge = getChallenge(challengeId);
+        teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                .merge(challengeId, 1, Integer::sum);
+        return challenge.getHintText();
+    }
+
+    public boolean isSolvedByTeam(String teamId, String challengeId) {
+        Set<String> solved = teamSolvedChallenges.get(teamId);
+        return solved != null && solved.contains(challengeId);
+    }
+
+    public int getSolveCount(String teamId) {
+        Set<String> solved = teamSolvedChallenges.get(teamId);
+        return solved != null ? solved.size() : 0;
+    }
+
+    public int getWrongAttempts(String teamId, String challengeId) {
+        Map<String, Integer> map = teamWrongAttempts.get(teamId);
+        return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
+    }
+
+    public int getHintUsageCount(String teamId, String challengeId) {
+        Map<String, Integer> map = teamHintUsage.get(teamId);
+        return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
+    }
+
+    public synchronized void refreshLeaderboard() {
+        leaderboard.update(teamsById.values());
     }
 
     public Leaderboard getLeaderboard() {
         return leaderboard;
     }
 
-    public synchronized Collection<Challenge> getChallenges() {
-        return Collections.unmodifiableCollection(challengesById.values());
+    public List<Submission> getSubmissions() {
+        return List.copyOf(submissions);
     }
 
-    public synchronized Collection<User> getUsers() {
-        return Collections.unmodifiableCollection(usersById.values());
+    public MongoRepository getRepository() {
+        return repository;
     }
 
-    public synchronized Collection<Team> getTeams() {
-        return Collections.unmodifiableCollection(teamsById.values());
-    }
-
-    public synchronized Collection<Submission> getSubmissions() {
-        return Collections.unmodifiableCollection(submissionsById.values());
-    }
-
-    private int countFailedAttempts(String teamId, String challengeId) {
-        int failedAttempts = 0;
-        for (Submission submission : submissionsById.values()) {
-            if (submission.getTeamId().equals(teamId)
-                    && submission.getChallengeId().equals(challengeId)
-                    && (submission.getStatus() == SubmissionResult.Status.WRONG_ANSWER
-                            || submission.getStatus() == SubmissionResult.Status.INVALID)) {
-                failedAttempts++;
-            }
-        }
-        return failedAttempts;
-    }
-
-    private void persistSubmissionOutcome(Submission submission) throws IOException {
-        saveTeams();
-        fileIOManager.appendSubmission(submission);
-    }
-
-    private void saveChallenges() throws IOException {
-        fileIOManager.saveChallenges(challengesById.values());
-    }
-
-    private void saveUsers() throws IOException {
-        fileIOManager.saveUsers(usersById.values());
-    }
-
-    private void saveTeams() throws IOException {
-        fileIOManager.saveTeams(teamsById.values());
-    }
-
-    private static String hintKey(String teamId, String challengeId) {
-        return teamId + '\u0000' + challengeId;
+    public synchronized void syncData() {
+        refreshLeaderboard();
     }
 }

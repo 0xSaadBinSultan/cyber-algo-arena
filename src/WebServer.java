@@ -12,10 +12,8 @@ import java.time.Instant;
 import java.util.*;
 
 /**
- * Lightweight REST layer wrapping ContestEngine for the web UI.
- * Serves static assets from ./public and JSON API from /api/*.
- * Session-based authentication via Javalin/Jetty sessions.
- * Supports challenge attachments and category sub-segmentation.
+ * REST Web layer for Cyber-Algo Arena.
+ * Connects Javalin endpoints with Mongo-backed ContestEngine.
  */
 public final class WebServer {
 
@@ -50,6 +48,19 @@ public final class WebServer {
         app.post("/api/auth/logout", this::handleLogout);
         app.get("/api/auth/me", this::handleMe);
 
+        // ── Teams Hub ──
+        app.post("/api/teams/create", this::handleCreateTeam);
+        app.post("/api/teams/join", this::handleJoinTeam);
+        app.get("/api/teams/my-team", this::handleMyTeam);
+
+        // ── Profiles (CTFtime Multi-team & Stats) ──
+        app.get("/api/users/me/profile", this::handleMyProfile);
+        app.get("/api/users/{id}/profile", this::handleUserProfile);
+
+        // ── Contests ──
+        app.get("/api/contests", this::handleGetContests);
+        app.post("/api/contests/{id}/register", this::handleRegisterContest);
+
         // ── Challenges ──
         app.get("/api/challenges", this::handleGetChallenges);
         app.get("/api/challenges/{id}", this::handleGetChallenge);
@@ -74,7 +85,7 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // Auth handlers
+    // AUTH HANDLERS
     // ═══════════════════════════════════════════
 
     private void handleLogin(Context ctx) {
@@ -93,50 +104,29 @@ public final class WebServer {
         ctx.json(userToMap(user));
     }
 
-    private void handleRegister(Context ctx) throws IOException {
+    private void handleRegister(Context ctx) {
         Map<String, String> body = parseBody(ctx);
-        String username = body.getOrDefault("username", "");
-        String password = body.getOrDefault("password", "");
-        String roleStr = body.getOrDefault("role", "PLAYER");
-        String teamId = body.getOrDefault("teamId", null);
-        String teamName = body.getOrDefault("teamName", null);
+        String username = body.getOrDefault("username", "").trim();
+        String email = body.getOrDefault("email", "").trim();
+        String password = body.getOrDefault("password", "").trim();
 
         if (username.isBlank() || password.isBlank()) {
             ctx.status(400).json(errorMap("Username and password required"));
             return;
         }
 
-        User.Role role;
         try {
-            role = User.Role.fromToken(roleStr);
-        } catch (IllegalArgumentException ex) {
-            ctx.status(400).json(errorMap("Invalid role: " + roleStr));
-            return;
-        }
-
-        try {
-            // Auto-create team if needed
-            if (role == User.Role.PLAYER && teamId != null && !teamId.isBlank()) {
-                try {
-                    engine.getTeam(teamId);
-                } catch (TeamNotFoundException ex) {
-                    String name = (teamName != null && !teamName.isBlank()) ? teamName : teamId;
-                    engine.registerTeam(new Team(teamId, name));
-                }
-            }
-
-            String userId = "USER-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            User user = engine.registerUserAccount(userId, username, password, role, teamId);
+            User user = engine.registerUser(username, email, password);
             ctx.sessionAttribute("userId", user.getId());
             ctx.status(201).json(userToMap(user));
-        } catch (IllegalArgumentException | TeamNotFoundException ex) {
+        } catch (IllegalArgumentException ex) {
             ctx.status(400).json(errorMap(ex.getMessage()));
         }
     }
 
     private void handleLogout(Context ctx) {
         ctx.req().getSession().invalidate();
-        ctx.json(Map.of("message", "Logged out"));
+        ctx.json(Map.of("message", "Session terminated"));
     }
 
     private void handleMe(Context ctx) {
@@ -149,7 +139,120 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // Challenge handlers
+    // TEAM HUB HANDLERS
+    // ═══════════════════════════════════════════
+
+    private void handleCreateTeam(Context ctx) {
+        User user = requireAuth(ctx);
+        if (user == null) return;
+
+        Map<String, String> body = parseBody(ctx);
+        String teamName = body.getOrDefault("teamName", "");
+        String teamPassword = body.getOrDefault("teamPassword", "");
+
+        try {
+            Team team = engine.createTeam(teamName, teamPassword, user.getId());
+            ctx.status(201).json(teamToMap(team));
+        } catch (IllegalArgumentException ex) {
+            ctx.status(400).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    private void handleJoinTeam(Context ctx) {
+        User user = requireAuth(ctx);
+        if (user == null) return;
+
+        Map<String, String> body = parseBody(ctx);
+        String teamName = body.getOrDefault("teamName", "");
+        String teamPassword = body.getOrDefault("teamPassword", "");
+
+        try {
+            Team team = engine.joinTeam(teamName, teamPassword, user.getId());
+            ctx.json(teamToMap(team));
+        } catch (TeamNotFoundException ex) {
+            ctx.status(404).json(errorMap(ex.getMessage()));
+        } catch (IllegalArgumentException ex) {
+            ctx.status(400).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    private void handleMyTeam(Context ctx) {
+        User user = requireAuth(ctx);
+        if (user == null) return;
+
+        if (user.getTeamId() == null) {
+            ctx.status(404).json(errorMap("You are not currently part of any team."));
+            return;
+        }
+
+        try {
+            Team team = engine.getTeam(user.getTeamId());
+            ctx.json(teamToMap(team));
+        } catch (TeamNotFoundException ex) {
+            ctx.status(404).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    // PROFILE HANDLERS (CTFtime Radar & Metrics)
+    // ═══════════════════════════════════════════
+
+    private void handleMyProfile(Context ctx) {
+        User user = requireAuth(ctx);
+        if (user == null) return;
+        ctx.json(userProfileToMap(user));
+    }
+
+    private void handleUserProfile(Context ctx) {
+        String id = ctx.pathParam("id");
+        try {
+            User user = engine.getUser(id);
+            ctx.json(userProfileToMap(user));
+        } catch (UserNotFoundException ex) {
+            ctx.status(404).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    // CONTEST HANDLERS
+    // ═══════════════════════════════════════════
+
+    private void handleGetContests(Context ctx) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Contest c : engine.getContests()) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", c.getId());
+            map.put("title", c.getTitle());
+            map.put("description", c.getDescription());
+            map.put("startTime", c.getStartTime().toString());
+            map.put("endTime", c.getEndTime().toString());
+            map.put("isRunning", c.isRunning());
+            map.put("registeredTeamsCount", c.getRegisteredTeamIds().size());
+            list.add(map);
+        }
+        ctx.json(list);
+    }
+
+    private void handleRegisterContest(Context ctx) {
+        User user = requireAuth(ctx);
+        if (user == null) return;
+
+        if (user.getTeamId() == null) {
+            ctx.status(400).json(errorMap("Must join or create a team before entering a contest"));
+            return;
+        }
+
+        String contestId = ctx.pathParam("id");
+        try {
+            engine.registerPlayerInContest(contestId, user.getTeamId(), user.getId());
+            ctx.json(Map.of("message", "Registered for contest successfully", "contestId", contestId, "teamId", user.getTeamId()));
+        } catch (IllegalStateException ex) {
+            ctx.status(409).json(errorMap(ex.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    // CHALLENGE HANDLERS
     // ═══════════════════════════════════════════
 
     private void handleGetChallenges(Context ctx) {
@@ -158,7 +261,7 @@ public final class WebServer {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Challenge c : engine.getChallenges()) {
-            result.add(challengeToMap(c, teamId));
+            result.add(challengeToMap(c, teamId, user));
         }
         ctx.json(result);
     }
@@ -169,7 +272,7 @@ public final class WebServer {
             Challenge c = engine.getChallenge(id);
             User user = getSessionUser(ctx);
             String teamId = user != null ? user.getTeamId() : null;
-            Map<String, Object> map = challengeToMap(c, teamId);
+            Map<String, Object> map = challengeToMap(c, teamId, user);
 
             if (c instanceof CTFChallenge ctf) {
                 map.put("category", ctf.getCategoryName());
@@ -207,7 +310,7 @@ public final class WebServer {
             }
 
             if (!Files.exists(path) || !Files.isRegularFile(path)) {
-                ctx.status(404).json(errorMap("Attachment file not found: " + fileName));
+                ctx.status(404).json(errorMap("Attachment file not found on disk: " + fileName));
                 return;
             }
 
@@ -222,7 +325,7 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // Hint handler
+    // HINTS & SUBMISSIONS
     // ═══════════════════════════════════════════
 
     private void handleRequestHint(Context ctx) {
@@ -250,23 +353,20 @@ public final class WebServer {
         }
     }
 
-    // ═══════════════════════════════════════════
-    // Submission handler
-    // ═══════════════════════════════════════════
-
-    private void handleSubmit(Context ctx) throws IOException {
+    private void handleSubmit(Context ctx) {
         User user = requireAuth(ctx);
         if (user == null) return;
 
         String teamId = user.getTeamId();
         if (teamId == null) {
-            ctx.status(400).json(errorMap("Join a team before submitting"));
+            ctx.status(400).json(errorMap("Join or create a team before submitting solutions."));
             return;
         }
 
         Map<String, String> body = parseBody(ctx);
-        String challengeId = body.getOrDefault("challengeId", "");
-        String payload = body.getOrDefault("payload", "");
+        String challengeId = body.getOrDefault("challengeId", "").trim();
+        String payload = body.getOrDefault("payload", "").trim();
+        String contestId = body.getOrDefault("contestId", "GLOBAL");
 
         if (challengeId.isBlank() || payload.isBlank()) {
             ctx.status(400).json(errorMap("challengeId and payload required"));
@@ -286,12 +386,17 @@ public final class WebServer {
             String subId = "SUB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             Submission submission = new Submission(
                     subId,
+                    contestId,
                     user.getId(),
                     teamId,
                     challengeId,
                     effectivePayload,
-                    0,
+                    engine.getWrongAttempts(teamId, challengeId),
                     engine.getHintUsageCount(teamId, challengeId),
+                    Instant.now(),
+                    SubmissionResult.Status.INVALID,
+                    0,
+                    "",
                     Instant.now());
 
             SubmissionResult result = engine.submit(submission);
@@ -302,17 +407,25 @@ public final class WebServer {
             response.put("pointsAwarded", result.getPointsAwarded());
             response.put("message", result.getMessage());
             response.put("teamScore", engine.getTeam(teamId).getTotalScore());
+            response.put("personalScore", engine.getUser(user.getId()).getPersonalScore());
+
+            if (challenge instanceof CTFChallenge ctf) {
+                response.put("hashVerified", result.getStatus() == SubmissionResult.Status.ACCEPTED);
+                response.put("hintDeduction", engine.getHintUsageCount(teamId, challengeId) * ctf.getHintCost());
+            }
 
             ctx.json(response);
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
         } catch (DuplicateSubmissionException | InvalidSubmissionException ex) {
             ctx.status(400).json(errorMap(ex.getMessage()));
+        } catch (IOException ex) {
+            ctx.status(500).json(errorMap("I/O error during evaluation: " + ex.getMessage()));
         }
     }
 
     // ═══════════════════════════════════════════
-    // Leaderboard handler
+    // LEADERBOARD
     // ═══════════════════════════════════════════
 
     private void handleLeaderboard(Context ctx) {
@@ -328,6 +441,7 @@ public final class WebServer {
             entry.put("teamName", t.getTeamName());
             entry.put("solves", engine.getSolveCount(t.getId()));
             entry.put("score", t.getTotalScore());
+            entry.put("memberCount", t.getMemberUserIds().size());
             entry.put("lastSolveTime", t.getLastSolveTime() != null ? t.getLastSolveTime().toString() : null);
             result.add(entry);
         }
@@ -335,7 +449,7 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // Admin handlers
+    // ADMIN HANDLERS
     // ═══════════════════════════════════════════
 
     private void handleAdminSubmissions(Context ctx) {
@@ -344,7 +458,7 @@ public final class WebServer {
 
         List<Map<String, Object>> result = new ArrayList<>();
         List<Submission> subs = new ArrayList<>(engine.getSubmissions());
-        subs.sort(Comparator.comparing(Submission::getTimestamp));
+        subs.sort(Comparator.comparing(Submission::getTimestamp).reversed());
 
         for (Submission s : subs) {
             Map<String, Object> entry = new LinkedHashMap<>();
@@ -354,7 +468,7 @@ public final class WebServer {
             entry.put("challengeId", s.getChallengeId());
             entry.put("timestamp", s.getTimestamp().toString());
             entry.put("status", s.getStatus().name());
-            entry.put("pointsAwarded", s.getResult().getPointsAwarded());
+            entry.put("pointsAwarded", s.getPointsAwarded());
             entry.put("wrongAttempts", s.getWrongAttempts());
             entry.put("hintsUsed", s.getHintsUsed());
             result.add(entry);
@@ -362,7 +476,7 @@ public final class WebServer {
         ctx.json(result);
     }
 
-    private void handleAddCtf(Context ctx) throws IOException {
+    private void handleAddCtf(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
@@ -387,7 +501,7 @@ public final class WebServer {
         }
     }
 
-    private void handleAddCp(Context ctx) throws IOException {
+    private void handleAddCp(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
@@ -408,7 +522,7 @@ public final class WebServer {
         }
     }
 
-    private void handleUpdatePoints(Context ctx) throws IOException {
+    private void handleUpdatePoints(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
@@ -425,30 +539,29 @@ public final class WebServer {
         }
     }
 
-    private void handleDeleteChallenge(Context ctx) throws IOException {
+    private void handleDeleteChallenge(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
         String id = ctx.pathParam("id");
         try {
             engine.removeChallenge(id);
-            ctx.json(Map.of("message", "Challenge removed", "id", id));
+            ctx.json(Map.of("message", "Challenge deleted from database and disk", "id", id));
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
         }
     }
 
-    private void handleSync(Context ctx) throws IOException {
+    private void handleSync(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
-        engine.refreshLeaderboard();
         engine.syncData();
-        ctx.json(Map.of("message", "Data synchronized to CSV"));
+        ctx.json(Map.of("message", "Memory state synchronized with database."));
     }
 
     // ═══════════════════════════════════════════
-    // Auth helpers
+    // HELPERS
     // ═══════════════════════════════════════════
 
     private User getSessionUser(Context ctx) {
@@ -478,20 +591,61 @@ public final class WebServer {
         return user;
     }
 
-    // ═══════════════════════════════════════════
-    // Serialization helpers
-    // ═══════════════════════════════════════════
-
     private Map<String, Object> userToMap(User user) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("userId", user.getId());
         map.put("username", user.getUsername());
+        map.put("email", user.getEmail());
         map.put("role", user.getRole().name());
         map.put("teamId", user.getTeamId());
         return map;
     }
 
-    private Map<String, Object> challengeToMap(Challenge c, String teamId) {
+    private Map<String, Object> userProfileToMap(User user) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("userId", user.getId());
+        map.put("username", user.getUsername());
+        map.put("email", user.getEmail());
+        map.put("role", user.getRole().name());
+        map.put("teamId", user.getTeamId());
+        map.put("personalScore", user.getPersonalScore());
+        map.put("solvesCount", user.getSolvesCount());
+        map.put("categoryBreakdown", user.getCategoryBreakdown());
+        map.put("solvedChallenges", user.getSolvedChallengeIds());
+        map.put("createdAt", user.getCreatedAt().toString());
+
+        if (user.getTeamId() != null) {
+            try {
+                Team t = engine.getTeam(user.getTeamId());
+                map.put("teamName", t.getTeamName());
+                map.put("isCaptain", user.getId().equals(t.getCaptainUserId()));
+            } catch (Exception ignored) {}
+        }
+        return map;
+    }
+
+    private Map<String, Object> teamToMap(Team team) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", team.getId());
+        map.put("teamName", team.getTeamName());
+        map.put("captainUserId", team.getCaptainUserId());
+        map.put("memberUserIds", team.getMemberUserIds());
+        map.put("totalScore", team.getTotalScore());
+        map.put("lastSolveTime", team.getLastSolveTime() != null ? team.getLastSolveTime().toString() : null);
+        map.put("createdAt", team.getCreatedAt().toString());
+
+        List<Map<String, String>> memberList = new ArrayList<>();
+        for (String mId : team.getMemberUserIds()) {
+            try {
+                User u = engine.getUser(mId);
+                memberList.add(Map.of("userId", u.getId(), "username", u.getUsername(), "score", String.valueOf(u.getPersonalScore())));
+            } catch (Exception ignored) {}
+        }
+        map.put("members", memberList);
+        return map;
+    }
+
+    private Map<String, Object> challengeToMap(Challenge c, String teamId, User user) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", c.getId());
         map.put("type", c.getType());
@@ -518,10 +672,13 @@ public final class WebServer {
         } else if (c instanceof CPProblem cp) {
             map.put("timeLimitMs", cp.getTimeLimitMillis());
             map.put("memoryLimitMb", cp.getMemoryLimitMb());
+            map.put("testcaseDir", cp.getTestcaseDirectory().toString());
         }
 
         if (teamId != null) {
             map.put("solved", engine.isSolvedByTeam(teamId, c.getId()));
+        } else if (user != null) {
+            map.put("solved", user.isSolved(c.getId()));
         } else {
             map.put("solved", false);
         }
@@ -549,7 +706,6 @@ public final class WebServer {
         return Map.of("error", message);
     }
 
-    /** Blocks until server is stopped. */
     public Javalin getApp() {
         return app;
     }

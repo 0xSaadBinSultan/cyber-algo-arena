@@ -1,16 +1,14 @@
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Scanner;
 
 /**
  * Application entry point for Cyber-Algo Arena.
+ * Multi-contest platform backed by MongoDB.
  *
  * Usage:
- *   java App              → Interactive CLI mode (original)
- *   java App --web         → Web server on port 8080
- *   java App --web 3000    → Web server on custom port
- *   java App --demo        → Run DemoRunner lifecycle simulation
- *   java App [dataDir]     → CLI mode with custom data directory
+ *   java -jar app.jar                → Runs Web Server on port 8080 (default)
+ *   java -jar app.jar --web 3000     → Runs Web Server on custom port
+ *   java -jar app.jar --demo         → Runs automated lifecycle test
  */
 public final class App {
 
@@ -19,48 +17,39 @@ public final class App {
 
     public static void main(String[] args) {
         try {
-            if (args.length > 0 && "--web".equals(args[0])) {
-                startWebMode(args);
-            } else if (args.length > 0 && "--demo".equals(args[0])) {
+            if (args.length > 0 && "--demo".equals(args[0])) {
                 DemoRunner.main(new String[0]);
-            } else {
-                startCliMode(args);
+                return;
             }
+
+            int port = 8080;
+            if (args.length > 1 && "--web".equals(args[0])) {
+                try {
+                    port = Integer.parseInt(args[1]);
+                } catch (NumberFormatException ignored) {}
+            }
+
+            String mongoUri = System.getenv().getOrDefault("MONGODB_URI", MongoManager.DEFAULT_URI);
+            String mongoDb = System.getenv().getOrDefault("MONGODB_DATABASE_NAME", MongoManager.DEFAULT_DB_NAME);
+
+            System.out.println("╔══════════════════════════════════════════════════╗");
+            System.out.println("║   Cyber-Algo Arena — Multi-Contest Web Engine   ║");
+            System.out.println("║   MongoDB Cutover: " + mongoDb + "             ║");
+            System.out.println("╚══════════════════════════════════════════════════╝");
+
+            // Ensure attachment directories exist
+            Files.createDirectories(Path.of("contest_data", "attachments"));
+
+            MongoManager mongoManager = new MongoManager(mongoUri, mongoDb);
+            MongoRepository repository = new MongoRepository(mongoManager);
+            ContestEngine engine = new ContestEngine(repository);
+            engine.load();
+
+            new WebServer(engine, port);
         } catch (Exception ex) {
             System.err.println("Fatal startup error: " + ex.getMessage());
             ex.printStackTrace();
+            System.exit(1);
         }
-    }
-
-    private static void startWebMode(String[] args) throws Exception {
-        int port = 8080;
-        if (args.length > 1) {
-            try {
-                port = Integer.parseInt(args[1]);
-            } catch (NumberFormatException ex) {
-                System.err.println("Invalid port: " + args[1] + ". Using default 8080.");
-            }
-        }
-
-        Path dataDirectory = Path.of("contest_data");
-        Files.createDirectories(dataDirectory);
-
-        ContestEngine engine = new ContestEngine(new FileIOManager(dataDirectory.resolve("challenges.csv")));
-        engine.load();
-
-        System.out.println("╔══════════════════════════════════════════════════╗");
-        System.out.println("║       Cyber-Algo Arena — Web Server Mode        ║");
-        System.out.println("╚══════════════════════════════════════════════════╝");
-
-        new WebServer(engine, port);
-        // Javalin runs on daemon threads; keep main alive
-    }
-
-    private static void startCliMode(String[] args) throws Exception {
-        Path dataDirectory = args.length > 0 ? Path.of(args[0]) : Path.of("contest_data");
-        Files.createDirectories(dataDirectory);
-        ContestEngine engine = new ContestEngine(new FileIOManager(dataDirectory.resolve("challenges.csv")));
-        CLIController controller = new CLIController(engine, new InputHandler(new Scanner(System.in)));
-        controller.start();
     }
 }

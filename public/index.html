@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber-Algo Arena — CTF + CP Competition Platform</title>
+  <title>Cyber-Algo Arena — CTF & CP Competition Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -57,15 +57,13 @@
       border: 1px solid #ffe600;
       box-shadow: 0 0 12px rgba(255, 230, 0, 0.25), inset 0 0 12px rgba(255, 230, 0, 0.05);
     }
-    .neon-text-cyan {
-      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+    .neon-border-red {
+      border: 1px solid #ff003c;
+      box-shadow: 0 0 12px rgba(255, 0, 60, 0.25), inset 0 0 12px rgba(255, 0, 60, 0.05);
     }
-    .neon-text-magenta {
-      text-shadow: 0 0 8px rgba(255, 0, 170, 0.8);
-    }
-    .neon-text-yellow {
-      text-shadow: 0 0 8px rgba(255, 230, 0, 0.8);
-    }
+    .neon-text-cyan { text-shadow: 0 0 8px rgba(0, 240, 255, 0.8); }
+    .neon-text-magenta { text-shadow: 0 0 8px rgba(255, 0, 170, 0.8); }
+    .neon-text-yellow { text-shadow: 0 0 8px rgba(255, 230, 0, 0.8); }
     .input-cyber {
       background: #090915;
       border: 1px solid #1a1a2e;
@@ -109,6 +107,17 @@
       background: #ffe600;
       color: #050510;
       box-shadow: 0 0 15px rgba(255,230,0,0.5);
+    }
+    .btn-cyber-red {
+      background: rgba(255, 0, 60, 0.1);
+      border: 1px solid #ff003c;
+      color: #ff003c;
+      transition: all 0.2s;
+    }
+    .btn-cyber-red:hover {
+      background: #ff003c;
+      color: #ffffff;
+      box-shadow: 0 0 15px rgba(255,0,60,0.5);
     }
     .toast-container {
       position: fixed;
@@ -177,13 +186,13 @@
  ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝
         </pre>
         <h1 class="text-xl font-bold tracking-widest text-white uppercase mt-2">Cyber-Algo Arena</h1>
-        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ HYBRID CTF + CP COMPETITION SYSTEM ]</p>
+        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ MULTI-CONTEST PLATFORM · MONGODB ]</p>
       </div>
 
       <!-- Login Form -->
       <form id="form-login" class="space-y-4">
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Operative Identifier</label>
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Operative Handle</label>
           <input type="text" id="login-username" class="w-full input-cyber p-2.5 text-sm" placeholder="Username" required autocomplete="username">
         </div>
         <div>
@@ -192,15 +201,19 @@
         </div>
         <button type="submit" class="w-full btn-cyber p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Initialize Connection</button>
         <div class="text-center mt-4">
-          <a href="#" id="link-to-register" class="text-cyber-magenta text-xs hover:underline hover:neon-text-magenta">New Operative? Register Identity</a>
+          <a href="#" id="link-to-register" class="text-cyber-magenta text-xs hover:underline hover:neon-text-magenta">New Operative? Create Account</a>
         </div>
       </form>
 
-      <!-- Register Form -->
+      <!-- Simplified Register Form -->
       <form id="form-register" class="space-y-3 hidden">
         <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Username</label>
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Handle (Username)</label>
           <input type="text" id="reg-username" class="w-full input-cyber p-2 text-sm" placeholder="Unique username" required autocomplete="username">
+        </div>
+        <div>
+          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Email</label>
+          <input type="email" id="reg-email" class="w-full input-cyber p-2 text-sm" placeholder="operative@domain.com" required autocomplete="email">
         </div>
         <div>
           <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Password</label>
@@ -209,19 +222,6 @@
         <div>
           <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Confirm Password</label>
           <input type="password" id="reg-password-confirm" class="w-full input-cyber p-2 text-sm" placeholder="Repeat passkey" required autocomplete="new-password">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Role</label>
-            <select id="reg-role" class="w-full input-cyber p-2 text-sm">
-              <option value="PLAYER">PLAYER</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Team ID</label>
-            <input type="text" id="reg-team-id" class="w-full input-cyber p-2 text-sm" placeholder="e.g. T-CYBER">
-          </div>
         </div>
         <button type="submit" class="w-full btn-cyber-magenta p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Establish Identity</button>
         <div class="text-center mt-4">
@@ -242,29 +242,33 @@
         </h1>
         <div class="hidden md:flex space-x-5">
           <a href="#" class="nav-link text-cyber-cyan neon-text-cyan font-bold transition-colors uppercase text-sm" data-target="challenges">Challenges</a>
+          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="team">Team Hub</a>
+          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="profile">Profile</a>
           <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="leaderboard">Leaderboard</a>
-          <a href="#" id="nav-admin" class="nav-link text-cyber-magenta hover:neon-text-magenta transition-colors uppercase text-sm hidden" data-target="admin">Admin Console</a>
+          <a href="#" id="nav-admin" class="nav-link text-cyber-magenta hover:neon-text-magenta transition-colors uppercase text-sm hidden" data-target="admin">Admin</a>
         </div>
       </div>
       <div class="flex items-center gap-4 mt-2 md:mt-0">
         <div class="text-xs text-gray-400 flex items-center gap-1.5">
           <span>OPERATIVE:</span>
           <span id="nav-username" class="text-cyber-cyan font-bold"></span>
-          <span id="nav-role-badge" class="px-1.5 py-0.2 bg-cyber-border text-[10px] text-gray-300 uppercase"></span>
+          <span id="nav-team-badge" class="px-1.5 py-0.2 bg-cyber-card2 border border-cyber-border text-[10px] text-cyber-yellow uppercase">NO TEAM</span>
         </div>
         <button id="btn-logout" class="text-xs border border-cyber-magenta text-cyber-magenta px-3 py-1 hover:bg-cyber-magenta hover:text-white transition-colors uppercase font-bold">DISCONNECT</button>
       </div>
-      <div class="w-full flex md:hidden space-x-4 mt-3 border-t border-cyber-border pt-2">
-        <a href="#" class="nav-link text-cyber-cyan text-xs uppercase" data-target="challenges">Challenges</a>
-        <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan text-xs uppercase" data-target="leaderboard">Leaderboard</a>
-        <a href="#" id="nav-admin-mobile" class="nav-link text-cyber-magenta text-xs uppercase hidden" data-target="admin">Admin Console</a>
+      <div class="w-full flex md:hidden space-x-3 mt-3 border-t border-cyber-border pt-2 overflow-x-auto text-xs">
+        <a href="#" class="nav-link text-cyber-cyan uppercase" data-target="challenges">Challenges</a>
+        <a href="#" class="nav-link text-gray-400 uppercase" data-target="team">Team</a>
+        <a href="#" class="nav-link text-gray-400 uppercase" data-target="profile">Profile</a>
+        <a href="#" class="nav-link text-gray-400 uppercase" data-target="leaderboard">Leaderboard</a>
+        <a href="#" id="nav-admin-mobile" class="nav-link text-cyber-magenta uppercase hidden" data-target="admin">Admin</a>
       </div>
     </nav>
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full relative z-10">
       
-      <!-- CHALLENGES SECTION WITH SEGMENTED SWITCHER -->
+      <!-- 1. CHALLENGES SECTION WITH SEGMENTED SWITCHER -->
       <section id="sec-challenges" class="app-section">
         
         <!-- Header & Segment Control -->
@@ -292,7 +296,7 @@
           </div>
         </div>
 
-        <!-- 1. CTF DEDICATED VIEW -->
+        <!-- CTF DEDICATED VIEW -->
         <div id="segment-ctf-view" class="space-y-4">
           
           <!-- Category Filter Pills -->
@@ -329,12 +333,12 @@
           </div>
         </div>
 
-        <!-- 2. CP DEDICATED VIEW -->
+        <!-- CP DEDICATED VIEW -->
         <div id="segment-cp-view" class="space-y-4 hidden">
           <div class="flex items-center justify-between text-xs text-gray-400 px-1">
             <div class="flex items-center gap-2">
               <span class="text-cyber-yellow font-bold">ALGORITHMIC PROTOCOL:</span>
-              <span>Evaluate candidate solution outputs against hidden testcases. Click problem row to engage.</span>
+              <span>Evaluate candidate outputs against hidden testcase suites.</span>
             </div>
             <span class="text-cyber-yellow">Time & Memory Limits Enforced</span>
           </div>
@@ -361,12 +365,148 @@
         </div>
       </section>
 
-      <!-- LEADERBOARD VIEW -->
+      <!-- 2. TEAM HUB SECTION -->
+      <section id="sec-team" class="app-section hidden">
+        <div class="border-b border-cyber-border pb-3 mb-6">
+          <h2 class="text-2xl font-bold text-cyber-yellow uppercase flex items-center gap-2">
+            <span>🛡️</span> Team Operations Hub
+          </h2>
+          <p class="text-xs text-gray-400">Form competitive syndicates and register for contest participation</p>
+        </div>
+
+        <!-- No Team State: Create or Join -->
+        <div id="team-none-view" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Create Team -->
+          <div class="bg-cyber-card neon-border p-6 rounded">
+            <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase">Create New Syndicate</h3>
+            <form id="form-create-team" class="space-y-4">
+              <div>
+                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Syndicate Name</label>
+                <input type="text" id="create-team-name" class="w-full input-cyber p-2.5 text-sm" placeholder="e.g. CyberVanguard" required>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Secret Passkey (For Members to Join)</label>
+                <input type="password" id="create-team-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required>
+              </div>
+              <button type="submit" class="w-full btn-cyber p-2.5 text-sm font-bold uppercase">Establish Syndicate</button>
+            </form>
+          </div>
+
+          <!-- Join Team -->
+          <div class="bg-cyber-card neon-border-yellow p-6 rounded">
+            <h3 class="text-lg font-bold text-cyber-yellow mb-4 uppercase">Join Existing Syndicate</h3>
+            <form id="form-join-team" class="space-y-4">
+              <div>
+                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Syndicate Name / ID</label>
+                <input type="text" id="join-team-name" class="w-full input-cyber p-2.5 text-sm" placeholder="e.g. CyberVanguard" required>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Team Passkey</label>
+                <input type="password" id="join-team-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required>
+              </div>
+              <button type="submit" class="w-full btn-cyber-yellow p-2.5 text-sm font-bold uppercase">Join Syndicate</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Team Active State -->
+        <div id="team-active-view" class="space-y-6 hidden">
+          <div class="bg-cyber-card neon-border p-6 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <div class="text-xs text-cyber-cyan font-bold uppercase">Active Syndicate</div>
+              <h3 id="active-team-name" class="text-3xl font-extrabold text-white mt-1"></h3>
+              <div class="text-xs text-gray-400 mt-1">ID: <span id="active-team-id" class="font-mono text-gray-300"></span></div>
+            </div>
+            <div class="flex gap-6">
+              <div class="text-center">
+                <div class="text-xs text-gray-400 uppercase">Total Score</div>
+                <div id="active-team-score" class="text-2xl font-extrabold text-cyber-magenta">0</div>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-gray-400 uppercase">Members</div>
+                <div id="active-team-member-count" class="text-2xl font-extrabold text-cyber-cyan">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roster Table -->
+          <div class="bg-cyber-card border border-cyber-border rounded p-6">
+            <h4 class="text-sm font-bold text-gray-300 uppercase mb-3">Syndicate Member Roster</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-cyber-card2 text-gray-400 uppercase border-b border-cyber-border">
+                    <th class="p-3">Operative Handle</th>
+                    <th class="p-3">User ID</th>
+                    <th class="p-3">Personal Points</th>
+                    <th class="p-3 text-right">Role</th>
+                  </tr>
+                </thead>
+                <tbody id="team-members-tbody" class="divide-y divide-cyber-border text-gray-300">
+                  <!-- Injected dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. PLAYER PROFILE SECTION (CTFtime Radar & Personal Stats) -->
+      <section id="sec-profile" class="app-section hidden">
+        <div class="border-b border-cyber-border pb-3 mb-6">
+          <h2 class="text-2xl font-bold text-cyber-cyan uppercase flex items-center gap-2">
+            <span>👤</span> Operative Profile & Metrics
+          </h2>
+          <p class="text-xs text-gray-400">CTFtime-style individual breakdown and solve history</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Profile Card -->
+          <div class="bg-cyber-card neon-border p-6 rounded space-y-4">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 rounded-full bg-cyber-card2 border-2 border-cyber-cyan flex items-center justify-center text-2xl font-bold text-cyber-cyan">
+                <span id="prof-initial">U</span>
+              </div>
+              <div>
+                <h3 id="prof-username" class="text-xl font-bold text-white"></h3>
+                <div id="prof-email" class="text-xs text-gray-400 font-mono"></div>
+                <div id="prof-role-badge" class="inline-block mt-1 text-[10px] px-2 py-0.5 bg-cyber-card2 border border-cyber-cyan text-cyber-cyan font-bold uppercase">PLAYER</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-3 border-t border-cyber-border text-center">
+              <div class="p-3 bg-cyber-card2 rounded">
+                <div class="text-[10px] text-gray-400 uppercase font-semibold">Personal Score</div>
+                <div id="prof-score" class="text-xl font-extrabold text-cyber-magenta">0</div>
+              </div>
+              <div class="p-3 bg-cyber-card2 rounded">
+                <div class="text-[10px] text-gray-400 uppercase font-semibold">Solved Targets</div>
+                <div id="prof-solves" class="text-xl font-extrabold text-cyber-green">0</div>
+              </div>
+            </div>
+
+            <div class="text-xs text-gray-400 pt-2">
+              <div>Syndicate: <span id="prof-team" class="text-cyber-yellow font-bold">None</span></div>
+              <div class="mt-1">Registered: <span id="prof-created" class="text-gray-300"></span></div>
+            </div>
+          </div>
+
+          <!-- Category Radar Breakdown -->
+          <div class="lg:col-span-2 bg-cyber-card border border-cyber-border rounded p-6">
+            <h3 class="text-sm font-bold text-cyber-cyan uppercase mb-4">Competency & Category Distribution</h3>
+            <div id="prof-categories-container" class="space-y-3">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. LEADERBOARD VIEW -->
       <section id="sec-leaderboard" class="app-section hidden">
         <div class="flex justify-between items-center mb-6 border-b border-cyber-border pb-3">
           <div>
             <h2 class="text-2xl font-bold text-cyber-cyan uppercase">Global Rankings</h2>
-            <p class="text-xs text-gray-400">Deterministic scoring & tie-break order</p>
+            <p class="text-xs text-gray-400">Live deterministic team scores</p>
           </div>
           <div class="flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
@@ -378,10 +518,10 @@
             <thead>
               <tr class="bg-cyber-card2 border-b border-cyber-border text-gray-400 uppercase text-xs tracking-wider">
                 <th class="p-3.5 w-20">Rank</th>
-                <th class="p-3.5">Team Name</th>
+                <th class="p-3.5">Syndicate Name</th>
                 <th class="p-3.5 text-center">Solves</th>
                 <th class="p-3.5 text-center">Total Score</th>
-                <th class="p-3.5 text-right">Last Accepted Solve</th>
+                <th class="p-3.5 text-right">Last Solve</th>
               </tr>
             </thead>
             <tbody id="leaderboard-tbody" class="text-sm divide-y divide-cyber-border">
@@ -391,16 +531,38 @@
         </div>
       </section>
 
-      <!-- ADMIN VIEW -->
+      <!-- 5. ADMIN VIEW -->
       <section id="sec-admin" class="app-section hidden">
         <div class="flex justify-between items-center mb-6 border-b border-cyber-magenta pb-3">
           <div>
             <h2 class="text-2xl font-bold text-cyber-magenta neon-text-magenta uppercase">Command Center</h2>
-            <p class="text-xs text-gray-400">Challenge Deployment, Attachments, Audit Logs & System Sync</p>
+            <p class="text-xs text-gray-400">Challenge Deployment, Deletion, Audit Logs & System Sync</p>
           </div>
-          <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Force Sync All Data</button>
+          <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Sync Database</button>
         </div>
         
+        <!-- Challenge Management Table with DELETE Button -->
+        <div class="bg-cyber-card border border-cyber-border p-6 rounded mb-8">
+          <h3 class="text-lg font-bold text-white uppercase mb-4">Existing Challenge Inventory</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-cyber-card2 text-gray-400 uppercase border-b border-cyber-border">
+                  <th class="p-3">ID</th>
+                  <th class="p-3">Type</th>
+                  <th class="p-3">Title</th>
+                  <th class="p-3">Points</th>
+                  <th class="p-3">Difficulty</th>
+                  <th class="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-challenges-tbody" class="divide-y divide-cyber-border text-gray-300">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <!-- Add CTF -->
           <div class="bg-cyber-card neon-border p-6 rounded">
@@ -498,7 +660,6 @@
     <div id="modal-card" class="bg-cyber-card neon-border max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl">
       <button id="btn-close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-cyber-red text-2xl transition-colors">&times;</button>
       
-      <!-- Modal Header -->
       <div class="flex items-center gap-2 mb-3">
         <span id="mod-type-badge" class="text-xs px-2.5 py-0.5 border border-cyber-cyan text-cyber-cyan font-bold uppercase"></span>
         <span id="mod-diff-badge" class="text-xs px-2.5 py-0.5 border border-gray-600 text-gray-300 font-bold uppercase"></span>
@@ -507,12 +668,11 @@
       
       <h2 id="mod-title" class="text-2xl font-bold text-white mb-2"></h2>
       
-      <!-- Specs / Details Grid -->
       <div id="mod-specs-box" class="bg-cyber-card2 p-3.5 border border-cyber-border rounded text-xs text-gray-300 mb-4 space-y-1.5">
-        <!-- Injected dynamically based on CTF vs CP -->
+        <!-- Injected dynamically -->
       </div>
 
-      <!-- Attachment Download Box (CTF only if exists) -->
+      <!-- Attachment Download Box -->
       <div id="mod-attachment-box" class="mb-4 p-3 bg-[#081525] border border-cyber-cyan rounded flex items-center justify-between hidden">
         <div class="flex items-center gap-2.5">
           <span class="text-lg">📦</span>
@@ -566,8 +726,8 @@
     // --- STATE ---
     let currentUser = null;
     let challengesData = [];
-    let activeSegment = 'CTF'; // 'CTF' or 'CP'
-    let selectedCategory = 'ALL'; // 'ALL', 'CRYPTO', 'WEB', 'REVERSE_ENGINEERING', 'PWN', 'OSINT', 'MISC'
+    let activeSegment = 'CTF';
+    let selectedCategory = 'ALL';
     let leaderboardInterval = null;
 
     // --- DOM SELECTORS ---
@@ -584,7 +744,7 @@
     const navAdmin = document.getElementById('nav-admin');
     const navAdminMob = document.getElementById('nav-admin-mobile');
     const navUsername = document.getElementById('nav-username');
-    const navRoleBadge = document.getElementById('nav-role-badge');
+    const navTeamBadge = document.getElementById('nav-team-badge');
     const btnLogout = document.getElementById('btn-logout');
 
     const tabCtf = document.getElementById('tab-ctf');
@@ -644,13 +804,18 @@
       });
 
       if(targetId === 'challenges') fetchChallenges();
+      if(targetId === 'team') fetchMyTeam();
+      if(targetId === 'profile') fetchMyProfile();
       if(targetId === 'leaderboard') {
         fetchLeaderboard();
         leaderboardInterval = setInterval(fetchLeaderboard, 15000);
       } else {
         if(leaderboardInterval) clearInterval(leaderboardInterval);
       }
-      if(targetId === 'admin' && currentUser?.role === 'ADMIN') fetchAuditLogs();
+      if(targetId === 'admin' && currentUser?.role === 'ADMIN') {
+        fetchAuditLogs();
+        renderAdminChallenges();
+      }
     }
 
     // --- SEGMENTED SWITCHER LOGIC ---
@@ -702,7 +867,7 @@
 
     function initApp() {
       navUsername.textContent = currentUser.username;
-      navRoleBadge.textContent = currentUser.role;
+      navTeamBadge.textContent = currentUser.teamId ? `TEAM: ${currentUser.teamId}` : 'NO TEAM';
       if (currentUser.role === 'ADMIN') {
         navAdmin.classList.remove('hidden');
         navAdminMob.classList.remove('hidden');
@@ -739,15 +904,14 @@
       const pw = $('#reg-password').value;
       if (pw !== $('#reg-password-confirm').value) return showToast('Passwords do not match', 'warning');
       const payload = { 
-        username: $('#reg-username').value, password: pw,
-        role: $('#reg-role').value, teamId: $('#reg-team-id').value 
+        username: $('#reg-username').value, email: $('#reg-email').value, password: pw
       };
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
         if (res.ok) {
-          showToast('Identity established. Please login.', 'success');
+          showToast('Identity established in database. Please login.', 'success');
           linkToLogin.click();
         } else {
           const d = await res.json();
@@ -765,7 +929,6 @@
       } catch (err) {}
     });
 
-    // --- NAVIGATION BINDING ---
     navLinks.forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -889,6 +1052,127 @@
       });
     }
 
+    // --- TEAM HUB LOGIC ---
+    async function fetchMyTeam() {
+      try {
+        const res = await fetch('/api/teams/my-team');
+        if (res.ok) {
+          const team = await res.json();
+          $('#team-none-view').classList.add('hidden');
+          $('#team-active-view').classList.remove('hidden');
+
+          $('#active-team-name').textContent = team.teamName;
+          $('#active-team-id').textContent = team.id;
+          $('#active-team-score').textContent = team.totalScore;
+          $('#active-team-member-count').textContent = team.memberUserIds.length;
+
+          const tbody = $('#team-members-tbody');
+          tbody.innerHTML = '';
+          (team.members || []).forEach(m => {
+            const isCap = m.userId === team.captainUserId;
+            tbody.innerHTML += `
+              <tr class="hover:bg-cyber-card2">
+                <td class="p-3 font-bold text-white flex items-center gap-2">
+                  <span>${m.username}</span>
+                  ${isCap ? '<span class="text-[9px] px-1.5 py-0.2 bg-cyber-yellow text-black font-bold uppercase rounded">CAPTAIN</span>' : ''}
+                </td>
+                <td class="p-3 font-mono text-gray-400">${m.userId}</td>
+                <td class="p-3 font-bold text-cyber-magenta">${m.score || 0}</td>
+                <td class="p-3 text-right text-gray-400">${isCap ? 'Commander' : 'Operative'}</td>
+              </tr>
+            `;
+          });
+        } else {
+          $('#team-none-view').classList.remove('hidden');
+          $('#team-active-view').classList.add('hidden');
+        }
+      } catch (err) {
+        $('#team-none-view').classList.remove('hidden');
+        $('#team-active-view').classList.add('hidden');
+      }
+    }
+
+    $('#form-create-team').onsubmit = async (e) => {
+      e.preventDefault();
+      const payload = {
+        teamName: $('#create-team-name').value,
+        teamPassword: $('#create-team-password').value
+      };
+      try {
+        const res = await fetch('/api/teams/create', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Syndicate established in database!', 'success');
+          checkSession();
+          fetchMyTeam();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Failed to create syndicate', 'error');
+        }
+      } catch (err) { showToast('Connection error', 'error'); }
+    };
+
+    $('#form-join-team').onsubmit = async (e) => {
+      e.preventDefault();
+      const payload = {
+        teamName: $('#join-team-name').value,
+        teamPassword: $('#join-team-password').value
+      };
+      try {
+        const res = await fetch('/api/teams/join', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Joined syndicate successfully!', 'success');
+          checkSession();
+          fetchMyTeam();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Failed to join syndicate', 'error');
+        }
+      } catch (err) { showToast('Connection error', 'error'); }
+    };
+
+    // --- PLAYER PROFILE (CTFtime Metrics) ---
+    async function fetchMyProfile() {
+      try {
+        const res = await fetch('/api/users/me/profile');
+        if (res.ok) {
+          const prof = await res.json();
+          $('#prof-username').textContent = prof.username;
+          $('#prof-initial').textContent = (prof.username || 'U').charAt(0).toUpperCase();
+          $('#prof-email').textContent = prof.email || 'N/A';
+          $('#prof-score').textContent = prof.personalScore || 0;
+          $('#prof-solves').textContent = prof.solvesCount || 0;
+          $('#prof-team').textContent = prof.teamName ? `${prof.teamName} ${prof.isCaptain ? '👑' : ''}` : 'Unassigned';
+          $('#prof-created').textContent = prof.createdAt ? new Date(prof.createdAt).toLocaleDateString() : 'Active';
+
+          const catBox = $('#prof-categories-container');
+          catBox.innerHTML = '';
+          const cats = ['CRYPTO', 'WEB', 'REVERSE_ENGINEERING', 'PWN', 'OSINT', 'CP', 'MISC'];
+          const breakdown = prof.categoryBreakdown || {};
+
+          cats.forEach(c => {
+            const count = breakdown[c] || 0;
+            const max = Math.max(1, prof.solvesCount || 1);
+            const pct = Math.min(100, Math.round((count / max) * 100));
+            catBox.innerHTML += `
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-bold text-gray-300">${c}</span>
+                  <span class="text-cyber-cyan font-bold">${count} Solves</span>
+                </div>
+                <div class="w-full bg-cyber-card2 h-2 rounded overflow-hidden">
+                  <div class="bg-cyber-cyan h-full rounded transition-all duration-500" style="width: ${pct}%"></div>
+                </div>
+              </div>
+            `;
+          });
+        }
+      } catch (err) {}
+    }
+
     // --- MODAL CONTROLLER ---
     const modal = document.getElementById('modal-challenge');
     const modalCard = document.getElementById('modal-card');
@@ -920,15 +1204,14 @@
             
             specsBox.innerHTML = `
               <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${c.category || 'MISC'}</div>
-              <div><strong class="text-cyber-cyan">VERIFICATION:</strong> SHA-256 Digest Match</div>
-              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points deduction on solve` : 'Free Hint'}</div>
+              <div><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
+              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points deduction upon solve` : 'Free Hint'}</div>
             `;
 
-            // Attachment rendering
             if (c.hasAttachment && c.attachmentFileName) {
               $('#mod-attachment-box').classList.remove('hidden');
               $('#mod-attachment-name').textContent = c.attachmentFileName;
-              $('#mod-attachment-size').textContent = c.attachmentSize ? `File Size: ${formatBytes(c.attachmentSize)}` : 'File Ready for Inspection';
+              $('#mod-attachment-size').textContent = c.attachmentSize ? `File Size: ${formatBytes(c.attachmentSize)}` : 'File Ready for Download';
               $('#btn-download-attachment').href = `/api/challenges/${c.id}/download`;
             }
           } else {
@@ -940,11 +1223,10 @@
             specsBox.innerHTML = `
               <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${c.timeLimitMs || 1000} ms</div>
               <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${c.memoryLimitMb || 256} MB</div>
-              <div><strong class="text-cyber-yellow">TESTCASE DIRECTORY:</strong> ${c.testcaseDir || 'Standard Suite'}</div>
+              <div><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${c.testcaseDir || 'Standard Evaluation Suite'}</div>
             `;
           }
 
-          // Hint button setup
           const btnHint = $('#btn-hint');
           btnHint.classList.remove('hidden');
           btnHint.textContent = c.hintCost > 0 ? `UNLOCK HINT (-${c.hintCost} PTS)` : 'REVEAL CP HINT (FREE)';
@@ -956,7 +1238,7 @@
     }
 
     async function requestHint(id, cost) {
-      if (cost > 0 && !confirm(`Unlocking this hint will deduct ${cost} points from your team score upon solve. Confirm?`)) {
+      if (cost > 0 && !confirm(`Unlocking this hint will deduct ${cost} points from your score upon solve. Confirm?`)) {
         return;
       }
       try {
@@ -1000,7 +1282,7 @@
         const data = await res.json();
         if(res.ok) {
           if(data.status === 'ACCEPTED') {
-            showToast(`[ACCEPTED] +${data.pointsAwarded} PTS awarded! Team Score: ${data.teamScore}`, 'success');
+            showToast(`[ACCEPTED] +${data.pointsAwarded} PTS awarded! Personal: ${data.personalScore} | Team: ${data.teamScore}`, 'success');
           } else if(data.status === 'WRONG_ANSWER') {
             showToast(`[WRONG ANSWER] Payload evaluated as incorrect.`, 'error');
           } else {
@@ -1029,7 +1311,7 @@
           tbody.innerHTML = '';
 
           if(data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 italic">No registered teams yet.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 italic">No registered syndicates yet.</td></tr>`;
             return;
           }
 
@@ -1055,7 +1337,49 @@
       } catch(err){}
     }
 
-    // --- ADMIN ACTIONS ---
+    // --- ADMIN ACTIONS (INVENTORY, DELETE, AUDIT) ---
+    async function renderAdminChallenges() {
+      try {
+        const res = await fetch('/api/challenges');
+        if (res.ok) {
+          const list = await res.json();
+          const tbody = $('#admin-challenges-tbody');
+          tbody.innerHTML = '';
+          list.forEach(c => {
+            tbody.innerHTML += `
+              <tr class="hover:bg-cyber-card2">
+                <td class="p-3 font-mono text-cyber-cyan font-bold">${c.id}</td>
+                <td class="p-3">${c.type}</td>
+                <td class="p-3 font-bold text-white">${c.title}</td>
+                <td class="p-3 font-bold text-cyber-magenta">${c.basePoints}</td>
+                <td class="p-3">${c.difficulty}</td>
+                <td class="p-3 text-right">
+                  <button class="btn-cyber-red px-2.5 py-1 text-xs font-bold uppercase rounded" onclick="deleteChallenge('${c.id}')">DELETE</button>
+                </td>
+              </tr>
+            `;
+          });
+        }
+      } catch (err) {}
+    }
+
+    async function deleteChallenge(id) {
+      if (!confirm(`Are you sure you want to permanently delete challenge '${id}' and its attachments from MongoDB?`)) {
+        return;
+      }
+      try {
+        const res = await fetch(`/api/admin/challenges/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast(`Challenge ${id} removed from MongoDB & disk.`, 'success');
+          renderAdminChallenges();
+          fetchChallenges();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Failed to delete challenge', 'error');
+        }
+      } catch (err) { showToast('Deletion error', 'error'); }
+    }
+
     async function fetchAuditLogs() {
       try {
         const res = await fetch('/api/admin/submissions');
@@ -1084,7 +1408,7 @@
     $('#btn-sync').onclick = async () => {
       try {
         const res = await fetch('/api/admin/sync', { method:'POST' });
-        if (res.ok) showToast('System state synchronized to CSV files', 'success');
+        if (res.ok) showToast('Database state synchronized', 'success');
       } catch(e) { showToast('Sync failed', 'error'); }
     };
 
@@ -1099,9 +1423,10 @@
       try {
         const res = await fetch('/api/admin/challenges/ctf', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
         if(res.ok) {
-          showToast('CTF Target Deployed Successfully', 'success');
+          showToast('CTF Target Deployed to MongoDB', 'success');
           e.target.reset();
           fetchChallenges();
+          renderAdminChallenges();
         } else {
           const d = await res.json();
           showToast(d.error || 'Deployment failed', 'error');
@@ -1119,9 +1444,10 @@
       try {
         const res = await fetch('/api/admin/challenges/cp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
         if(res.ok) {
-          showToast('CP Target Deployed Successfully', 'success');
+          showToast('CP Target Deployed to MongoDB', 'success');
           e.target.reset();
           fetchChallenges();
+          renderAdminChallenges();
         } else {
           const d = await res.json();
           showToast(d.error || 'Deployment failed', 'error');
@@ -1129,10 +1455,8 @@
       } catch(err){ showToast('Deployment error', 'error'); }
     };
 
-    // Shorthand selector helper
     function $(sel) { return document.querySelector(sel); }
 
-    // Init session check
     checkSession();
   </script>
 </body>

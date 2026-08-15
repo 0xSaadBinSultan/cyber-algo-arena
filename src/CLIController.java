@@ -25,7 +25,7 @@ public final class CLIController {
     public void start() {
         try {
             engine.load();
-        } catch (IOException | CorruptedFileException ex) {
+        } catch (Exception ex) {
             System.out.println("Data load failed: " + ex.getMessage());
             return;
         }

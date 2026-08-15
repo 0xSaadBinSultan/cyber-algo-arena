@@ -24,6 +24,10 @@ public final class Leaderboard {
         rankedTeams.sort(RANKING_ORDER);
     }
 
+    public synchronized void update(Collection<Team> teams) {
+        recalculate(teams);
+    }
+
     public synchronized List<Team> getRanking() {
         return Collections.unmodifiableList(new ArrayList<>(rankedTeams));
     }

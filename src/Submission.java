@@ -2,12 +2,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/** One user attempt against one challenge. Result fields transition exactly once from PENDING. */
+/**
+ * Immutable submission record.
+ * Tracks user, team, contest context, payload, timestamp, and evaluation status.
+ */
 public final class Submission implements Persistable {
 
     public static final int CSV_FIELD_COUNT = 12;
 
     private final String id;
+    private final String contestId;
     private final String userId;
     private final String teamId;
     private final String challengeId;
@@ -15,7 +19,53 @@ public final class Submission implements Persistable {
     private final int wrongAttempts;
     private final int hintsUsed;
     private final Instant timestamp;
-    private SubmissionResult result;
+    private SubmissionResult.Status status;
+    private int pointsAwarded;
+    private String resultMessage;
+    private Instant evaluatedAt;
+
+    public Submission(
+            String id,
+            String contestId,
+            String userId,
+            String teamId,
+            String challengeId,
+            String payload,
+            int wrongAttempts,
+            int hintsUsed,
+            Instant timestamp,
+            SubmissionResult.Status status,
+            int pointsAwarded,
+            String resultMessage,
+            Instant evaluatedAt) {
+        this.id = requireArgument(id, "id");
+        this.contestId = contestId != null ? contestId : "GLOBAL";
+        this.userId = requireArgument(userId, "userId");
+        this.teamId = requireArgument(teamId, "teamId");
+        this.challengeId = requireArgument(challengeId, "challengeId");
+        this.payload = payload != null ? payload : "";
+        this.wrongAttempts = Math.max(0, wrongAttempts);
+        this.hintsUsed = Math.max(0, hintsUsed);
+        this.timestamp = timestamp != null ? timestamp : Instant.now();
+        this.status = status != null ? status : SubmissionResult.Status.INVALID;
+        this.pointsAwarded = pointsAwarded;
+        this.resultMessage = resultMessage != null ? resultMessage : "";
+        this.evaluatedAt = evaluatedAt != null ? evaluatedAt : this.timestamp;
+    }
+
+    public Submission(
+            String id,
+            String contestId,
+            String userId,
+            String teamId,
+            String challengeId,
+            String payload,
+            int wrongAttempts,
+            int hintsUsed,
+            Instant timestamp) {
+        this(id, contestId, userId, teamId, challengeId, payload, wrongAttempts, hintsUsed, timestamp,
+                SubmissionResult.Status.PENDING, 0, "", timestamp);
+    }
 
     public Submission(
             String id,
@@ -26,61 +76,41 @@ public final class Submission implements Persistable {
             int wrongAttempts,
             int hintsUsed,
             Instant timestamp) {
-        this(id, userId, teamId, challengeId, payload, wrongAttempts, hintsUsed, timestamp, SubmissionResult.pending(id));
+        this(id, "GLOBAL", userId, teamId, challengeId, payload, wrongAttempts, hintsUsed, timestamp);
     }
 
     public Submission(
             String id,
-            String userId,
             String teamId,
             String challengeId,
+            String userId,
             String payload,
             int wrongAttempts,
             int hintsUsed,
             Instant timestamp,
             SubmissionResult result) {
-        this.id = requireText(id, "id");
-        this.userId = requireText(userId, "userId");
-        this.teamId = requireText(teamId, "teamId");
-        this.challengeId = requireText(challengeId, "challengeId");
-        this.payload = requireText(payload, "payload");
-        if (wrongAttempts < 0) {
-            throw new IllegalArgumentException("wrongAttempts must not be negative");
-        }
-        if (hintsUsed < 0) {
-            throw new IllegalArgumentException("hintsUsed must not be negative");
-        }
-        this.wrongAttempts = wrongAttempts;
-        this.hintsUsed = hintsUsed;
-        this.timestamp = Objects.requireNonNull(timestamp, "timestamp must not be null");
-        this.result = Objects.requireNonNull(result, "result must not be null");
-        if (!result.getId().equals(this.id)) {
-            throw new IllegalArgumentException("result submissionId does not match submission id");
-        }
+        this(id, "GLOBAL", userId, teamId, challengeId, payload, wrongAttempts, hintsUsed, timestamp,
+                result != null ? result.getStatus() : SubmissionResult.Status.INVALID,
+                result != null ? result.getPointsAwarded() : 0,
+                result != null ? result.getMessage() : "",
+                result != null ? result.getEvaluatedAt() : timestamp);
     }
 
-    public void markAccepted(int pointsAwarded, Instant evaluatedAt) {
-        transition(SubmissionResult.accepted(id, pointsAwarded, evaluatedAt));
-    }
-
-    public void markWrongAnswer(Instant evaluatedAt) {
-        transition(SubmissionResult.wrongAnswer(id, evaluatedAt));
-    }
-
-    public void markInvalid(Instant evaluatedAt, String message) {
-        transition(SubmissionResult.invalid(id, evaluatedAt, message));
-    }
-
-    private void transition(SubmissionResult nextResult) {
-        if (result.getStatus() != SubmissionResult.Status.PENDING) {
-            throw new IllegalStateException("Submission has already been evaluated: " + id);
-        }
-        result = nextResult;
+    public void applyResult(SubmissionResult result) {
+        Objects.requireNonNull(result, "result must not be null");
+        this.status = result.getStatus();
+        this.pointsAwarded = result.getPointsAwarded();
+        this.resultMessage = result.getMessage();
+        this.evaluatedAt = result.getEvaluatedAt() != null ? result.getEvaluatedAt() : Instant.now();
     }
 
     @Override
     public String getId() {
         return id;
+    }
+
+    public String getContestId() {
+        return contestId;
     }
 
     public String getUserId() {
@@ -111,64 +141,47 @@ public final class Submission implements Persistable {
         return timestamp;
     }
 
-    /** Returns a copy with engine-derived attempt and hint counts while preserving identity/result. */
-    public Submission withAttemptAndHintCounts(int newWrongAttempts, int newHintsUsed) {
-        if (newWrongAttempts < 0) {
-            throw new IllegalArgumentException("newWrongAttempts must not be negative");
-        }
-        if (newHintsUsed < 0) {
-            throw new IllegalArgumentException("newHintsUsed must not be negative");
-        }
-        if (newWrongAttempts == wrongAttempts && newHintsUsed == hintsUsed) {
-            return this;
-        }
-        return new Submission(
-                id,
-                userId,
-                teamId,
-                challengeId,
-                payload,
-                newWrongAttempts,
-                newHintsUsed,
-                timestamp,
-                result);
+    public SubmissionResult.Status getStatus() {
+        return status;
+    }
+
+    public int getPointsAwarded() {
+        return pointsAwarded;
+    }
+
+    public String getResultMessage() {
+        return resultMessage;
+    }
+
+    public Instant getEvaluatedAt() {
+        return evaluatedAt;
     }
 
     public SubmissionResult getResult() {
-        return result;
+        return new SubmissionResult(id, status, pointsAwarded, evaluatedAt, resultMessage);
     }
 
-    public SubmissionResult.Status getStatus() {
-        return result.getStatus();
-    }
-
-    /**
-     * First six columns preserve the PRD contract:
-     * SUBMISSION_ID,TEAM_ID,CHALLENGE_ID,TIMESTAMP,STATUS,POINTS_AWARDED.
-     * Remaining columns retain user, payload, attempt, hint, and audit data.
-     */
     @Override
     public String toCsvRow() {
-        List<String> resultFields = result.toCsvFields();
         return CsvCodec.join(List.of(
                 id,
                 teamId,
                 challengeId,
                 timestamp.toString(),
-                resultFields.get(0),
-                resultFields.get(1),
+                status.name(),
+                String.valueOf(pointsAwarded),
                 userId,
                 payload,
                 String.valueOf(wrongAttempts),
                 String.valueOf(hintsUsed),
-                resultFields.get(2),
-                resultFields.get(3)));
+                evaluatedAt != null ? evaluatedAt.toString() : "",
+                resultMessage));
     }
 
-    private static String requireText(String value, String fieldName) {
+    private static String requireArgument(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(fieldName + " must not be null or blank");
         }
-        return value;
+        return value.trim();
     }
 }
