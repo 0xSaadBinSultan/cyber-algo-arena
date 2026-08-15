@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * MongoDB connection and lifecycle manager for Cyber-Algo Arena.
- * Features fast TCP port probing, automatic container/host discovery,
- * and reliable connection initialization.
+ * Features persistent startup retries, automatic container/host discovery,
+ * and reliable schema index initialization.
  */
 public final class MongoManager implements AutoCloseable {
 
@@ -32,40 +32,47 @@ public final class MongoManager implements AutoCloseable {
 
     public MongoManager(String uri, String dbName) {
         String effectiveDbName = (dbName != null && !dbName.isBlank()) ? dbName : DEFAULT_DB_NAME;
-
         List<String> candidateUris = buildCandidateUris(uri);
+
         MongoClient selectedClient = null;
         MongoDatabase selectedDb = null;
         boolean isConnected = false;
         String establishedUri = null;
 
-        for (String candidate : candidateUris) {
-            if (!isPortReachable(candidate)) {
-                continue;
+        // Try connecting across candidates with retry loops for container boot synchronization
+        int maxRetries = 8;
+        for (int attempt = 1; attempt <= maxRetries && !isConnected; attempt++) {
+            for (String candidate : candidateUris) {
+                try {
+                    MongoClientSettings settings = MongoClientSettings.builder()
+                            .applyConnectionString(new ConnectionString(candidate))
+                            .applyToClusterSettings(builder ->
+                                    builder.serverSelectionTimeout(2500, TimeUnit.MILLISECONDS))
+                            .applyToSocketSettings(builder ->
+                                    builder.connectTimeout(2500, TimeUnit.MILLISECONDS)
+                                           .readTimeout(5000, TimeUnit.MILLISECONDS))
+                            .build();
+
+                    MongoClient testClient = MongoClients.create(settings);
+                    MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
+                    testDb.runCommand(new Document("ping", 1));
+
+                    // Ping successful!
+                    selectedClient = testClient;
+                    selectedDb = testDb;
+                    isConnected = true;
+                    establishedUri = candidate;
+                    System.out.println("[MongoManager] Connected to persistent MongoDB: " + candidate + " (DB: " + effectiveDbName + ")");
+                    break;
+                } catch (Exception ignored) {
+                    // Try next candidate
+                }
             }
 
-            try {
-                MongoClientSettings settings = MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString(candidate))
-                        .applyToClusterSettings(builder ->
-                                builder.serverSelectionTimeout(4000, TimeUnit.MILLISECONDS))
-                        .applyToSocketSettings(builder ->
-                                builder.connectTimeout(3000, TimeUnit.MILLISECONDS)
-                                       .readTimeout(5000, TimeUnit.MILLISECONDS))
-                        .build();
-
-                MongoClient testClient = MongoClients.create(settings);
-                MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
-                testDb.runCommand(new Document("ping", 1));
-
-                selectedClient = testClient;
-                selectedDb = testDb;
-                isConnected = true;
-                establishedUri = candidate;
-                System.out.println("[MongoManager] Connected to MongoDB: " + candidate + " (DB: " + effectiveDbName + ")");
-                break;
-            } catch (Exception ex) {
-                // Try next reachable candidate
+            if (!isConnected && attempt < maxRetries) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignored) {}
             }
         }
 
@@ -85,21 +92,6 @@ public final class MongoManager implements AutoCloseable {
         }
     }
 
-    private static boolean isPortReachable(String uriStr) {
-        try {
-            URI parsed = URI.create(uriStr.startsWith("mongodb://") ? uriStr.replace("mongodb://", "http://") : uriStr);
-            String host = parsed.getHost() != null ? parsed.getHost() : "localhost";
-            int port = parsed.getPort() > 0 ? parsed.getPort() : 27017;
-
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(host, port), 800);
-                return true;
-            }
-        } catch (Exception ex) {
-            return false;
-        }
-    }
-
     private static List<String> buildCandidateUris(String explicitUri) {
         List<String> list = new ArrayList<>();
         if (explicitUri != null && !explicitUri.isBlank()) {
@@ -111,10 +103,10 @@ public final class MongoManager implements AutoCloseable {
         }
 
         String[] defaults = {
-                "mongodb://localhost:27017",
-                "mongodb://127.0.0.1:27017",
                 "mongodb://mongodb:27017",
                 "mongodb://arena-mongodb:27017",
+                "mongodb://localhost:27017",
+                "mongodb://127.0.0.1:27017",
                 "mongodb://172.17.0.1:27017",
                 "mongodb://host.docker.internal:27017"
         };
