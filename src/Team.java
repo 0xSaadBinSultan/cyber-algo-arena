@@ -54,8 +54,18 @@ public final class Team implements Persistable {
         if (rawPassword == null) {
             return false;
         }
-        String candidateHash = CTFChallenge.sha256Hex(rawPassword);
-        return candidateHash.equals(teamPasswordHash);
+        String clean = rawPassword.trim();
+        if (teamPasswordHash.startsWith("$2a$") || teamPasswordHash.startsWith("$2b$") || teamPasswordHash.startsWith("$2y$")) {
+            try {
+                return org.mindrot.jbcrypt.BCrypt.checkpw(clean, teamPasswordHash);
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+        String candidateHash = CTFChallenge.sha256Hex(clean);
+        byte[] candBytes = candidateHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] storedBytes = teamPasswordHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return java.security.MessageDigest.isEqual(candBytes, storedBytes);
     }
 
     public synchronized void addMember(String userId) {

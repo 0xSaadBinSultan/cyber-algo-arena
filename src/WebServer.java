@@ -8,21 +8,26 @@ import io.javalin.http.staticfiles.Location;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.*;
 
 /**
- * REST Web layer for Cyber-Algo Arena.
- * Connects Javalin endpoints with Mongo-backed ContestEngine.
+ * Hardened REST Web layer for Cyber-Algo Arena.
+ * Enforces rate limiting, path traversal guards, security response headers, and session controls.
  */
 public final class WebServer {
 
     private final ContestEngine engine;
     private final Javalin app;
     private final ObjectMapper mapper;
+    private final RateLimiter rateLimiter;
+    private final SecureRandom secureRandom;
 
     public WebServer(ContestEngine engine, int port) {
         this.engine = engine;
+        this.rateLimiter = new RateLimiter();
+        this.secureRandom = new SecureRandom();
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -36,9 +41,21 @@ public final class WebServer {
             config.http.defaultContentType = "application/json";
         });
 
+        registerSecurityMiddleware();
         registerRoutes();
         app.start(port);
         System.out.println("[WebServer] Running on http://localhost:" + port);
+    }
+
+    private void registerSecurityMiddleware() {
+        app.before(ctx -> {
+            ctx.header("X-Content-Type-Options", "nosniff");
+            ctx.header("X-Frame-Options", "DENY");
+            ctx.header("Content-Security-Policy",
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+        });
     }
 
     private void registerRoutes() {
@@ -89,6 +106,12 @@ public final class WebServer {
     // ═══════════════════════════════════════════
 
     private void handleLogin(Context ctx) {
+        String ip = ctx.ip();
+        if (!rateLimiter.allow("login:" + ip, 5, 60_000L)) {
+            ctx.status(429).json(errorMap("Too Many Requests: Rate limit exceeded. Max 5 login attempts per minute."));
+            return;
+        }
+
         Map<String, String> body = parseBody(ctx);
         String username = body.get("username");
         String password = body.get("password");
@@ -252,7 +275,7 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // CHALLENGE HANDLERS
+    // CHALLENGE HANDLERS & PATH TRAVERSAL GUARD
     // ═══════════════════════════════════════════
 
     private void handleGetChallenges(Context ctx) {
@@ -303,20 +326,30 @@ public final class WebServer {
                 return;
             }
 
-            String fileName = ctf.getAttachmentFileName();
-            Path path = Path.of("contest_data", "attachments", fileName);
-            if (!Files.exists(path)) {
-                path = Path.of(fileName);
-            }
-
-            if (!Files.exists(path) || !Files.isRegularFile(path)) {
-                ctx.status(404).json(errorMap("Attachment file not found on disk: " + fileName));
+            String requestedFileName = ctf.getAttachmentFileName();
+            if (requestedFileName == null || requestedFileName.isBlank()) {
+                ctx.status(404).json(errorMap("No file name configured for challenge " + id));
                 return;
             }
 
-            ctx.header("Content-Disposition", "attachment; filename=\"" + path.getFileName().toString() + "\"");
+            // Path Traversal Defense: Strict canonical resolution against attachments base directory
+            Path baseDir = Path.of("contest_data", "attachments").toAbsolutePath().normalize();
+            Files.createDirectories(baseDir);
+
+            Path resolvedPath = baseDir.resolve(requestedFileName).normalize();
+            if (!resolvedPath.startsWith(baseDir)) {
+                ctx.status(403).json(errorMap("Access Denied: Path traversal detected."));
+                return;
+            }
+
+            if (!Files.exists(resolvedPath) || !Files.isRegularFile(resolvedPath)) {
+                ctx.status(404).json(errorMap("Attachment file not found on disk: " + requestedFileName));
+                return;
+            }
+
+            ctx.header("Content-Disposition", "attachment; filename=\"" + resolvedPath.getFileName().toString() + "\"");
             ctx.contentType("application/octet-stream");
-            ctx.result(Files.newInputStream(path));
+            ctx.result(Files.newInputStream(resolvedPath));
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
         } catch (IOException ex) {
@@ -325,7 +358,7 @@ public final class WebServer {
     }
 
     // ═══════════════════════════════════════════
-    // HINTS & SUBMISSIONS
+    // HINTS & SUBMISSIONS WITH RATE LIMITING
     // ═══════════════════════════════════════════
 
     private void handleRequestHint(Context ctx) {
@@ -360,6 +393,21 @@ public final class WebServer {
         String teamId = user.getTeamId();
         if (teamId == null) {
             ctx.status(400).json(errorMap("Join or create a team before submitting solutions."));
+            return;
+        }
+
+        String rateKey = "submit:" + teamId + ":" + ctx.ip();
+
+        // 15-second cooldown on consecutive wrong attempts (3+ failures)
+        if (rateLimiter.isCooldownActive(rateKey, 3, 15_000L)) {
+            long remaining = rateLimiter.getRemainingCooldownSeconds(rateKey, 15_000L);
+            ctx.status(429).json(errorMap("Consecutive failure cooldown active. Wait " + remaining + " seconds before re-submitting."));
+            return;
+        }
+
+        // Sliding window rate limit: 10 submissions per minute
+        if (!rateLimiter.allow(rateKey, 10, 60_000L)) {
+            ctx.status(429).json(errorMap("Too Many Requests: Submission rate limit exceeded. Max 10 submissions per minute."));
             return;
         }
 
@@ -400,6 +448,12 @@ public final class WebServer {
                     Instant.now());
 
             SubmissionResult result = engine.submit(submission);
+
+            if (result.getStatus() == SubmissionResult.Status.ACCEPTED) {
+                rateLimiter.resetFailures(rateKey);
+            } else if (result.getStatus() == SubmissionResult.Status.WRONG_ANSWER) {
+                rateLimiter.recordFailure(rateKey);
+            }
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("submissionId", subId);
@@ -659,11 +713,9 @@ public final class WebServer {
             map.put("attachmentFileName", ctf.getAttachmentFileName());
             map.put("hasAttachment", ctf.hasAttachment());
             if (ctf.hasAttachment()) {
-                Path p = Path.of("contest_data", "attachments", ctf.getAttachmentFileName());
-                if (!Files.exists(p)) {
-                    p = Path.of(ctf.getAttachmentFileName());
-                }
-                if (Files.exists(p)) {
+                Path baseDir = Path.of("contest_data", "attachments").toAbsolutePath().normalize();
+                Path p = baseDir.resolve(ctf.getAttachmentFileName()).normalize();
+                if (p.startsWith(baseDir) && Files.exists(p)) {
                     try {
                         map.put("attachmentSize", Files.size(p));
                     } catch (Exception ignored) {}
@@ -699,7 +751,7 @@ public final class WebServer {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Missing required field: " + key);
         }
-        return value;
+        return value.trim();
     }
 
     private static Map<String, String> errorMap(String message) {

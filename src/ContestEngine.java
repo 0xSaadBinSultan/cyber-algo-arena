@@ -104,7 +104,7 @@ public final class ContestEngine {
         }
 
         String userId = "U-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        String passHash = CTFChallenge.sha256Hex(password);
+        String passHash = User.hashPassword(password);
         User user = new User(userId, username.trim(), email, passHash, User.Role.PLAYER, null);
 
         usersById.put(user.getId(), user);
@@ -118,7 +118,7 @@ public final class ContestEngine {
         if (usersByUsername.containsKey(normUsername)) {
             throw new IllegalArgumentException("Username already registered: " + username);
         }
-        String passHash = CTFChallenge.sha256Hex(password);
+        String passHash = User.hashPassword(password);
         User user = new User(id, username, null, passHash, role, teamId);
 
         usersById.put(user.getId(), user);
@@ -152,7 +152,7 @@ public final class ContestEngine {
 
         User creator = getUser(creatorUserId);
         String teamId = "T-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        String passHash = (rawPassword != null && !rawPassword.isBlank()) ? CTFChallenge.sha256Hex(rawPassword) : "";
+        String passHash = (rawPassword != null && !rawPassword.isBlank()) ? User.hashPassword(rawPassword) : "";
 
         Team team = new Team(teamId, teamName.trim(), passHash, creatorUserId, List.of(creatorUserId), 0, null, Instant.now());
         teamsById.put(team.getId(), team);

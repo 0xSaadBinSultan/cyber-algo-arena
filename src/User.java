@@ -83,18 +83,30 @@ public final class User implements Persistable {
         return challengeId != null && solvedChallengeIds.contains(challengeId);
     }
 
+    public static String hashPassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("Password cannot be blank");
+        }
+        return org.mindrot.jbcrypt.BCrypt.hashpw(rawPassword.trim(), org.mindrot.jbcrypt.BCrypt.gensalt(12));
+    }
+
     public boolean verifyPassword(String rawPassword) {
         if (rawPassword == null) {
             return false;
         }
-        String candidateHash = CTFChallenge.sha256Hex(rawPassword.trim());
-        if (candidateHash.equals(passwordHash)) {
-            return true;
+        String clean = rawPassword.trim();
+        if (passwordHash.startsWith("$2a$") || passwordHash.startsWith("$2b$") || passwordHash.startsWith("$2y$")) {
+            try {
+                return org.mindrot.jbcrypt.BCrypt.checkpw(clean, passwordHash);
+            } catch (Exception ignored) {
+                return false;
+            }
         }
-        if (isAdmin() && ("admin_password_123".equals(rawPassword.trim()) || "admin123".equals(rawPassword.trim()))) {
-            return true;
-        }
-        return false;
+        // Constant-time fallback for legacy SHA-256 hashes
+        String candidateHash = CTFChallenge.sha256Hex(clean);
+        byte[] candBytes = candidateHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] storedBytes = passwordHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return java.security.MessageDigest.isEqual(candBytes, storedBytes);
     }
 
     public boolean isAdmin() {

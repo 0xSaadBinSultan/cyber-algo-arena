@@ -495,17 +495,18 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     private void seedDefaultAdminIfEmpty() {
-        String adminHash = CTFChallenge.sha256Hex("admin_password_123");
         Optional<User> existingAdmin = getUserByUsername("admin");
         if (existingAdmin.isEmpty()) {
+            String adminHash = User.hashPassword("admin_password_123");
             User admin = new User("USER-ADMIN", "admin", "admin@cyberarena.local", adminHash, User.Role.ADMIN, null);
             saveUser(admin);
-            System.out.println("[MongoRepository] Initialized administrator: admin / admin_password_123");
-        } else if (!existingAdmin.get().getPasswordHash().equals(adminHash)) {
+            System.out.println("[MongoRepository] Initialized administrator: admin / admin_password_123 (BCrypt)");
+        } else if (!existingAdmin.get().verifyPassword("admin_password_123")) {
             User current = existingAdmin.get();
+            String adminHash = User.hashPassword("admin_password_123");
             User updated = new User(current.getId(), current.getUsername(), current.getEmail(), adminHash, User.Role.ADMIN, current.getTeamId());
             saveUser(updated);
-            System.out.println("[MongoRepository] Synchronized administrator password to: admin_password_123");
+            System.out.println("[MongoRepository] Synchronized administrator password to: admin_password_123 (BCrypt)");
         }
     }
 

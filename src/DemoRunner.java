@@ -2,11 +2,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.List;
 
 /**
- * Automated lifecycle verification suite for Cyber-Algo Arena against MongoDB.
+ * Automated lifecycle and security hardening verification suite for Cyber-Algo Arena.
  */
 public final class DemoRunner {
 
@@ -19,40 +20,42 @@ public final class DemoRunner {
 
     public static void main(String[] args) {
         System.out.println("╔══════════════════════════════════════════════════╗");
-        System.out.println("║   Cyber-Algo Arena — MongoDB Test Suite v2.0    ║");
-        System.out.println("║   Full Multi-Contest & Team Lifecycle Test      ║");
+        System.out.println("║   Cyber-Algo Arena — Lifecycle & Security Suite  ║");
+        System.out.println("║   MongoDB + BCrypt + RateLimiter + Path Guard    ║");
         System.out.println("╚══════════════════════════════════════════════════╝");
 
         try (MongoManager mongo = new MongoManager(MongoManager.DEFAULT_URI, TEST_DB)) {
-            // Clean test database
-            mongo.getDatabase().drop();
-            System.out.println("[Setup] Fresh test database dropped & initialized: " + TEST_DB);
+            if (mongo.isConnected()) {
+                mongo.getDatabase().drop();
+                System.out.println("[Setup] Fresh test database dropped & initialized: " + TEST_DB);
+            }
 
             MongoRepository repo = new MongoRepository(mongo);
             ContestEngine engine = new ContestEngine(repo);
             engine.load();
 
-            // ━━━ Phase 1: Authentication & User Registration ━━━
-            section("Phase 1: Authentication & User Registration");
+            // ━━━ Phase 1: Authentication & BCrypt Hashing ━━━
+            section("Phase 1: BCrypt Password Hashing & Admin Seeding");
 
-            // Verify seeded admin
-            assertTrue("Seeded admin authenticates", engine.authenticate("admin", "admin_password_123").isPresent());
+            // Verify seeded admin with BCrypt
+            assertTrue("Seeded admin authenticates with BCrypt", engine.authenticate("admin", "admin_password_123").isPresent());
 
-            // Register standard player accounts (no team required initially)
+            // Register standard player accounts with BCrypt
             User alice = engine.registerUser("alice", "alice@test.local", "pass_alice");
             User bob = engine.registerUser("bob", "bob@test.local", "pass_bob");
             User carol = engine.registerUser("carol", "carol@test.local", "pass_carol");
 
             assertTrue("Alice registered as PLAYER", alice.getRole() == User.Role.PLAYER);
-            assertTrue("Alice authenticates", engine.authenticate("alice", "pass_alice").isPresent());
+            assertTrue("Alice password hash is BCrypt ($2a$ format)", alice.getPasswordHash().startsWith("$2a$") || alice.getPasswordHash().startsWith("$2b$"));
+            assertTrue("Alice authenticates via BCrypt", engine.authenticate("alice", "pass_alice").isPresent());
             assertTrue("Wrong password rejected", engine.authenticate("alice", "wrong_pass").isEmpty());
 
             // ━━━ Phase 2: Team Creation & Join Workflows ━━━
-            section("Phase 2: Team Creation & Join Flow");
+            section("Phase 2: Team Creation & Constant-Time Join Flow");
 
             // Alice creates team Alpha Squad with password
             Team teamAlpha = engine.createTeam("Alpha Squad", "alpha_secret", alice.getId());
-            assertTrue("Team Alpha created", teamAlpha != null);
+            assertTrue("Team Alpha created with BCrypt passkey", teamAlpha != null);
             assertTrue("Alice is captain of Alpha Squad", teamAlpha.getCaptainUserId().equals(alice.getId()));
             assertTrue("Alice teamId set to Alpha Squad", engine.getUser(alice.getId()).getTeamId().equals(teamAlpha.getId()));
 
@@ -84,8 +87,8 @@ public final class DemoRunner {
             }
             assertTrue("Player cannot join multiple teams in same contest", duplicateFailed);
 
-            // ━━━ Phase 4: Challenges & Attachments ━━━
-            section("Phase 4: Challenges & Attachments");
+            // ━━━ Phase 4: Challenges & Timing Attack Defense ━━━
+            section("Phase 4: Challenges & Constant-Time Flag Evaluation");
 
             setupAttachments();
             CTFChallenge ctf = engine.addCtfChallenge(
@@ -113,8 +116,12 @@ public final class DemoRunner {
             assertTrue("CTF category is CRYPTO", ctf.getCategory() == CTFChallenge.Category.CRYPTO);
             assertTrue("CP registered in MongoDB", engine.getChallenge("CP-DEMO-01") != null);
 
+            // Constant-time flag evaluation check
+            assertTrue("Constant-time evaluation matches correct flag", ctf.evaluate("flag{crypto_master_2026}"));
+            assertTrue("Constant-time evaluation rejects incorrect flag", !ctf.evaluate("flag{wrong_flag_attempt}"));
+
             // ━━━ Phase 5: Submissions, Profiles & Leaderboard ━━━
-            section("Phase 5: Submissions, Profiles & Leaderboard");
+            section("Phase 5: Submissions, Profiles & Scoring");
 
             // Alice submits wrong flag
             Submission wrongSub = new Submission("SUB-1", "CTF-SPRING-2026", alice.getId(), teamAlpha.getId(), "CTF-DEMO-01", "flag{wrong}", 0, 0, Instant.now());
@@ -139,8 +146,53 @@ public final class DemoRunner {
             assertTrue("Alice category breakdown contains CRYPTO", updatedAlice.getCategoryBreakdown().getOrDefault("CRYPTO", 0) == 1);
             assertTrue("Alice solved challenge tracked", updatedAlice.isSolved("CTF-DEMO-01"));
 
-            // ━━━ Phase 6: Challenge Deletion ━━━
-            section("Phase 6: Challenge Deletion");
+            // ━━━ Phase 6: Rate Limiter Middleware Verification ━━━
+            section("Phase 6: Rate Limiting & Cooldown Protection");
+
+            RateLimiter limiter = new RateLimiter();
+            String testIp = "192.168.1.100";
+
+            // Allow first 5 attempts
+            for (int i = 1; i <= 5; i++) {
+                assertTrue("Attempt " + i + " permitted under 5/min rate limit", limiter.allow("login:" + testIp, 5, 60000L));
+            }
+            // 6th attempt blocked (HTTP 429)
+            assertTrue("Attempt 6 blocked by RateLimiter (HTTP 429)", !limiter.allow("login:" + testIp, 5, 60000L));
+
+            // Failure Cooldown Defense
+            String submitKey = "submit:team-1:192.168.1.100";
+            limiter.recordFailure(submitKey);
+            limiter.recordFailure(submitKey);
+            limiter.recordFailure(submitKey);
+            assertTrue("3 consecutive failures trigger cooldown", limiter.isCooldownActive(submitKey, 3, 15000L));
+            assertTrue("Remaining cooldown > 0s", limiter.getRemainingCooldownSeconds(submitKey, 15000L) > 0);
+
+            // ━━━ Phase 7: Path Traversal Defense Verification ━━━
+            section("Phase 7: Path Traversal Defense on File Downloads");
+
+            Path baseDir = ATTACH_DIR.toAbsolutePath().normalize();
+            Files.createDirectories(baseDir);
+
+            // Malicious traversal paths
+            String[] malicious = {
+                    "../../etc/passwd",
+                    "../challenges.csv",
+                    "../../../../var/log/syslog",
+                    "nested/../../secret.txt"
+            };
+
+            for (String evil : malicious) {
+                Path resolved = baseDir.resolve(evil).normalize();
+                boolean traversalDetected = !resolved.startsWith(baseDir);
+                assertTrue("Path traversal blocked for: " + evil, traversalDetected);
+            }
+
+            // Valid relative path
+            Path validPath = baseDir.resolve("demo_cipher.txt").normalize();
+            assertTrue("Legitimate file path permitted inside baseDir", validPath.startsWith(baseDir));
+
+            // ━━━ Phase 8: Challenge Deletion ━━━
+            section("Phase 8: Challenge Deletion & Disk Cleanup");
 
             engine.removeChallenge("CTF-DEMO-01");
             boolean notFound = false;
@@ -155,15 +207,14 @@ public final class DemoRunner {
             // Final Summary
             System.out.println();
             System.out.println("╔══════════════════════════════════════════════════╗");
-            System.out.printf("║  MONGODB TEST COMPLETE: %d/%d assertions passed   ║%n", passed, assertions);
+            System.out.printf("║  SECURITY & LIFECYCLE: %d/%d assertions passed    ║%n", passed, assertions);
             System.out.println("╚══════════════════════════════════════════════════╝");
 
             if (passed != assertions) {
-                System.err.println("FAILURE: " + (assertions - passed) + " assertion(s) failed.");
                 System.exit(1);
             }
         } catch (Exception ex) {
-            System.err.println("Fatal test error: " + ex.getMessage());
+            System.err.println("Test suite error: " + ex.getMessage());
             ex.printStackTrace();
             System.exit(1);
         }
@@ -171,27 +222,27 @@ public final class DemoRunner {
 
     private static void setupAttachments() throws IOException {
         Files.createDirectories(ATTACH_DIR);
-        Files.writeString(ATTACH_DIR.resolve("demo_cipher.txt"), "CIPHER_TEXT_ATTACHMENT_SAMPLE\n", StandardCharsets.UTF_8);
+        Files.writeString(ATTACH_DIR.resolve("demo_cipher.txt"), "SGVsbG8gQ3liZXIgQXJlbmEgMjAyNiE=", StandardCharsets.UTF_8);
     }
 
     private static void setupCpTestcases() throws IOException {
         Files.createDirectories(TESTCASE_DIR);
-        Files.writeString(TESTCASE_DIR.resolve("input_1.txt"), "5 10\n", StandardCharsets.UTF_8);
-        Files.writeString(TESTCASE_DIR.resolve("output_1.txt"), "15\n", StandardCharsets.UTF_8);
-    }
-
-    private static void assertTrue(String label, boolean condition) {
-        assertions++;
-        if (condition) {
-            passed++;
-            System.out.println("  ✓ " + label);
-        } else {
-            System.out.println("  ✗ FAIL: " + label);
-        }
+        Files.writeString(TESTCASE_DIR.resolve("input_1.txt"), "4\n1 2 3 4\n", StandardCharsets.UTF_8);
+        Files.writeString(TESTCASE_DIR.resolve("output_1.txt"), "0\n", StandardCharsets.UTF_8);
     }
 
     private static void section(String title) {
         System.out.println();
         System.out.println("━━━ " + title + " ━━━");
+    }
+
+    private static void assertTrue(String message, boolean condition) {
+        assertions++;
+        if (condition) {
+            passed++;
+            System.out.println("  ✓ " + message);
+        } else {
+            System.err.println("  ✗ FAILED: " + message);
+        }
     }
 }

@@ -186,7 +186,7 @@
  ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝
         </pre>
         <h1 class="text-xl font-bold tracking-widest text-white uppercase mt-2">Cyber-Algo Arena</h1>
-        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ MULTI-CONTEST PLATFORM · MONGODB ]</p>
+        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ MULTI-CONTEST PLATFORM · HARDENED ]</p>
       </div>
 
       <!-- Login Form -->
@@ -271,7 +271,6 @@
       <!-- 1. CHALLENGES SECTION WITH SEGMENTED SWITCHER -->
       <section id="sec-challenges" class="app-section">
         
-        <!-- Header & Segment Control -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-cyber-border pb-4">
           <div>
             <h2 class="text-2xl font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
@@ -299,7 +298,6 @@
         <!-- CTF DEDICATED VIEW -->
         <div id="segment-ctf-view" class="space-y-4">
           
-          <!-- Category Filter Pills -->
           <div class="flex flex-wrap items-center gap-2 pt-1 pb-2">
             <span class="text-xs text-gray-400 uppercase font-semibold mr-1">Category:</span>
             <button class="cat-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active" data-cat="ALL">ALL</button>
@@ -374,9 +372,8 @@
           <p class="text-xs text-gray-400">Form competitive syndicates and register for contest participation</p>
         </div>
 
-        <!-- No Team State: Create or Join -->
+        <!-- No Team State -->
         <div id="team-none-view" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <!-- Create Team -->
           <div class="bg-cyber-card neon-border p-6 rounded">
             <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase">Create New Syndicate</h3>
             <form id="form-create-team" class="space-y-4">
@@ -385,14 +382,13 @@
                 <input type="text" id="create-team-name" class="w-full input-cyber p-2.5 text-sm" placeholder="e.g. CyberVanguard" required>
               </div>
               <div>
-                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Secret Passkey (For Members to Join)</label>
+                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Secret Passkey</label>
                 <input type="password" id="create-team-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required>
               </div>
               <button type="submit" class="w-full btn-cyber p-2.5 text-sm font-bold uppercase">Establish Syndicate</button>
             </form>
           </div>
 
-          <!-- Join Team -->
           <div class="bg-cyber-card neon-border-yellow p-6 rounded">
             <h3 class="text-lg font-bold text-cyber-yellow mb-4 uppercase">Join Existing Syndicate</h3>
             <form id="form-join-team" class="space-y-4">
@@ -429,7 +425,6 @@
             </div>
           </div>
 
-          <!-- Roster Table -->
           <div class="bg-cyber-card border border-cyber-border rounded p-6">
             <h4 class="text-sm font-bold text-gray-300 uppercase mb-3">Syndicate Member Roster</h4>
             <div class="overflow-x-auto">
@@ -461,7 +456,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Profile Card -->
           <div class="bg-cyber-card neon-border p-6 rounded space-y-4">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 rounded-full bg-cyber-card2 border-2 border-cyber-cyan flex items-center justify-center text-2xl font-bold text-cyber-cyan">
@@ -491,7 +485,6 @@
             </div>
           </div>
 
-          <!-- Category Radar Breakdown -->
           <div class="lg:col-span-2 bg-cyber-card border border-cyber-border rounded p-6">
             <h3 class="text-sm font-bold text-cyber-cyan uppercase mb-4">Competency & Category Distribution</h3>
             <div id="prof-categories-container" class="space-y-3">
@@ -541,7 +534,6 @@
           <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Sync Database</button>
         </div>
         
-        <!-- Challenge Management Table with DELETE Button -->
         <div class="bg-cyber-card border border-cyber-border p-6 rounded mb-8">
           <h3 class="text-lg font-bold text-white uppercase mb-4">Existing Challenge Inventory</h3>
           <div class="overflow-x-auto">
@@ -672,7 +664,6 @@
         <!-- Injected dynamically -->
       </div>
 
-      <!-- Attachment Download Box -->
       <div id="mod-attachment-box" class="mb-4 p-3 bg-[#081525] border border-cyber-cyan rounded flex items-center justify-between hidden">
         <div class="flex items-center gap-2.5">
           <span class="text-lg">📦</span>
@@ -687,7 +678,6 @@
         </a>
       </div>
 
-      <!-- Hint Section -->
       <div id="mod-hint-section" class="mb-5 pb-4 border-b border-cyber-border">
         <div class="flex items-center justify-between">
           <div class="text-xs text-gray-400">HINT SYSTEM:</div>
@@ -696,17 +686,14 @@
         <div id="hint-display" class="mt-2 p-3 bg-[#0a1220] border border-cyber-cyan text-cyber-cyan text-xs rounded hidden italic"></div>
       </div>
 
-      <!-- Submission Form -->
       <form id="form-submit-solution" class="space-y-4">
         <input type="hidden" id="mod-id">
         
-        <!-- CTF Input -->
         <div id="input-container-ctf" class="hidden">
           <label class="block text-xs text-cyber-cyan mb-1.5 uppercase font-bold">Flag Payload</label>
           <input type="text" id="inp-flag" class="w-full input-cyber p-2.5 text-sm rounded font-mono" placeholder="flag{...} or raw flag text">
         </div>
         
-        <!-- CP Input -->
         <div id="input-container-cp" class="hidden">
           <label class="block text-xs text-cyber-yellow mb-1.5 uppercase font-bold">Solution Output Directory or Inline Answer</label>
           <textarea id="inp-cp" class="w-full input-cyber p-2.5 text-sm h-24 rounded font-mono" placeholder="contest_data/testcases/CP-01 or output directory"></textarea>
@@ -721,8 +708,20 @@
     </div>
   </div>
 
-  <!-- APPLICATION LOGIC -->
+  <!-- APPLICATION LOGIC & XSS HARDENING -->
   <script>
+    // --- XSS DEFENSE HELPER ---
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+
     // --- STATE ---
     let currentUser = null;
     let challengesData = [];
@@ -757,7 +756,7 @@
     function showToast(msg, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
+      toast.className = `toast toast-${escapeHtml(type)}`;
       toast.textContent = msg;
       container.appendChild(toast);
       setTimeout(() => {
@@ -936,7 +935,7 @@
       });
     });
 
-    // --- CHALLENGES FETCH & RENDER ---
+    // --- CHALLENGES FETCH & RENDER (XSS SAFE) ---
     async function fetchChallenges() {
       try {
         const res = await fetch('/api/challenges');
@@ -975,7 +974,7 @@
       }
 
       if (ctfList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500 italic">No CTF targets deployed in category '${selectedCategory}'.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500 italic">No CTF targets deployed in category '${escapeHtml(selectedCategory)}'.</td></tr>`;
         return;
       }
 
@@ -997,12 +996,12 @@
           : '<span class="text-xs text-gray-600">-</span>';
 
         tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${c.id}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">${c.title}</td>
-          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${c.category || 'MISC'}</span></td>
-          <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-magenta">${c.basePoints}</td>
-          <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${c.hintCost} pts` : 'Free'}</td>
+          <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${escapeHtml(c.id)}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">${escapeHtml(c.title)}</td>
+          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${escapeHtml(c.category || 'MISC')}</span></td>
+          <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-magenta">${escapeHtml(c.basePoints)}</td>
+          <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} pts` : 'Free'}</td>
           <td class="p-3.5 text-center">${attachmentBadge}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
           <td class="p-3.5 text-right">
@@ -1037,12 +1036,12 @@
         if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
 
         tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${c.id}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">${c.title}</td>
-          <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${c.timeLimitMs} ms` : '-'}</td>
-          <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${c.memoryLimitMb} MB` : '-'}</td>
-          <td class="p-3.5 ${diffColor} font-semibold">${c.difficulty}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-yellow">${c.basePoints}</td>
+          <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${escapeHtml(c.id)}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">${escapeHtml(c.title)}</td>
+          <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${escapeHtml(c.timeLimitMs)} ms` : '-'}</td>
+          <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${escapeHtml(c.memoryLimitMb)} MB` : '-'}</td>
+          <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-yellow">${escapeHtml(c.basePoints)}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
           <td class="p-3.5 text-right">
             <span class="text-cyber-yellow font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
@@ -1052,7 +1051,7 @@
       });
     }
 
-    // --- TEAM HUB LOGIC ---
+    // --- TEAM HUB LOGIC (XSS SAFE) ---
     async function fetchMyTeam() {
       try {
         const res = await fetch('/api/teams/my-team');
@@ -1073,11 +1072,11 @@
             tbody.innerHTML += `
               <tr class="hover:bg-cyber-card2">
                 <td class="p-3 font-bold text-white flex items-center gap-2">
-                  <span>${m.username}</span>
+                  <span>${escapeHtml(m.username)}</span>
                   ${isCap ? '<span class="text-[9px] px-1.5 py-0.2 bg-cyber-yellow text-black font-bold uppercase rounded">CAPTAIN</span>' : ''}
                 </td>
-                <td class="p-3 font-mono text-gray-400">${m.userId}</td>
-                <td class="p-3 font-bold text-cyber-magenta">${m.score || 0}</td>
+                <td class="p-3 font-mono text-gray-400">${escapeHtml(m.userId)}</td>
+                <td class="p-3 font-bold text-cyber-magenta">${escapeHtml(m.score || 0)}</td>
                 <td class="p-3 text-right text-gray-400">${isCap ? 'Commander' : 'Operative'}</td>
               </tr>
             `;
@@ -1134,7 +1133,7 @@
       } catch (err) { showToast('Connection error', 'error'); }
     };
 
-    // --- PLAYER PROFILE (CTFtime Metrics) ---
+    // --- PLAYER PROFILE (XSS SAFE) ---
     async function fetchMyProfile() {
       try {
         const res = await fetch('/api/users/me/profile');
@@ -1160,8 +1159,8 @@
             catBox.innerHTML += `
               <div>
                 <div class="flex justify-between text-xs mb-1">
-                  <span class="font-bold text-gray-300">${c}</span>
-                  <span class="text-cyber-cyan font-bold">${count} Solves</span>
+                  <span class="font-bold text-gray-300">${escapeHtml(c)}</span>
+                  <span class="text-cyber-cyan font-bold">${escapeHtml(count)} Solves</span>
                 </div>
                 <div class="w-full bg-cyber-card2 h-2 rounded overflow-hidden">
                   <div class="bg-cyber-cyan h-full rounded transition-all duration-500" style="width: ${pct}%"></div>
@@ -1203,16 +1202,16 @@
             $('#btn-submit-solution').className = "w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
             
             specsBox.innerHTML = `
-              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${c.category || 'MISC'}</div>
+              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${escapeHtml(c.category || 'MISC')}</div>
               <div><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
-              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${c.hintCost} Points deduction upon solve` : 'Free Hint'}</div>
+              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} Points deduction upon solve` : 'Free Hint'}</div>
             `;
 
             if (c.hasAttachment && c.attachmentFileName) {
               $('#mod-attachment-box').classList.remove('hidden');
               $('#mod-attachment-name').textContent = c.attachmentFileName;
               $('#mod-attachment-size').textContent = c.attachmentSize ? `File Size: ${formatBytes(c.attachmentSize)}` : 'File Ready for Download';
-              $('#btn-download-attachment').href = `/api/challenges/${c.id}/download`;
+              $('#btn-download-attachment').href = `/api/challenges/${encodeURIComponent(c.id)}/download`;
             }
           } else {
             modalCard.className = "bg-cyber-card neon-border-yellow max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
@@ -1221,9 +1220,9 @@
             $('#btn-submit-solution').className = "w-full btn-cyber-yellow p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
             
             specsBox.innerHTML = `
-              <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${c.timeLimitMs || 1000} ms</div>
-              <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${c.memoryLimitMb || 256} MB</div>
-              <div><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${c.testcaseDir || 'Standard Evaluation Suite'}</div>
+              <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${escapeHtml(c.timeLimitMs || 1000)} ms</div>
+              <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${escapeHtml(c.memoryLimitMb || 256)} MB</div>
+              <div><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${escapeHtml(c.testcaseDir || 'Standard Suite')}</div>
             `;
           }
 
@@ -1242,7 +1241,7 @@
         return;
       }
       try {
-        const res = await fetch(`/api/hints/${id}`, { method: 'POST' });
+        const res = await fetch(`/api/hints/${encodeURIComponent(id)}`, { method: 'POST' });
         const data = await res.json();
         if(res.ok) {
           $('#hint-display').textContent = `[HINT REVEALED]: ${data.hint}`;
@@ -1301,7 +1300,7 @@
       }
     });
 
-    // --- LEADERBOARD FETCH ---
+    // --- LEADERBOARD FETCH (XSS SAFE) ---
     async function fetchLeaderboard() {
       try {
         const res = await fetch('/api/leaderboard');
@@ -1326,9 +1325,9 @@
 
             tr.innerHTML = `
               <td class="p-3.5">${rankHtml}</td>
-              <td class="p-3.5 font-bold text-cyber-cyan">${row.teamName} <span class="text-[10px] text-gray-500 font-normal">(${row.teamId})</span></td>
-              <td class="p-3.5 text-center font-bold text-white">${row.solves}</td>
-              <td class="p-3.5 text-center text-cyber-magenta font-extrabold">${row.score}</td>
+              <td class="p-3.5 font-bold text-cyber-cyan">${escapeHtml(row.teamName)} <span class="text-[10px] text-gray-500 font-normal">(${escapeHtml(row.teamId)})</span></td>
+              <td class="p-3.5 text-center font-bold text-white">${escapeHtml(row.solves)}</td>
+              <td class="p-3.5 text-center text-cyber-magenta font-extrabold">${escapeHtml(row.score)}</td>
               <td class="p-3.5 text-right text-gray-400 text-xs">${row.lastSolveTime ? new Date(row.lastSolveTime).toLocaleString() : '-'}</td>
             `;
             tbody.appendChild(tr);
@@ -1337,7 +1336,7 @@
       } catch(err){}
     }
 
-    // --- ADMIN ACTIONS (INVENTORY, DELETE, AUDIT) ---
+    // --- ADMIN ACTIONS (XSS SAFE) ---
     async function renderAdminChallenges() {
       try {
         const res = await fetch('/api/challenges');
@@ -1348,13 +1347,13 @@
           list.forEach(c => {
             tbody.innerHTML += `
               <tr class="hover:bg-cyber-card2">
-                <td class="p-3 font-mono text-cyber-cyan font-bold">${c.id}</td>
-                <td class="p-3">${c.type}</td>
-                <td class="p-3 font-bold text-white">${c.title}</td>
-                <td class="p-3 font-bold text-cyber-magenta">${c.basePoints}</td>
-                <td class="p-3">${c.difficulty}</td>
+                <td class="p-3 font-mono text-cyber-cyan font-bold">${escapeHtml(c.id)}</td>
+                <td class="p-3">${escapeHtml(c.type)}</td>
+                <td class="p-3 font-bold text-white">${escapeHtml(c.title)}</td>
+                <td class="p-3 font-bold text-cyber-magenta">${escapeHtml(c.basePoints)}</td>
+                <td class="p-3">${escapeHtml(c.difficulty)}</td>
                 <td class="p-3 text-right">
-                  <button class="btn-cyber-red px-2.5 py-1 text-xs font-bold uppercase rounded" onclick="deleteChallenge('${c.id}')">DELETE</button>
+                  <button class="btn-cyber-red px-2.5 py-1 text-xs font-bold uppercase rounded" onclick="deleteChallenge('${escapeHtml(c.id)}')">DELETE</button>
                 </td>
               </tr>
             `;
@@ -1368,7 +1367,7 @@
         return;
       }
       try {
-        const res = await fetch(`/api/admin/challenges/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/admin/challenges/${encodeURIComponent(id)}`, { method: 'DELETE' });
         if (res.ok) {
           showToast(`Challenge ${id} removed from MongoDB & disk.`, 'success');
           renderAdminChallenges();
@@ -1392,12 +1391,12 @@
             tbody.innerHTML += `
               <tr class="hover:bg-cyber-card2">
                 <td class="p-2">${new Date(l.timestamp).toLocaleTimeString()}</td>
-                <td class="p-2 font-mono">${l.id}</td>
-                <td class="p-2">${l.userId}</td>
-                <td class="p-2">${l.teamId}</td>
-                <td class="p-2 font-bold">${l.challengeId}</td>
-                <td class="p-2 ${resCol}">${l.status}</td>
-                <td class="p-2 text-right font-bold">${l.pointsAwarded}</td>
+                <td class="p-2 font-mono">${escapeHtml(l.id)}</td>
+                <td class="p-2">${escapeHtml(l.userId)}</td>
+                <td class="p-2">${escapeHtml(l.teamId)}</td>
+                <td class="p-2 font-bold">${escapeHtml(l.challengeId)}</td>
+                <td class="p-2 ${resCol}">${escapeHtml(l.status)}</td>
+                <td class="p-2 text-right font-bold">${escapeHtml(l.pointsAwarded)}</td>
               </tr>
             `;
           });
