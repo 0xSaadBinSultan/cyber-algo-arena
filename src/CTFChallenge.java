@@ -21,6 +21,8 @@ public final class CTFChallenge extends Challenge {
         REVERSE_ENGINEERING,
         PWN,
         OSINT,
+        FORENSICS,
+        GENERAL_SKILLS,
         MISC;
 
         public static Category fromToken(String token) {
@@ -30,6 +32,15 @@ public final class CTFChallenge extends Challenge {
             String normalized = token.trim().toUpperCase(Locale.ROOT).replace(" ", "_").replace("-", "_");
             if (normalized.equals("REVERSE") || normalized.equals("REV")) {
                 return REVERSE_ENGINEERING;
+            }
+            if (normalized.equals("CRYPTOGRAPHY")) {
+                return CRYPTO;
+            }
+            if (normalized.equals("WEB_SECURITY")) {
+                return WEB;
+            }
+            if (normalized.equals("SYSTEMS_SECURITY")) {
+                return PWN;
             }
             try {
                 return Category.valueOf(normalized);

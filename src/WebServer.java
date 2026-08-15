@@ -24,12 +24,16 @@ public final class WebServer {
     private final RateLimiter rateLimiter;
     private final SecureRandom secureRandom;
     private final ContestRadarService radarService;
+    private final CodeforcesSyncService codeforcesSyncService;
+    private final SecurityPuzzleSyncService securityPuzzleSyncService;
 
     public WebServer(ContestEngine engine, int port) {
         this.engine = engine;
         this.rateLimiter = new RateLimiter();
         this.secureRandom = new SecureRandom();
         this.radarService = new ContestRadarService();
+        this.codeforcesSyncService = new CodeforcesSyncService();
+        this.securityPuzzleSyncService = new SecurityPuzzleSyncService();
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -116,6 +120,8 @@ public final class WebServer {
         app.put("/api/admin/challenges/{id}/points", this::handleUpdatePoints);
         app.delete("/api/admin/challenges/{id}", this::handleDeleteChallenge);
         app.post("/api/admin/sync", this::handleSync);
+        app.post("/api/admin/sync/codeforces", this::handleSyncCodeforces);
+        app.post("/api/admin/sync/security-exercises", this::handleSyncSecurityExercises);
     }
 
     // ═══════════════════════════════════════════
@@ -633,6 +639,43 @@ public final class WebServer {
 
         engine.syncData();
         ctx.json(Map.of("message", "Memory state synchronized with database."));
+    }
+
+    private void handleSyncCodeforces(Context ctx) {
+        User user = requireAdmin(ctx);
+        if (user == null) return;
+
+        int count = 10;
+        int minRating = 800;
+        int maxRating = 1400;
+        try {
+            String countParam = ctx.queryParam("count");
+            if (countParam != null) count = Integer.parseInt(countParam);
+            String minParam = ctx.queryParam("minRating");
+            if (minParam != null) minRating = Integer.parseInt(minParam);
+            String maxParam = ctx.queryParam("maxRating");
+            if (maxParam != null) maxRating = Integer.parseInt(maxParam);
+        } catch (NumberFormatException ignored) {}
+
+        CodeforcesSyncService.SyncResult result = codeforcesSyncService.sync(engine, count, minRating, maxRating);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", "Codeforces sync complete");
+        response.put("syncedCount", result.syncedCount());
+        response.put("problems", result.problems());
+        ctx.json(response);
+    }
+
+    private void handleSyncSecurityExercises(Context ctx) {
+        User user = requireAdmin(ctx);
+        if (user == null) return;
+
+        String category = ctx.queryParamAsClass("category", String.class).getOrDefault("ALL");
+        SecurityPuzzleSyncService.SyncResult result = securityPuzzleSyncService.sync(engine, category);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", "Security exercise sync complete");
+        response.put("syncedCount", result.syncedCount());
+        response.put("problems", result.problems());
+        ctx.json(response);
     }
 
     // ═══════════════════════════════════════════

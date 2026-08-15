@@ -57,20 +57,24 @@ public final class App {
 
             MongoManager mongoManager = new MongoManager(mongoUri, mongoDb);
 
-            // Register JVM runtime shutdown hook for resource cleanup
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("[App] JVM shutdown initiated. Releasing MongoDB connection pool...");
-                try {
-                    mongoManager.close();
-                    System.out.println("[App] MongoDB connection pool successfully closed.");
-                } catch (Exception ex) {
-                    System.err.println("[App] Error closing MongoDB client: " + ex.getMessage());
-                }
-            }, "arena-shutdown-hook"));
-
             MongoRepository repository = new MongoRepository(mongoManager);
             ContestEngine engine = new ContestEngine(repository);
             engine.load();
+
+            AutoSyncScheduler syncScheduler = new AutoSyncScheduler(engine);
+            syncScheduler.start();
+
+            // Register JVM runtime shutdown hook for resource cleanup
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("[App] JVM shutdown initiated. Releasing resources...");
+                try {
+                    syncScheduler.shutdown();
+                    mongoManager.close();
+                    System.out.println("[App] All resources successfully released.");
+                } catch (Exception ex) {
+                    System.err.println("[App] Error during shutdown: " + ex.getMessage());
+                }
+            }, "arena-shutdown-hook"));
 
             new WebServer(engine, port);
         } catch (Exception ex) {

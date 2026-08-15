@@ -653,6 +653,36 @@
           </div>
         </div>
 
+        <!-- Sync Problemsets -->
+        <div class="bg-cyber-card neon-border p-6 rounded mb-8">
+          <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase flex items-center gap-2">
+            <span>🔄</span> Auto-Sync Problemsets
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-3">
+              <label class="text-xs text-gray-400 uppercase block">Codeforces Problems</label>
+              <div class="grid grid-cols-3 gap-2">
+                <div><label class="text-[10px] text-gray-500">Count</label><input type="number" id="cf-sync-count" value="10" min="1" max="50" class="w-full input-cyber p-2 text-sm"></div>
+                <div><label class="text-[10px] text-gray-500">Min Rating</label><input type="number" id="cf-sync-min" value="800" min="800" max="3500" class="w-full input-cyber p-2 text-sm"></div>
+                <div><label class="text-[10px] text-gray-500">Max Rating</label><input type="number" id="cf-sync-max" value="1400" min="800" max="3500" class="w-full input-cyber p-2 text-sm"></div>
+              </div>
+              <button id="btn-sync-cf" class="w-full btn-cyber-yellow py-2.5 text-sm font-bold uppercase">⚡ Auto-Sync Codeforces</button>
+            </div>
+            <div class="space-y-3">
+              <label class="text-xs text-gray-400 uppercase block">Security Exercises</label>
+              <select id="sec-sync-cat" class="w-full input-cyber p-2 text-sm">
+                <option value="ALL">ALL CATEGORIES</option>
+                <option value="CRYPTOGRAPHY">CRYPTOGRAPHY</option>
+                <option value="FORENSICS">FORENSICS</option>
+                <option value="WEB_SECURITY">WEB_SECURITY</option>
+                <option value="SYSTEMS_SECURITY">SYSTEMS_SECURITY</option>
+                <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
+              </select>
+              <button id="btn-sync-sec" class="w-full btn-cyber py-2.5 text-sm font-bold uppercase">🛡️ Auto-Sync Security Exercises</button>
+            </div>
+          </div>
+        </div>
+
         <div>
           <h3 class="text-lg font-bold text-cyber-magenta mb-3 uppercase">Submission Audit Log</h3>
           <div class="overflow-x-auto bg-cyber-card border border-cyber-magenta p-1 h-64 overflow-y-auto rounded">
@@ -1570,6 +1600,52 @@
         const res = await fetch('/api/admin/sync', { method:'POST' });
         if (res.ok) showToast('Database state synchronized', 'success');
       } catch(e) { showToast('Sync failed', 'error'); }
+    };
+
+    $('#btn-sync-cf').onclick = async () => {
+      const count = $('#cf-sync-count').value || 10;
+      const minR = $('#cf-sync-min').value || 800;
+      const maxR = $('#cf-sync-max').value || 1400;
+      $('#btn-sync-cf').disabled = true;
+      $('#btn-sync-cf').textContent = '⏳ SYNCING...';
+      try {
+        const res = await fetch(`/api/admin/sync/codeforces?count=${count}&minRating=${minR}&maxRating=${maxR}`, { method:'POST' });
+        if (res.ok) {
+          const d = await res.json();
+          showToast(`Synced ${d.syncedCount} Codeforces problems into MongoDB.`, 'success');
+          fetchChallenges();
+          renderAdminChallenges();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Codeforces sync failed', 'error');
+        }
+      } catch(e) { showToast('Codeforces sync error', 'error'); }
+      finally {
+        $('#btn-sync-cf').disabled = false;
+        $('#btn-sync-cf').textContent = '⚡ Auto-Sync Codeforces';
+      }
+    };
+
+    $('#btn-sync-sec').onclick = async () => {
+      const cat = $('#sec-sync-cat').value || 'ALL';
+      $('#btn-sync-sec').disabled = true;
+      $('#btn-sync-sec').textContent = '⏳ SYNCING...';
+      try {
+        const res = await fetch(`/api/admin/sync/security-exercises?category=${cat}`, { method:'POST' });
+        if (res.ok) {
+          const d = await res.json();
+          showToast(`Synced ${d.syncedCount} security exercises into MongoDB.`, 'success');
+          fetchChallenges();
+          renderAdminChallenges();
+        } else {
+          const d = await res.json();
+          showToast(d.error || 'Security sync failed', 'error');
+        }
+      } catch(e) { showToast('Security sync error', 'error'); }
+      finally {
+        $('#btn-sync-sec').disabled = false;
+        $('#btn-sync-sec').textContent = '🛡️ Auto-Sync Security Exercises';
+      }
     };
 
     document.getElementById('form-add-ctf').onsubmit = async (e) => {
