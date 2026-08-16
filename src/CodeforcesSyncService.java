@@ -86,6 +86,7 @@ public final class CodeforcesSyncService {
                                     2000L,
                                     256,
                                     testcaseDir);
+                            cpProblem.setDescription("Codeforces Problem " + contestId + index + " — Rating: " + rating + ". Solve this competitive programming challenge. Submit your output to match expected testcase results.");
 
                             engine.addChallenge(cpProblem);
 
@@ -168,6 +169,7 @@ public final class CodeforcesSyncService {
                     : (rating <= 1500 ? Challenge.Difficulty.MEDIUM : Challenge.Difficulty.HARD);
 
             CPProblem cp = new CPProblem(problemId, name, points, diff, 2000L, 256, testcaseDir);
+            cp.setDescription("Codeforces Round " + contestId + " Problem " + index + " — Practice competitive programming at rating " + rating + ".");
             engine.addChallenge(cp);
 
             Map<String, Object> info = new LinkedHashMap<>();

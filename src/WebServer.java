@@ -771,6 +771,7 @@ public final class WebServer {
         map.put("difficulty", c.getDifficulty().name());
         map.put("basePoints", c.getBasePoints());
         map.put("hintCost", c.getHintCost());
+        map.put("description", c.getDescription());
 
         if (c instanceof CTFChallenge ctf) {
             map.put("category", ctf.getCategoryName());

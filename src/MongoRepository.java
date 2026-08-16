@@ -267,7 +267,8 @@ public final class MongoRepository {
                 .append("title", c.getTitle())
                 .append("basePoints", c.getBasePoints())
                 .append("difficulty", c.getDifficulty().name())
-                .append("hintCost", c.getHintCost());
+                .append("hintCost", c.getHintCost())
+                .append("description", c.getDescription());
 
         if (c instanceof CTFChallenge ctf) {
             doc.append("category", ctf.getCategoryName())
@@ -289,7 +290,7 @@ public final class MongoRepository {
         Challenge.Difficulty difficulty = Challenge.Difficulty.fromToken(doc.getString("difficulty"));
 
         if ("CTF".equalsIgnoreCase(type)) {
-            return new CTFChallenge(
+            CTFChallenge ctf = new CTFChallenge(
                     id,
                     title,
                     basePoints,
@@ -298,8 +299,10 @@ public final class MongoRepository {
                     doc.getString("flagHash"),
                     doc.getInteger("hintCost", 0),
                     doc.getString("attachmentFileName"));
+            ctf.setDescription(doc.getString("description"));
+            return ctf;
         } else {
-            return new CPProblem(
+            CPProblem cp = new CPProblem(
                     id,
                     title,
                     basePoints,
@@ -307,6 +310,8 @@ public final class MongoRepository {
                     doc.getLong("timeLimitMs") != null ? doc.getLong("timeLimitMs") : 1000L,
                     doc.getInteger("memoryLimitMb", 256),
                     Path.of(doc.getString("testcaseDir") != null ? doc.getString("testcaseDir") : "contest_data/testcases/" + id));
+            cp.setDescription(doc.getString("description"));
+            return cp;
         }
     }
 

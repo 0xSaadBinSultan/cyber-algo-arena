@@ -613,6 +613,8 @@
                     <option value="REVERSE_ENGINEERING">REVERSE_ENGINEERING</option>
                     <option value="PWN">PWN</option>
                     <option value="OSINT">OSINT</option>
+                    <option value="FORENSICS">FORENSICS</option>
+                    <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
                     <option value="MISC">MISC</option>
                   </select>
                 </div>
@@ -1085,7 +1087,10 @@
 
         tr.innerHTML = `
           <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${escapeHtml(c.id)}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">${escapeHtml(c.title)}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">
+            ${escapeHtml(c.title)}
+            ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
+          </td>
           <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${escapeHtml(c.category || 'MISC')}</span></td>
           <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
           <td class="p-3.5 text-center font-bold text-cyber-magenta">${escapeHtml(c.basePoints)}</td>
@@ -1125,7 +1130,10 @@
 
         tr.innerHTML = `
           <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${escapeHtml(c.id)}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">${escapeHtml(c.title)}</td>
+          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">
+            ${escapeHtml(c.title)}
+            ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
+          </td>
           <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${escapeHtml(c.timeLimitMs)} ms` : '-'}</td>
           <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${escapeHtml(c.memoryLimitMb)} MB` : '-'}</td>
           <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
@@ -1290,9 +1298,12 @@
             $('#btn-submit-solution').className = "w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
             
             specsBox.innerHTML = `
-              <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${escapeHtml(c.category || 'MISC')}</div>
-              <div><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
-              <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} Points deduction upon solve` : 'Free Hint'}</div>
+              ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
+              <div class="grid grid-cols-2 gap-2">
+                <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${escapeHtml(c.category || 'MISC')}</div>
+                <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} PTS` : 'Free'}</div>
+              </div>
+              <div class="mt-1"><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
             `;
 
             if (c.hasAttachment && c.attachmentFileName) {
@@ -1308,9 +1319,12 @@
             $('#btn-submit-solution').className = "w-full btn-cyber-yellow p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
             
             specsBox.innerHTML = `
-              <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${escapeHtml(c.timeLimitMs || 1000)} ms</div>
-              <div><strong class="text-cyber-yellow">MEMORY LIMIT:</strong> ${escapeHtml(c.memoryLimitMb || 256)} MB</div>
-              <div><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${escapeHtml(c.testcaseDir || 'Standard Suite')}</div>
+              ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
+              <div class="grid grid-cols-3 gap-2">
+                <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${escapeHtml(c.timeLimitMs || 1000)} ms</div>
+                <div><strong class="text-cyber-yellow">MEMORY:</strong> ${escapeHtml(c.memoryLimitMb || 256)} MB</div>
+                <div><strong class="text-cyber-yellow">TESTCASES:</strong> ${escapeHtml(c.testcaseDir || 'Standard')}</div>
+              </div>
             `;
           }
 

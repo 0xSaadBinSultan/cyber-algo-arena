@@ -31,6 +31,7 @@ public abstract class Challenge implements Persistable, Scorable {
     private final String title;
     private final int basePoints;
     private final Difficulty difficulty;
+    private String description = "";
 
     protected Challenge(String id, String title, int basePoints, Difficulty difficulty) {
         this.id = requireText(id, "id");
@@ -97,6 +98,14 @@ public abstract class Challenge implements Persistable, Scorable {
 
     public Difficulty getDifficulty() {
         return difficulty;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description != null ? description : "";
     }
 
     protected static String requireText(String value, String fieldName) {

@@ -78,6 +78,7 @@ public final class SecurityPuzzleSyncService {
                     flagHash,
                     puzzle.hintCost()
                 );
+                challenge.setDescription(puzzle.description());
                 
                 engine.addChallenge(challenge);
                 syncedCount++;
