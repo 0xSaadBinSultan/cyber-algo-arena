@@ -105,6 +105,9 @@
           <button onclick="showView('team')" id="nav-team" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
             <i class="fa-solid fa-users text-ctf-green"></i> Team
           </button>
+          <button onclick="showView('profile')" id="nav-profile" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
+            <i class="fa-solid fa-user text-ctf-blue"></i> Profile
+          </button>
           <button onclick="showView('admin')" id="nav-admin" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
             <i class="fa-solid fa-shield-halved text-ctf-red"></i> Admin
           </button>
@@ -112,23 +115,28 @@
 
         <!-- Right: Auth State -->
         <div class="flex items-center gap-3">
+          <!-- Unauthenticated State -->
           <div id="auth-unauthed" class="flex items-center gap-2">
-            <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 text-sm font-medium text-ctf-text hover:text-white hover:bg-ctf-border/40 rounded-md transition-colors">
-              <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Login
+            <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 text-sm font-medium text-ctf-text hover:text-white hover:bg-ctf-border/40 rounded-md transition-colors flex items-center gap-1.5">
+              <i class="fa-solid fa-key text-ctf-blue"></i> Login
             </button>
-            <button onclick="openAuthModal('register')" class="px-3.5 py-1.5 text-sm font-medium text-white bg-ctf-green hover:bg-ctf-greenHover rounded-md transition-colors shadow-sm">
-              <i class="fa-solid fa-user-plus mr-1.5"></i> Register
+            <button onclick="openAuthModal('register')" class="px-3.5 py-1.5 text-sm font-medium text-white bg-ctf-green hover:bg-ctf-greenHover rounded-md transition-colors shadow-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-user-plus"></i> Register
             </button>
           </div>
 
-          <div id="auth-authed" class="flex items-center gap-3 hidden">
-            <div class="flex items-center gap-2 px-3 py-1 bg-ctf-card border border-ctf-border rounded-full text-xs font-medium">
-              <span id="user-avatar" class="w-5 h-5 rounded-full bg-ctf-blue/20 text-ctf-blue flex items-center justify-center font-bold text-[10px]">U</span>
+          <!-- Authenticated User Control Hub -->
+          <div id="auth-authed" class="flex items-center gap-2.5 hidden">
+            <div onclick="showView('profile')" class="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-ctf-card hover:bg-ctf-cardHover border border-ctf-border hover:border-ctf-blue/60 rounded-full text-xs font-medium transition-all group">
+              <span id="user-avatar" class="w-5 h-5 rounded-full bg-ctf-blue/20 text-ctf-blue flex items-center justify-center font-bold text-[10px] group-hover:scale-105 transition-transform">U</span>
               <span id="user-display" class="font-semibold text-white">player</span>
-              <span id="user-team-badge" class="px-1.5 py-0.2 bg-ctf-purple/20 text-ctf-purple border border-ctf-purple/30 rounded text-[10px] font-mono hidden">Team</span>
+              <span id="user-role-badge" class="px-1.5 py-0.2 bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/30 rounded text-[9px] font-mono font-bold uppercase">PLAYER</span>
+              <span id="user-team-badge" class="px-1.5 py-0.2 bg-ctf-purple/20 text-ctf-purple border border-ctf-purple/30 rounded text-[9px] font-mono hidden">Team</span>
             </div>
-            <button onclick="handleLogout()" title="Logout" class="p-2 text-ctf-muted hover:text-ctf-red hover:bg-ctf-card border border-transparent hover:border-ctf-border rounded-md transition-colors">
+            
+            <button onclick="logout()" title="Logout" class="px-2.5 py-1.5 text-xs text-ctf-muted hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 rounded-md transition-colors flex items-center gap-1.5">
               <i class="fa-solid fa-arrow-right-from-bracket"></i>
+              <span class="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
@@ -142,6 +150,7 @@
       <button onclick="showView('scoreboard')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-chart-simple"></i><span>Scores</span></button>
       <button onclick="showView('radar')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-satellite-dish"></i><span>Radar</span></button>
       <button onclick="showView('team')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-users"></i><span>Team</span></button>
+      <button onclick="showView('profile')" id="nav-profile-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-user"></i><span>Profile</span></button>
       <button onclick="showView('admin')" id="nav-admin-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-shield-halved"></i><span>Admin</span></button>
     </div>
   </nav>
@@ -359,7 +368,126 @@
     </section>
 
     <!-- ═════════════════════════════════════════════════════════ -->
-    <!-- 5. ADMIN CONTROL PANEL                                    -->
+    <!-- 5. INDIVIDUAL PLAYER PROFILE VIEW                         -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-profile" class="view-panel space-y-6 hidden">
+      <div class="pb-4 border-b border-ctf-border flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
+            <i class="fa-solid fa-id-card text-ctf-blue"></i> Operative Dossier
+          </h2>
+          <p class="text-xs text-ctf-muted mt-1">CTFtime-style metrics, category proficiencies, and personal solve records.</p>
+        </div>
+        <button onclick="fetchProfile()" class="px-3 py-1.5 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded text-xs font-medium text-ctf-text hover:text-white flex items-center gap-1.5 transition-colors">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
+      </div>
+
+      <!-- Top Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- User Summary Card -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-ctf-border">
+            <div id="prof-avatar" class="w-12 h-12 rounded-full bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/40 flex items-center justify-center font-bold text-lg">U</div>
+            <div>
+              <h3 id="prof-username" class="text-lg font-bold text-white leading-tight">Operative</h3>
+              <div id="prof-email" class="text-xs text-ctf-muted font-mono">user@arena.local</div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-3 gap-2 text-center font-mono">
+            <div class="p-2 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block">GLOBAL RANK</span>
+              <span id="prof-rank" class="text-sm font-bold text-ctf-yellow">#1</span>
+            </div>
+            <div class="p-2 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block">SOLVES</span>
+              <span id="prof-solves" class="text-sm font-bold text-ctf-green">0</span>
+            </div>
+            <div class="p-2 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block">SCORE</span>
+              <span id="prof-score" class="text-sm font-bold text-ctf-blue">0</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs pt-1">
+            <span class="text-ctf-muted">Access Clearance:</span>
+            <span id="prof-role" class="px-2 py-0.5 bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/30 rounded text-[10px] font-mono font-bold">PLAYER</span>
+          </div>
+        </div>
+
+        <!-- Active Syndicate/Team Card -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-ctf-border">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-users text-ctf-purple"></i> Active Syndicate
+            </h4>
+            <span id="prof-captain-badge" class="px-1.5 py-0.2 bg-ctf-yellow/20 text-ctf-yellow border border-ctf-yellow/30 rounded text-[10px] font-mono font-bold hidden">CAPTAIN</span>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-ctf-muted">Team Name:</span>
+              <span id="prof-team-name" class="font-bold text-white font-mono">None</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ctf-muted">Syndicate Score:</span>
+              <span id="prof-team-score" class="font-bold text-ctf-purple font-mono">0 pts</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ctf-muted">Team ID:</span>
+              <span id="prof-team-id" class="font-mono text-ctf-blue">N/A</span>
+            </div>
+          </div>
+
+          <!-- Team Roster Pill List -->
+          <div class="pt-2 border-t border-ctf-border/60">
+            <span class="text-[10px] text-ctf-muted uppercase tracking-wider block mb-1.5 font-semibold">Syndicate Operatives</span>
+            <div id="prof-team-members" class="flex flex-wrap gap-1 text-[11px] font-mono">
+              <span class="text-ctf-muted italic text-xs">No team affiliation.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Competency Breakdown -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-3">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2 pb-2 border-b border-ctf-border">
+            <i class="fa-solid fa-chart-pie text-ctf-green"></i> Category Competency
+          </h4>
+
+          <div id="prof-cat-breakdown" class="space-y-2 text-xs font-mono">
+            <!-- Dynamic Category Breakdown Bars -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Solved Challenges Log -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-3">
+        <h4 class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-ctf-blue"></i> Verified Solved Operations Log
+        </h4>
+        <div class="overflow-x-auto border border-ctf-border/60 rounded-lg">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-[#1c2128] text-ctf-muted border-b border-ctf-border">
+              <tr>
+                <th class="p-2.5">Challenge Title</th>
+                <th class="p-2.5 text-center">Category</th>
+                <th class="p-2.5 text-right">Points Earned</th>
+                <th class="p-2.5 text-right">Solve Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="prof-solved-tbody" class="divide-y divide-ctf-border/40 text-gray-300">
+              <tr><td colspan="4" class="p-6 text-center text-ctf-muted italic">No solved challenges recorded in operative dossier.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 6. ADMIN CONTROL PANEL                                    -->
     <!-- ═════════════════════════════════════════════════════════ -->
     <section id="view-admin" class="view-panel space-y-8 hidden">
       <div class="pb-4 border-b border-ctf-border flex items-center justify-between">
@@ -367,7 +495,38 @@
           <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
             <i class="fa-solid fa-shield-halved text-ctf-red"></i> Admin Control Center
           </h2>
-          <p class="text-xs text-ctf-muted mt-1">Manage problemsets, triggers, external sync engines, and audit logs.</p>
+          <p class="text-xs text-ctf-muted mt-1">Manage problemsets, challenge deletion, automated sync engines, and audit logs.</p>
+        </div>
+      </div>
+
+      <!-- Challenge Deletion & Inventory Management -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-ctf-border pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-list text-ctf-blue"></i> Deployed Challenges Inventory (<span id="admin-chal-count">0</span>)
+          </h3>
+          <button onclick="fetchChallenges()" class="px-2.5 py-1 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded text-xs text-ctf-text hover:text-white transition-colors">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh List
+          </button>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 overflow-y-auto border border-ctf-border/60 rounded-lg">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-[#1c2128] text-ctf-muted sticky top-0 border-b border-ctf-border">
+              <tr>
+                <th class="p-2.5 w-16">Type</th>
+                <th class="p-2.5">ID</th>
+                <th class="p-2.5">Title</th>
+                <th class="p-2.5 text-center">Category</th>
+                <th class="p-2.5 text-center">Points</th>
+                <th class="p-2.5 text-center">Solves</th>
+                <th class="p-2.5 text-right w-24">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-chals-tbody" class="divide-y divide-ctf-border/40 text-gray-300">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -744,14 +903,15 @@
   <!-- FRONTEND LOGIC (Vanilla JS)                               -->
   <!-- ═════════════════════════════════════════════════════════ -->
   <script>
-    // State Store
+    // Global State Store
     let currentUser = null;
+    let currentTeam = null;
     let challengesData = [];
     let activeTrack = 'CTF'; // 'CTF' or 'CP'
     let activeCategory = 'ALL';
     let scoreboardChart = null;
 
-    // Helper
+    // Helper Functions
     const $ = (sel) => document.querySelector(sel);
     const escapeHtml = (str) => {
       if (str === null || str === undefined) return '';
@@ -810,6 +970,8 @@
         fetchRadarEvents();
       } else if (viewId === 'team') {
         fetchTeamInfo();
+      } else if (viewId === 'profile') {
+        fetchProfile();
       } else if (viewId === 'admin') {
         fetchAdminData();
       }
@@ -819,7 +981,7 @@
     function openAuthModal(mode = 'login') {
       $('#modal-auth').classList.remove('hidden');
       if (mode === 'login') {
-        $('#auth-modal-title').innerHTML = '<i class="fa-solid fa-right-to-bracket text-ctf-blue"></i> Sign In';
+        $('#auth-modal-title').innerHTML = '<i class="fa-solid fa-key text-ctf-blue"></i> Sign In';
         $('#form-auth-login').classList.remove('hidden');
         $('#form-auth-register').classList.add('hidden');
       } else {
@@ -830,7 +992,8 @@
     }
 
     function closeAuthModal() {
-      $('#modal-auth').classList.add('hidden');
+      const a = $('#modal-auth');
+      if (a) a.classList.add('hidden');
     }
 
     async function checkAuthSession() {
@@ -838,23 +1001,26 @@
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           currentUser = await res.json();
-          renderAuthHeader();
+          localStorage.setItem('arena_user', JSON.stringify(currentUser));
+          updateAuthUI();
         } else {
           currentUser = null;
-          renderAuthHeader();
+          localStorage.removeItem('arena_user');
+          updateAuthUI();
         }
       } catch (err) {
         currentUser = null;
-        renderAuthHeader();
+        updateAuthUI();
       }
     }
 
-    function renderAuthHeader() {
+    function updateAuthUI() {
       if (currentUser) {
         $('#auth-unauthed').classList.add('hidden');
         $('#auth-authed').classList.remove('hidden');
         $('#user-display').textContent = currentUser.username;
         $('#user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+        $('#user-role-badge').textContent = currentUser.role || 'PLAYER';
 
         if (currentUser.teamId) {
           $('#user-team-badge').classList.remove('hidden');
@@ -863,6 +1029,11 @@
           $('#user-team-badge').classList.add('hidden');
         }
 
+        // Show Profile tab
+        $('#nav-profile').classList.remove('hidden');
+        $('#nav-profile-mobile').classList.remove('hidden');
+
+        // Show Admin tab if admin
         if (currentUser.role === 'ADMIN') {
           $('#nav-admin').classList.remove('hidden');
           $('#nav-admin-mobile').classList.remove('hidden');
@@ -873,6 +1044,8 @@
       } else {
         $('#auth-unauthed').classList.remove('hidden');
         $('#auth-authed').classList.add('hidden');
+        $('#nav-profile').classList.add('hidden');
+        $('#nav-profile-mobile').classList.add('hidden');
         $('#nav-admin').classList.add('hidden');
         $('#nav-admin-mobile').classList.add('hidden');
       }
@@ -891,8 +1064,9 @@
         const data = await res.json();
         if (res.ok) {
           currentUser = data;
+          localStorage.setItem('arena_user', JSON.stringify(currentUser));
           closeAuthModal();
-          renderAuthHeader();
+          updateAuthUI();
           fetchChallenges();
           showToast(`Welcome back, ${currentUser.username}!`, 'success');
         } else {
@@ -923,8 +1097,9 @@
         const data = await res.json();
         if (res.ok) {
           currentUser = data;
+          localStorage.setItem('arena_user', JSON.stringify(currentUser));
           closeAuthModal();
-          renderAuthHeader();
+          updateAuthUI();
           fetchChallenges();
           showToast(`Account created for ${currentUser.username}!`, 'success');
         } else {
@@ -935,16 +1110,24 @@
       }
     };
 
-    async function handleLogout() {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        currentUser = null;
-        renderAuthHeader();
-        fetchChallenges();
-        showToast('Signed out successfully', 'info');
-      } catch (e) {
-        showToast('Logout error', 'error');
-      }
+    // Client-Side Robust Logout Flow
+    function logout() {
+      // 1. Clear persisted authentication data
+      localStorage.removeItem('arena_user');
+      localStorage.removeItem('arena_token');
+      sessionStorage.clear();
+
+      // 2. Reset in-memory global state
+      currentUser = null;
+      currentTeam = null;
+
+      // 3. Trigger backend session termination
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+
+      // 4. Update UI to logged-out state
+      updateAuthUI();
+      showView('challenges');
+      showToast('Logged out successfully', 'info');
     }
 
     // --- CHALLENGES CONTROLLER (CTFd Card Aesthetic) ---
@@ -981,6 +1164,7 @@
           $('#ctf-count-badge').textContent = ctfCount;
           $('#cp-count-badge').textContent = cpCount;
           renderChallenges();
+          renderAdminChallengesTable();
         }
       } catch (err) {
         showToast('Unable to fetch challenge catalog', 'error');
@@ -1142,58 +1326,15 @@
 
       } catch (err) {
         showToast('Error loading challenge intelligence', 'error');
-        closeChallengeModal();
+        closeModal();
       }
     }
 
     function closeModal() {
-      closeChallengeModal();
-      closeAuthModal();
-    }
-
-    function closeChallengeModal() {
       const m = $('#modal-challenge') || $('#subModal');
       if (m) m.classList.add('hidden');
+      closeAuthModal();
     }
-
-    function closeAuthModal() {
-      const a = $('#modal-auth');
-      if (a) a.classList.add('hidden');
-    }
-
-    // --- MODAL BACKDROP & KEYBOARD DISMISS ---
-    document.addEventListener('DOMContentLoaded', () => {
-      // Challenge Modal Backdrop
-      const modalChallenge = document.getElementById('modal-challenge');
-      if (modalChallenge) {
-        modalChallenge.addEventListener('click', (e) => {
-          if (e.target === modalChallenge) closeModal();
-        });
-      }
-
-      // subModal alias listener
-      const subModal = document.getElementById('subModal');
-      if (subModal) {
-        subModal.addEventListener('click', (e) => {
-          if (e.target === subModal) closeModal();
-        });
-      }
-
-      // Auth Modal Backdrop
-      const modalAuth = document.getElementById('modal-auth');
-      if (modalAuth) {
-        modalAuth.addEventListener('click', (e) => {
-          if (e.target === modalAuth) closeAuthModal();
-        });
-      }
-
-      // Escape key to dismiss any open modal
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' || e.key === 'Esc') {
-          closeModal();
-        }
-      });
-    });
 
     function switchModalTab(tab) {
       if (tab === 'desc') {
@@ -1275,7 +1416,7 @@
         if (res.ok) {
           if (data.status === 'ACCEPTED') {
             showToast(`🎉 ACCEPTED! Awarded ${data.pointsAwarded} points.${data.message.includes('FIRST BLOOD') ? ' 🩸 FIRST BLOOD BONUS!' : ''}`, 'success');
-            closeChallengeModal();
+            closeModal();
             fetchChallenges();
           } else if (data.status === 'WRONG_ANSWER') {
             showToast(`❌ WRONG ANSWER: ${data.message || 'Incorrect verification payload'}`, 'error');
@@ -1454,7 +1595,7 @@
       }
 
       try {
-        const res = await fetch('/api/teams/me');
+        const res = await fetch('/api/teams/my-team');
         if (res.ok) {
           const t = await res.json();
           $('#team-hub-name').textContent = t.teamName;
@@ -1469,10 +1610,10 @@
           `;
 
           const rosterList = $('#team-roster-list');
-          rosterList.innerHTML = (t.memberUserIds || [currentUser.userId]).map(m => `
+          rosterList.innerHTML = (t.members || []).map(m => `
             <div class="flex items-center justify-between py-1.5">
-              <span><i class="fa-solid fa-user text-ctf-blue mr-2"></i> ${escapeHtml(m)}</span>
-              ${m === t.captainUserId ? '<span class="text-ctf-yellow text-[10px] font-bold">CAPTAIN</span>' : '<span class="text-ctf-muted text-[10px]">MEMBER</span>'}
+              <span><i class="fa-solid fa-user text-ctf-blue mr-2"></i> ${escapeHtml(m.username)} (${escapeHtml(m.userId)})</span>
+              <span class="text-ctf-green font-bold text-xs">${escapeHtml(m.score || 0)} pts</span>
             </div>
           `).join('');
         }
@@ -1511,7 +1652,7 @@
       const password = $('#create-team-pass').value;
 
       try {
-        const res = await fetch('/api/teams', {
+        const res = await fetch('/api/teams/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ teamName, password })
@@ -1529,7 +1670,156 @@
       }
     };
 
-    // --- ADMIN CONTROLLER ---
+    // --- PROFILE CONTROLLER (CTFtime-Style Operative Dossier) ---
+    async function fetchProfile() {
+      if (!currentUser) {
+        openAuthModal('login');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/users/me/profile');
+        if (!res.ok) throw new Error('Profile acquisition failed');
+        const p = await res.json();
+
+        // User summary
+        $('#prof-username').textContent = p.username;
+        $('#prof-email').textContent = p.email || `${p.username}@arena.local`;
+        $('#prof-avatar').textContent = p.username.charAt(0).toUpperCase();
+        $('#prof-rank').textContent = `#${p.globalRank || 1}`;
+        $('#prof-solves').textContent = p.solvesCount || 0;
+        $('#prof-score').textContent = p.personalScore || 0;
+        $('#prof-role').textContent = p.role || 'PLAYER';
+
+        // Syndicate/Team
+        if (p.teamName) {
+          $('#prof-team-name').textContent = p.teamName;
+          $('#prof-team-score').textContent = `${p.teamScore || 0} pts`;
+          $('#prof-team-id').textContent = p.teamId || 'N/A';
+          if (p.isCaptain) {
+            $('#prof-captain-badge').classList.remove('hidden');
+          } else {
+            $('#prof-captain-badge').classList.add('hidden');
+          }
+
+          const membersContainer = $('#prof-team-members');
+          if (p.teamMembers && p.teamMembers.length > 0) {
+            membersContainer.innerHTML = p.teamMembers.map(m => `
+              <span class="px-2 py-0.5 bg-[#0d1117] border border-ctf-border rounded text-ctf-text">${escapeHtml(m.username)} (${m.score} pts)</span>
+            `).join('');
+          } else {
+            membersContainer.innerHTML = `<span class="px-2 py-0.5 bg-[#0d1117] border border-ctf-border rounded text-ctf-text">${p.username}</span>`;
+          }
+        } else {
+          $('#prof-team-name').textContent = 'None';
+          $('#prof-team-score').textContent = '0 pts';
+          $('#prof-team-id').textContent = 'Unaffiliated';
+          $('#prof-captain-badge').classList.add('hidden');
+          $('#prof-team-members').innerHTML = `<span class="text-ctf-muted italic text-xs">No team affiliation.</span>`;
+        }
+
+        // Category Competency Breakdown
+        const catBox = $('#prof-cat-breakdown');
+        const categories = ['CRYPTO', 'WEB', 'PWN', 'FORENSICS', 'CP', 'MISC'];
+        const breakdown = p.categoryBreakdown || {};
+        const totalSolves = Math.max(1, p.solvesCount || 1);
+
+        catBox.innerHTML = categories.map(cat => {
+          const count = breakdown[cat] || 0;
+          const pct = Math.min(100, Math.round((count / totalSolves) * 100));
+          let barColor = 'bg-ctf-blue';
+          if (cat === 'CRYPTO') barColor = 'bg-ctf-purple';
+          if (cat === 'PWN') barColor = 'bg-ctf-red';
+          if (cat === 'CP') barColor = 'bg-ctf-green';
+          if (cat === 'FORENSICS') barColor = 'bg-ctf-yellow';
+
+          return `
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-ctf-muted">${cat}</span>
+                <span class="text-white font-bold">${count} solves (${pct}%)</span>
+              </div>
+              <div class="w-full bg-[#0d1117] h-1.5 rounded-full overflow-hidden border border-ctf-border/40">
+                <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Solved Challenges Table
+        const solvedTbody = $('#prof-solved-tbody');
+        if (p.solvedLog && p.solvedLog.length > 0) {
+          solvedTbody.innerHTML = p.solvedLog.map(s => `
+            <tr>
+              <td class="p-2.5 font-bold text-white">${escapeHtml(s.title || s.challengeId)}</td>
+              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold badge-${(s.category||'misc').toLowerCase()}">${escapeHtml(s.category || 'MISC')}</span></td>
+              <td class="p-2.5 text-right font-bold text-ctf-blue">+${escapeHtml(s.points)}</td>
+              <td class="p-2.5 text-right text-ctf-muted text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleString() : '-'}</td>
+            </tr>
+          `).join('');
+        } else {
+          solvedTbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-ctf-muted italic">No solved challenges recorded in operative dossier.</td></tr>`;
+        }
+
+      } catch (err) {
+        showToast('Failed to load operative dossier', 'error');
+      }
+    }
+
+    // --- ADMIN CONTROLLER (With Challenge Deletion) ---
+    function renderAdminChallengesTable() {
+      const tbody = $('#admin-chals-tbody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      $('#admin-chal-count').textContent = challengesData.length;
+
+      if (challengesData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-ctf-muted italic">No challenges found in repository.</td></tr>`;
+        return;
+      }
+
+      challengesData.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-[#161b22]/70 transition-colors";
+        tr.innerHTML = `
+          <td class="p-2.5"><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${c.type === 'CTF' ? 'bg-ctf-blue/20 text-ctf-blue' : 'bg-ctf-yellow/20 text-ctf-yellow'}">${escapeHtml(c.type)}</span></td>
+          <td class="p-2.5 font-bold text-white">${escapeHtml(c.id)}</td>
+          <td class="p-2.5 text-gray-300">${escapeHtml(c.title)}</td>
+          <td class="p-2.5 text-center"><span class="px-1.5 py-0.2 rounded text-[10px] badge-${(c.category || 'misc').toLowerCase()}">${escapeHtml(c.category || 'CP')}</span></td>
+          <td class="p-2.5 text-center font-bold text-ctf-blue">${escapeHtml(c.basePoints)}</td>
+          <td class="p-2.5 text-center text-ctf-muted">${escapeHtml(c.solveCount || 0)}</td>
+          <td class="p-2.5 text-right">
+            <button onclick="adminDeleteChallenge('${escapeHtml(c.id)}', '${escapeHtml(c.title)}')" class="px-2 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/40 hover:border-red-500 text-red-400 hover:text-red-300 rounded text-[11px] font-semibold transition-all">
+              <i class="fa-solid fa-trash-can mr-1"></i> Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function adminDeleteChallenge(challengeId, title) {
+      if (!confirm(`⚠️ Are you sure you want to delete '${title}' (${challengeId})?\n\nThis will remove all associated submissions and attachment files permanently.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/challenges/${encodeURIComponent(challengeId)}`, {
+          method: 'DELETE'
+        });
+        const d = await res.json();
+        if (res.ok) {
+          showToast(`Challenge '${challengeId}' deleted successfully`, 'success');
+          fetchChallenges();
+        } else {
+          showToast(d.error || 'Failed to delete challenge', 'error');
+        }
+      } catch (err) {
+        showToast('Challenge deletion request failed', 'error');
+      }
+    }
+
     async function fetchAdminData() {
       try {
         const res = await fetch('/api/admin/submissions');
@@ -1547,6 +1837,7 @@
             </tr>
           `).join('');
         }
+        renderAdminChallengesTable();
       } catch (err) {}
     }
 
@@ -1659,6 +1950,40 @@
         showToast('Admin challenge creation failed', 'error');
       }
     };
+
+    // --- MODAL BACKDROP & KEYBOARD DISMISS ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Challenge Modal Backdrop
+      const modalChallenge = document.getElementById('modal-challenge');
+      if (modalChallenge) {
+        modalChallenge.addEventListener('click', (e) => {
+          if (e.target === modalChallenge) closeModal();
+        });
+      }
+
+      // subModal alias listener
+      const subModal = document.getElementById('subModal');
+      if (subModal) {
+        subModal.addEventListener('click', (e) => {
+          if (e.target === subModal) closeModal();
+        });
+      }
+
+      // Auth Modal Backdrop
+      const modalAuth = document.getElementById('modal-auth');
+      if (modalAuth) {
+        modalAuth.addEventListener('click', (e) => {
+          if (e.target === modalAuth) closeAuthModal();
+        });
+      }
+
+      // Escape key to dismiss any open modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          closeModal();
+        }
+      });
+    });
 
     // --- INITIALIZE APPLICATION ---
     window.addEventListener('DOMContentLoaded', () => {

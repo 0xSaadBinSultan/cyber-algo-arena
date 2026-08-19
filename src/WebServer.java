@@ -627,7 +627,7 @@ public final class WebServer {
         String id = ctx.pathParam("id");
         try {
             engine.removeChallenge(id);
-            ctx.json(Map.of("message", "Challenge deleted from database and disk", "id", id));
+            ctx.json(Map.of("status", "SUCCESS", "message", "Challenge deleted successfully", "id", id));
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
         }
@@ -732,11 +732,53 @@ public final class WebServer {
         map.put("solvedChallenges", user.getSolvedChallengeIds());
         map.put("createdAt", user.getCreatedAt().toString());
 
+        // Compute Global Rank
+        List<User> allUsers = new ArrayList<>(engine.getUsers());
+        allUsers.sort((a, b) -> Integer.compare(b.getPersonalScore(), a.getPersonalScore()));
+        int rank = 1;
+        for (int i = 0; i < allUsers.size(); i++) {
+            if (allUsers.get(i).getId().equals(user.getId())) {
+                rank = i + 1;
+                break;
+            }
+        }
+        map.put("globalRank", rank);
+
+        // Build detailed solved log from engine submissions
+        List<Map<String, Object>> solvedLog = new ArrayList<>();
+        for (Submission s : engine.getSubmissions()) {
+            if (s.getUserId().equals(user.getId()) && s.getStatus() == SubmissionResult.Status.ACCEPTED) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("challengeId", s.getChallengeId());
+                try {
+                    Challenge ch = engine.getChallenge(s.getChallengeId());
+                    entry.put("title", ch.getTitle());
+                    entry.put("category", (ch instanceof CTFChallenge ctf) ? ctf.getCategoryName() : "CP");
+                } catch (Exception ex) {
+                    entry.put("title", s.getChallengeId());
+                    entry.put("category", "MISC");
+                }
+                entry.put("points", s.getPointsAwarded());
+                entry.put("timestamp", s.getTimestamp().toString());
+                solvedLog.add(entry);
+            }
+        }
+        map.put("solvedLog", solvedLog);
+
         if (user.getTeamId() != null) {
             try {
                 Team t = engine.getTeam(user.getTeamId());
                 map.put("teamName", t.getTeamName());
                 map.put("isCaptain", user.getId().equals(t.getCaptainUserId()));
+                map.put("teamScore", t.getTotalScore());
+                List<Map<String, String>> memberList = new ArrayList<>();
+                for (String mId : t.getMemberUserIds()) {
+                    try {
+                        User u = engine.getUser(mId);
+                        memberList.add(Map.of("userId", u.getId(), "username", u.getUsername(), "score", String.valueOf(u.getPersonalScore())));
+                    } catch (Exception ignored) {}
+                }
+                map.put("teamMembers", memberList);
             } catch (Exception ignored) {}
         }
         return map;
