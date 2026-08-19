@@ -80,6 +80,13 @@ public final class ContestEngine {
             }
         }
 
+        if (!usersByUsername.containsKey("admin")) {
+            User admin = new User("U-ADMIN", "admin", "admin@cyberarena.local", User.hashPassword("admin_password_123"), User.Role.ADMIN, null);
+            usersById.put(admin.getId(), admin);
+            usersByUsername.put("admin", admin);
+            repository.saveUser(admin);
+        }
+
         refreshLeaderboard();
         System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
                 + usersById.size() + " users, " + teamsById.size() + " teams, " + submissions.size() + " submissions.");

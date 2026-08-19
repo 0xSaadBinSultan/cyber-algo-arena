@@ -78,11 +78,29 @@ public final class WebServer {
                     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                     "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
         });
+
+        // Strict RBAC Interceptor for all administrative operations
+        app.before("/api/admin/*", ctx -> {
+            String userId = ctx.sessionAttribute("userId");
+            if (userId == null || userId.isBlank()) {
+                ctx.status(401).json(errorMap("Unauthorized: Authentication required for administrative operations"));
+                return;
+            }
+            try {
+                User user = engine.getUser(userId);
+                if (user == null || user.getRole() != User.Role.ADMIN) {
+                    ctx.status(403).json(errorMap("Forbidden: Administrator privileges required"));
+                }
+            } catch (Exception ex) {
+                ctx.status(403).json(errorMap("Forbidden: Administrator privileges required"));
+            }
+        });
     }
 
     private void registerRoutes() {
         // ── Auth ──
         app.post("/api/auth/login", this::handleLogin);
+        app.post("/api/auth/admin-login", this::handleAdminLogin);
         app.post("/api/auth/register", this::handleRegister);
         app.post("/api/auth/logout", this::handleLogout);
         app.get("/api/auth/me", this::handleMe);
@@ -151,6 +169,35 @@ public final class WebServer {
 
         User user = userOpt.get();
         ctx.sessionAttribute("userId", user.getId());
+        ctx.sessionAttribute("role", user.getRole().name());
+        ctx.json(userToMap(user));
+    }
+
+    private void handleAdminLogin(Context ctx) {
+        String ip = ctx.ip();
+        if (!rateLimiter.allow("admin_login:" + ip, 10, 60_000L)) {
+            ctx.status(429).json(errorMap("Too Many Requests: Rate limit exceeded. Try again in 60 seconds."));
+            return;
+        }
+
+        Map<String, String> body = parseBody(ctx);
+        String username = body.get("username");
+        String password = body.get("password");
+
+        Optional<User> userOpt = engine.authenticate(username, password);
+        if (userOpt.isEmpty()) {
+            ctx.status(401).json(errorMap("Invalid administrator credentials"));
+            return;
+        }
+
+        User user = userOpt.get();
+        if (user.getRole() != User.Role.ADMIN) {
+            ctx.status(403).json(errorMap("Forbidden: Account does not possess administrator privileges"));
+            return;
+        }
+
+        ctx.sessionAttribute("userId", user.getId());
+        ctx.sessionAttribute("role", user.getRole().name());
         ctx.json(userToMap(user));
     }
 
