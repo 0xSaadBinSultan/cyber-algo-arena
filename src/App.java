@@ -9,6 +9,7 @@ import java.nio.file.Path;
  *   java -jar app.jar                → Runs Web Server on PORT env or 8080 (default)
  *   java -jar app.jar --web 3000     → Runs Web Server on custom port
  *   java -jar app.jar --demo         → Runs automated lifecycle test
+ *   java -jar app.jar --cli          → Runs interactive CLI mode
  */
 public final class App {
 
@@ -19,6 +20,21 @@ public final class App {
         try {
             if (args.length > 0 && "--demo".equals(args[0])) {
                 DemoRunner.main(new String[0]);
+                return;
+            }
+
+            if (args.length > 0 && "--cli".equals(args[0])) {
+                String cliMongoUri = System.getenv("MONGODB_URI");
+                if (cliMongoUri == null || cliMongoUri.isBlank()) cliMongoUri = MongoManager.DEFAULT_URI;
+                String cliMongoDb = System.getenv("MONGODB_DATABASE_NAME");
+                if (cliMongoDb == null || cliMongoDb.isBlank()) cliMongoDb = MongoManager.DEFAULT_DB_NAME;
+
+                MongoManager cliMongo = new MongoManager(cliMongoUri, cliMongoDb);
+                MongoRepository cliRepo = new MongoRepository(cliMongo);
+                ContestEngine cliEngine = new ContestEngine(cliRepo);
+                InputHandler cliInput = new InputHandler(new java.util.Scanner(System.in));
+                new CLIController(cliEngine, cliInput).start();
+                cliMongo.close();
                 return;
             }
 

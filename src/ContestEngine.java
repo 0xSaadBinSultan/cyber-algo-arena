@@ -380,9 +380,28 @@ public final class ContestEngine {
         }
 
         if (status == SubmissionResult.Status.ACCEPTED) {
+            // Track first blood 🩸
+            if (!challenge.hasFirstBlood()) {
+                challenge.setFirstBlood(team.getId(), user.getId());
+            }
+            boolean isFirstBlood = challenge.getFirstBloodTeamId() != null 
+                && challenge.getFirstBloodTeamId().equals(team.getId());
+
+            // Increment solve count for dynamic scoring decay
+            challenge.incrementSolveCount();
+
             int wrongCount = getWrongAttempts(team.getId(), challenge.getId());
             int hintsCount = getHintUsageCount(team.getId(), challenge.getId());
             int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
+
+            // First blood bonus: +10% of awarded points
+            int firstBloodBonus = 0;
+            if (isFirstBlood) {
+                firstBloodBonus = Math.max(1, pointsAwarded / 10);
+                pointsAwarded += firstBloodBonus;
+            }
+
+            String fbTag = isFirstBlood ? " 🩸 FIRST BLOOD! (+" + firstBloodBonus + " bonus)" : "";
 
             Instant solveTime = submission.getTimestamp();
             team.applyScore(pointsAwarded, solveTime);
@@ -394,8 +413,9 @@ public final class ContestEngine {
 
             repository.saveTeam(team);
             repository.saveUser(user);
+            repository.saveChallenge(challenge); // persist updated solveCount + firstBlood
 
-            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, outcomeMessage);
+            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, outcomeMessage + fbTag);
             submission.applyResult(acceptResult);
             submissions.add(submission);
             repository.saveSubmission(submission);

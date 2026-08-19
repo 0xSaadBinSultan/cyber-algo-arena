@@ -136,12 +136,15 @@ public final class DemoRunner {
             // Alice submits correct flag
             Submission correctSub = new Submission("SUB-2", "CTF-SPRING-2026", alice.getId(), teamAlpha.getId(), "CTF-DEMO-01", "flag{crypto_master_2026}", 1, 1, Instant.now());
             SubmissionResult correctRes = engine.submit(correctSub);
-            assertTrue("Correct flag -> ACCEPTED", correctRes.getStatus() == SubmissionResult.Status.ACCEPTED);
-            assertTrue("Points awarded with deductions", correctRes.getPointsAwarded() == (250 - 10 - 25)); // 215
+            assertTrue("Correct flag -> ACCEPTED with First Blood", correctRes.getStatus() == SubmissionResult.Status.ACCEPTED && correctRes.getMessage().contains("FIRST BLOOD"));
+            int expectedAwarded = (250 - 10 - 25) + Math.max(1, (250 - 10 - 25) / 10); // 215 + 21 = 236
+            assertTrue("Points awarded with deductions + 10% First Blood bonus", correctRes.getPointsAwarded() == expectedAwarded);
+            assertTrue("CTF challenge tracks First Blood team", teamAlpha.getId().equals(engine.getChallenge("CTF-DEMO-01").getFirstBloodTeamId()));
+            assertTrue("CTF challenge solveCount = 1", engine.getChallenge("CTF-DEMO-01").getSolveCount() == 1);
 
             // Check User Profile Stats
             User updatedAlice = engine.getUser(alice.getId());
-            assertTrue("Alice personal score updated", updatedAlice.getPersonalScore() == 215);
+            assertTrue("Alice personal score updated with First Blood", updatedAlice.getPersonalScore() == expectedAwarded);
             assertTrue("Alice solves count = 1", updatedAlice.getSolvesCount() == 1);
             assertTrue("Alice category breakdown contains CRYPTO", updatedAlice.getCategoryBreakdown().getOrDefault("CRYPTO", 0) == 1);
             assertTrue("Alice solved challenge tracked", updatedAlice.isSolved("CTF-DEMO-01"));

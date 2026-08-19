@@ -1085,15 +1085,26 @@
           ? '<span class="text-xs text-cyber-cyan" title="Attachment available">📦 YES</span>'
           : '<span class="text-xs text-gray-600">-</span>';
 
+        let firstBloodBadge = c.firstBloodTeamId
+          ? `<span class="ml-1.5 px-1.5 py-0.2 bg-[#2a050d] text-cyber-red border border-cyber-red text-[10px] rounded font-bold" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
+          : '';
+
+        let ptsDisplay = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
+          ? `<span>${escapeHtml(c.currentPoints)}</span> <span class="text-[10px] text-gray-500 line-through">(${escapeHtml(c.basePoints)})</span>`
+          : `<span>${escapeHtml(c.currentPoints || c.basePoints)}</span>`;
+
         tr.innerHTML = `
           <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${escapeHtml(c.id)}</td>
           <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">
-            ${escapeHtml(c.title)}
+            <div class="flex items-center gap-1">
+              <span>${escapeHtml(c.title)}</span>
+              ${firstBloodBadge}
+            </div>
             ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
           </td>
           <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${escapeHtml(c.category || 'MISC')}</span></td>
           <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-magenta">${escapeHtml(c.basePoints)}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-magenta">${ptsDisplay}</td>
           <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} pts` : 'Free'}</td>
           <td class="p-3.5 text-center">${attachmentBadge}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
@@ -1128,16 +1139,27 @@
         if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
         if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
 
+        let firstBloodBadge = c.firstBloodTeamId
+          ? `<span class="ml-1.5 px-1.5 py-0.2 bg-[#2a050d] text-cyber-red border border-cyber-red text-[10px] rounded font-bold" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
+          : '';
+
+        let ptsDisplay = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
+          ? `<span>${escapeHtml(c.currentPoints)}</span> <span class="text-[10px] text-gray-500 line-through">(${escapeHtml(c.basePoints)})</span>`
+          : `<span>${escapeHtml(c.currentPoints || c.basePoints)}</span>`;
+
         tr.innerHTML = `
           <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${escapeHtml(c.id)}</td>
           <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">
-            ${escapeHtml(c.title)}
+            <div class="flex items-center gap-1">
+              <span>${escapeHtml(c.title)}</span>
+              ${firstBloodBadge}
+            </div>
             ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
           </td>
           <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${escapeHtml(c.timeLimitMs)} ms` : '-'}</td>
           <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${escapeHtml(c.memoryLimitMb)} MB` : '-'}</td>
           <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-yellow">${escapeHtml(c.basePoints)}</td>
+          <td class="p-3.5 text-center font-bold text-cyber-yellow">${ptsDisplay}</td>
           <td class="p-3.5 text-center">${statusBadge}</td>
           <td class="p-3.5 text-right">
             <span class="text-cyber-yellow font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
@@ -1287,8 +1309,14 @@
           const c = await res.json();
           $('#mod-title').textContent = c.title;
           $('#mod-type-badge').textContent = c.type;
-          $('#mod-diff-badge').textContent = c.difficulty;
-          $('#mod-pts-badge').textContent = `${c.basePoints} PTS`;
+          const ptsLabel = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
+            ? `${c.currentPoints} PTS (${c.basePoints} BASE)`
+            : `${c.currentPoints || c.basePoints} PTS`;
+          $('#mod-pts-badge').textContent = ptsLabel;
+
+          const firstBloodHtml = c.firstBloodTeamId
+            ? `<span class="text-cyber-red font-bold">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
+            : `<span class="text-gray-500">Unclaimed</span>`;
 
           const specsBox = $('#mod-specs-box');
           if (c.type === 'CTF') {
@@ -1299,11 +1327,13 @@
             
             specsBox.innerHTML = `
               ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-2 p-2 bg-[#050b14] border border-cyber-border rounded">
                 <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${escapeHtml(c.category || 'MISC')}</div>
+                <div><strong class="text-cyber-cyan">SOLVES:</strong> ${escapeHtml(c.solveCount || 0)}</div>
+                <div><strong class="text-cyber-cyan">FIRST BLOOD:</strong> ${firstBloodHtml}</div>
                 <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} PTS` : 'Free'}</div>
               </div>
-              <div class="mt-1"><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
+              <div class="text-[11px] text-gray-400"><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
             `;
 
             if (c.hasAttachment && c.attachmentFileName) {
@@ -1320,11 +1350,13 @@
             
             specsBox.innerHTML = `
               ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-2 p-2 bg-[#050b14] border border-cyber-border rounded">
+                <div><strong class="text-cyber-yellow">SOLVES:</strong> ${escapeHtml(c.solveCount || 0)}</div>
+                <div><strong class="text-cyber-yellow">FIRST BLOOD:</strong> ${firstBloodHtml}</div>
                 <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${escapeHtml(c.timeLimitMs || 1000)} ms</div>
                 <div><strong class="text-cyber-yellow">MEMORY:</strong> ${escapeHtml(c.memoryLimitMb || 256)} MB</div>
-                <div><strong class="text-cyber-yellow">TESTCASES:</strong> ${escapeHtml(c.testcaseDir || 'Standard')}</div>
               </div>
+              <div class="text-[11px] text-gray-400"><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${escapeHtml(c.testcaseDir || 'Standard Piston Sandbox')}</div>
             `;
           }
 

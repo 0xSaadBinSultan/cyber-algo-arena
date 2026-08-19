@@ -268,7 +268,12 @@ public final class MongoRepository {
                 .append("basePoints", c.getBasePoints())
                 .append("difficulty", c.getDifficulty().name())
                 .append("hintCost", c.getHintCost())
-                .append("description", c.getDescription());
+                .append("description", c.getDescription())
+                .append("solveCount", c.getSolveCount())
+                .append("decayLimit", c.getDecayLimit())
+                .append("minimumPoints", c.getMinimumPoints())
+                .append("firstBloodTeamId", c.getFirstBloodTeamId())
+                .append("firstBloodUserId", c.getFirstBloodUserId());
 
         if (c instanceof CTFChallenge ctf) {
             doc.append("category", ctf.getCategoryName())
@@ -300,6 +305,10 @@ public final class MongoRepository {
                     doc.getInteger("hintCost", 0),
                     doc.getString("attachmentFileName"));
             ctf.setDescription(doc.getString("description"));
+            ctf.setSolveCount(doc.getInteger("solveCount", 0));
+            ctf.setDecayLimit(doc.getInteger("decayLimit", 100));
+            ctf.setMinimumPoints(doc.getInteger("minimumPoints", 50));
+            ctf.setFirstBlood(doc.getString("firstBloodTeamId"), doc.getString("firstBloodUserId"));
             return ctf;
         } else {
             CPProblem cp = new CPProblem(
@@ -311,6 +320,10 @@ public final class MongoRepository {
                     doc.getInteger("memoryLimitMb", 256),
                     Path.of(doc.getString("testcaseDir") != null ? doc.getString("testcaseDir") : "contest_data/testcases/" + id));
             cp.setDescription(doc.getString("description"));
+            cp.setSolveCount(doc.getInteger("solveCount", 0));
+            cp.setDecayLimit(doc.getInteger("decayLimit", 100));
+            cp.setMinimumPoints(doc.getInteger("minimumPoints", 50));
+            cp.setFirstBlood(doc.getString("firstBloodTeamId"), doc.getString("firstBloodUserId"));
             return cp;
         }
     }

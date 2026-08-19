@@ -32,6 +32,11 @@ public abstract class Challenge implements Persistable, Scorable {
     private final int basePoints;
     private final Difficulty difficulty;
     private String description = "";
+    private int solveCount = 0;
+    private int decayLimit = 100;   // number of solves at which points hit minimum
+    private int minimumPoints = 50; // floor for dynamic decay
+    private String firstBloodTeamId = null;
+    private String firstBloodUserId = null;
 
     protected Challenge(String id, String title, int basePoints, Difficulty difficulty) {
         this.id = requireText(id, "id");
@@ -106,6 +111,33 @@ public abstract class Challenge implements Persistable, Scorable {
 
     public void setDescription(String description) {
         this.description = description != null ? description : "";
+    }
+
+    public int getSolveCount() { return solveCount; }
+    public void setSolveCount(int count) { this.solveCount = Math.max(0, count); }
+    public void incrementSolveCount() { solveCount++; }
+    public int getDecayLimit() { return decayLimit; }
+    public void setDecayLimit(int decayLimit) { this.decayLimit = Math.max(1, decayLimit); }
+    public int getMinimumPoints() { return minimumPoints; }
+    public void setMinimumPoints(int minimumPoints) { this.minimumPoints = Math.max(0, minimumPoints); }
+    public String getFirstBloodTeamId() { return firstBloodTeamId; }
+    public String getFirstBloodUserId() { return firstBloodUserId; }
+    public void setFirstBlood(String teamId, String userId) {
+        this.firstBloodTeamId = teamId;
+        this.firstBloodUserId = userId;
+    }
+    public boolean hasFirstBlood() { return firstBloodTeamId != null; }
+
+    /**
+     * CTFd-style logarithmic decay formula.
+     * Points decay from basePoints toward minimumPoints as solveCount approaches decayLimit.
+     * Formula: max(minimumPoints, ceil(((minimumPoints - basePoints) / (decayLimit^2)) * solveCount^2 + basePoints))
+     */
+    public int getDynamicPoints() {
+        if (solveCount == 0) return getBasePoints();
+        double decay = (double)(minimumPoints - getBasePoints()) / ((double)decayLimit * decayLimit);
+        int points = (int) Math.ceil(decay * solveCount * solveCount + getBasePoints());
+        return Math.max(minimumPoints, points);
     }
 
     protected static String requireText(String value, String fieldName) {

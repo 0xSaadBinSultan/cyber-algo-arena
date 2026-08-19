@@ -772,6 +772,12 @@ public final class WebServer {
         map.put("basePoints", c.getBasePoints());
         map.put("hintCost", c.getHintCost());
         map.put("description", c.getDescription());
+        map.put("currentPoints", c.getDynamicPoints());
+        map.put("solveCount", c.getSolveCount());
+        map.put("decayLimit", c.getDecayLimit());
+        map.put("minimumPoints", c.getMinimumPoints());
+        map.put("firstBloodTeamId", c.getFirstBloodTeamId());
+        map.put("firstBloodUserId", c.getFirstBloodUserId());
 
         if (c instanceof CTFChallenge ctf) {
             map.put("category", ctf.getCategoryName());

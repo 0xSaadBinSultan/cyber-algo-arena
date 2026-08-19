@@ -148,18 +148,20 @@ public final class CLIController {
         String teamId = currentUser.getTeamId();
         List<Challenge> challenges = sortedChallenges();
         System.out.println();
-        System.out.printf("%-10s %-12s %-28s %-10s %-7s %-7s%n", "ID", "TYPE", "TITLE", "DIFFICULTY", "POINTS", "SOLVED");
-        System.out.println("-----------------------------------------------------------------------------");
+        System.out.printf("%-12s %-12s %-26s %-10s %-8s %-7s %-8s%n", "ID", "TYPE", "TITLE", "DIFFICULTY", "POINTS", "SOLVES", "STATUS");
+        System.out.println("----------------------------------------------------------------------------------------");
         for (Challenge challenge : challenges) {
             boolean solved = teamId != null && engine.isSolvedByTeam(teamId, challenge.getId());
+            String titleDisplay = challenge.getTitle() + (challenge.hasFirstBlood() ? " 🩸" : "");
             System.out.printf(
-                    "%-10s %-12s %-28s %-10s %-7d %-7s%n",
-                    truncate(challenge.getId(), 10),
+                    "%-12s %-12s %-26s %-10s %-8d %-7d %-8s%n",
+                    truncate(challenge.getId(), 12),
                     truncate(typeLabel(challenge), 12),
-                    truncate(challenge.getTitle(), 28),
+                    truncate(titleDisplay, 26),
                     challenge.getDifficulty(),
-                    challenge.getBasePoints(),
-                    solved ? "YES" : "NO");
+                    challenge.getDynamicPoints(),
+                    challenge.getSolveCount(),
+                    solved ? "SOLVED" : "OPEN");
         }
     }
 
@@ -167,9 +169,13 @@ public final class CLIController {
         Challenge challenge = engine.getChallenge(input.readNonEmpty("Challenge ID: "));
         System.out.println("ID: " + challenge.getId());
         System.out.println("Title: " + challenge.getTitle());
+        System.out.println("Description: " + (challenge.getDescription().isBlank() ? "N/A" : challenge.getDescription()));
         System.out.println("Type: " + typeLabel(challenge));
         System.out.println("Difficulty: " + challenge.getDifficulty());
-        System.out.println("Base points: " + challenge.getBasePoints());
+        System.out.println("Base Points: " + challenge.getBasePoints());
+        System.out.println("Current Points (Dynamic Decay): " + challenge.getDynamicPoints());
+        System.out.println("Solves: " + challenge.getSolveCount());
+        System.out.println("First Blood 🩸: " + (challenge.hasFirstBlood() ? challenge.getFirstBloodTeamId() : "Unclaimed"));
         printSubtypeDetails(challenge);
 
         String teamId = currentUser.getTeamId();

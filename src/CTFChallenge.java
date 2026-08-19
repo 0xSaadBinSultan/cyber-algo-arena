@@ -123,8 +123,9 @@ public final class CTFChallenge extends Challenge {
         requireNonNegative(hintsUsed, "hintsUsed");
         requireNonNegative(elapsedMillis, "elapsedMillis");
 
+        int dynamicBase = getDynamicPoints();
         long penalty = (long) wrongAttempts * WRONG_ATTEMPT_PENALTY + (long) hintsUsed * hintCost;
-        return clampScore(getBasePoints() - penalty);
+        return clampScore(dynamicBase - penalty);
     }
 
     @Override
