@@ -561,11 +561,11 @@
   <!-- CTFd-STYLE CHALLENGE DETAIL MODAL                         -->
   <!-- ═════════════════════════════════════════════════════════ -->
   <div id="modal-challenge" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
-    <div class="bg-ctf-card border border-ctf-border max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-ctf-card border border-ctf-border max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
       
       <!-- Modal Header -->
       <div class="p-6 border-b border-ctf-border flex items-start justify-between bg-[#161b22]">
-        <div class="space-y-1">
+        <div class="space-y-1 pr-6">
           <div class="flex items-center gap-2 flex-wrap">
             <span id="mod-cat-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold badge-crypto">CRYPTO</span>
             <span id="mod-diff-badge" class="px-2 py-0.5 rounded text-[11px] font-mono font-medium text-ctf-muted border border-ctf-border">MEDIUM</span>
@@ -573,8 +573,8 @@
           </div>
           <h3 id="mod-title" class="text-xl font-bold text-white pt-1">Challenge Title</h3>
         </div>
-        <button onclick="closeChallengeModal()" class="text-ctf-muted hover:text-white text-lg p-1.5 rounded-lg hover:bg-ctf-border/40 transition-colors">
-          <i class="fa-solid fa-xmark"></i>
+        <button onclick="closeModal()" title="Close (Esc)" aria-label="Close modal" class="text-ctf-muted hover:text-white text-lg p-2 rounded-lg hover:bg-ctf-border/40 transition-colors flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
@@ -1146,9 +1146,54 @@
       }
     }
 
-    function closeChallengeModal() {
-      $('#modal-challenge').classList.add('hidden');
+    function closeModal() {
+      closeChallengeModal();
+      closeAuthModal();
     }
+
+    function closeChallengeModal() {
+      const m = $('#modal-challenge') || $('#subModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    function closeAuthModal() {
+      const a = $('#modal-auth');
+      if (a) a.classList.add('hidden');
+    }
+
+    // --- MODAL BACKDROP & KEYBOARD DISMISS ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Challenge Modal Backdrop
+      const modalChallenge = document.getElementById('modal-challenge');
+      if (modalChallenge) {
+        modalChallenge.addEventListener('click', (e) => {
+          if (e.target === modalChallenge) closeModal();
+        });
+      }
+
+      // subModal alias listener
+      const subModal = document.getElementById('subModal');
+      if (subModal) {
+        subModal.addEventListener('click', (e) => {
+          if (e.target === subModal) closeModal();
+        });
+      }
+
+      // Auth Modal Backdrop
+      const modalAuth = document.getElementById('modal-auth');
+      if (modalAuth) {
+        modalAuth.addEventListener('click', (e) => {
+          if (e.target === modalAuth) closeAuthModal();
+        });
+      }
+
+      // Escape key to dismiss any open modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          closeModal();
+        }
+      });
+    });
 
     function switchModalTab(tab) {
       if (tab === 'desc') {
