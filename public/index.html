@@ -245,47 +245,41 @@
     </section>
 
     <!-- ═════════════════════════════════════════════════════════ -->
-    <!-- 3. CONTEST RADAR VIEW                                     -->
+    <!-- 3. MULTI-PLATFORM CONTEST RADAR VIEW                      -->
     <!-- ═════════════════════════════════════════════════════════ -->
     <section id="view-radar" class="view-panel space-y-6 hidden">
-      <div class="flex items-center justify-between pb-4 border-b border-ctf-border">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-ctf-border">
         <div>
           <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
-            <i class="fa-solid fa-satellite-dish text-ctf-yellow"></i> Live Contest Radar
+            <i class="fa-solid fa-satellite-dish text-ctf-yellow"></i> Multi-Platform Contest Radar
           </h2>
-          <p class="text-xs text-ctf-muted mt-1">Aggregated upcoming competitive events from CTFtime and Codeforces APIs.</p>
+          <p class="text-xs text-ctf-muted mt-1">Live telemetry for upcoming CTFs and Competitive Programming tournaments across 4 major platforms.</p>
         </div>
-        <button onclick="fetchRadarEvents()" class="px-3 py-1.5 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded text-xs font-medium text-ctf-text hover:text-white flex items-center gap-1.5 transition-colors">
-          <i class="fa-solid fa-arrows-rotate"></i> Check Radar
+        <button onclick="fetchRadarEvents()" id="btn-refresh-radar" class="px-3.5 py-1.5 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded-lg text-xs font-medium text-ctf-text hover:text-white flex items-center gap-1.5 transition-colors shadow-sm">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Telemetry
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- CTFtime Events -->
-        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
-          <div class="flex items-center justify-between border-b border-ctf-border pb-3">
-            <h3 class="font-bold text-white flex items-center gap-2 text-sm">
-              <i class="fa-solid fa-shield-halved text-ctf-blue"></i> CTFtime Upcoming CTFs
-            </h3>
-            <span class="text-[11px] font-mono text-ctf-muted">Global Schedule</span>
-          </div>
-          <div id="radar-ctftime-list" class="space-y-3">
-            <div class="text-center py-8 text-ctf-muted text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Scanning CTFtime horizon...</div>
-          </div>
-        </div>
+      <!-- Platform Filter Pills -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <button onclick="filterRadar('ALL')" class="radar-pill active px-3.5 py-1.5 rounded-full font-semibold bg-ctf-blue text-white transition-all shadow-sm">All Platforms (<span id="radar-count-all">0</span>)</button>
+        <button onclick="filterRadar('CTFTIME')" class="radar-pill px-3.5 py-1.5 rounded-full font-semibold bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-shield-halved text-ctf-blue"></i> CTFtime (<span id="radar-count-ctftime">0</span>)
+        </button>
+        <button onclick="filterRadar('CODEFORCES')" class="radar-pill px-3.5 py-1.5 rounded-full font-semibold bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-ctf-yellow"></i> Codeforces (<span id="radar-count-codeforces">0</span>)
+        </button>
+        <button onclick="filterRadar('ATCODER')" class="radar-pill px-3.5 py-1.5 rounded-full font-semibold bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-all flex items-center gap-1.5">
+          <span class="text-xs">🇯🇵</span> AtCoder (<span id="radar-count-atcoder">0</span>)
+        </button>
+        <button onclick="filterRadar('CODECHEF')" class="radar-pill px-3.5 py-1.5 rounded-full font-semibold bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-utensils text-amber-400"></i> CodeChef (<span id="radar-count-codechef">0</span>)
+        </button>
+      </div>
 
-        <!-- Codeforces Rounds -->
-        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
-          <div class="flex items-center justify-between border-b border-ctf-border pb-3">
-            <h3 class="font-bold text-white flex items-center gap-2 text-sm">
-              <i class="fa-solid fa-code text-ctf-yellow"></i> Codeforces Upcoming Rounds
-            </h3>
-            <span class="text-[11px] font-mono text-ctf-muted">Official Rounds</span>
-          </div>
-          <div id="radar-codeforces-list" class="space-y-3">
-            <div class="text-center py-8 text-ctf-muted text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Scanning Codeforces horizon...</div>
-          </div>
-        </div>
+      <!-- Radar Events Grid -->
+      <div id="radar-events-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Injected via JavaScript -->
       </div>
     </section>
 
@@ -581,6 +575,30 @@
             </div>
             <button id="btn-admin-sync-sec" onclick="adminSyncSecurity()" class="w-full py-2 bg-ctf-purple/20 hover:bg-ctf-purple/30 border border-ctf-purple/50 text-ctf-purple font-semibold rounded text-xs transition-colors">
               <i class="fa-solid fa-shield-virus mr-1.5"></i> Sync Security Exercises
+            </button>
+          </div>
+
+          <!-- AtCoder Template Problemset Sync -->
+          <div class="p-4 bg-[#11161d] border border-ctf-border rounded-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-xs text-white"><span>🇯🇵</span> AtCoder Problemset</span>
+              <span class="text-[10px] text-ctf-muted font-mono">ABC / ARC Curated</span>
+            </div>
+            <p class="text-xs text-ctf-muted">Ingest structured AtCoder algorithm challenges with official constraints and testcases.</p>
+            <button id="btn-admin-sync-atcoder" onclick="adminSyncAtCoder()" class="w-full py-2 bg-ctf-red/20 hover:bg-ctf-red/30 border border-ctf-red/50 text-red-400 font-semibold rounded text-xs transition-colors">
+              <i class="fa-solid fa-download mr-1.5"></i> Ingest AtCoder Problems
+            </button>
+          </div>
+
+          <!-- CodeChef Template Problemset Sync -->
+          <div class="p-4 bg-[#11161d] border border-ctf-border rounded-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-xs text-white"><i class="fa-solid fa-utensils text-amber-400 mr-1.5"></i> CodeChef Problemset</span>
+              <span class="text-[10px] text-ctf-muted font-mono">Starters / Cook-Off</span>
+            </div>
+            <p class="text-xs text-ctf-muted">Ingest curated CodeChef competitive programming puzzles with verification testcases.</p>
+            <button id="btn-admin-sync-codechef" onclick="adminSyncCodeChef()" class="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-semibold rounded text-xs transition-colors">
+              <i class="fa-solid fa-download mr-1.5"></i> Ingest CodeChef Problems
             </button>
           </div>
         </div>
@@ -1531,54 +1549,221 @@
       });
     }
 
-    // --- RADAR / UPCOMING EVENTS ---
+    // --- MULTI-PLATFORM CONTEST RADAR ENGINE ---
+    let radarEventsData = [];
+    let activeRadarFilter = 'ALL';
+    let radarTimerInterval = null;
+
+    function filterRadar(platform) {
+      activeRadarFilter = platform;
+      document.querySelectorAll('.radar-pill').forEach(el => {
+        el.className = 'radar-pill px-3.5 py-1.5 rounded-full font-semibold bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-all';
+      });
+      event.target.closest('.radar-pill').className = 'radar-pill active px-3.5 py-1.5 rounded-full font-semibold bg-ctf-blue text-white transition-all shadow-sm';
+      renderRadarEvents();
+    }
+
     async function fetchRadarEvents() {
-      const ctftimeContainer = $('#radar-ctftime-list');
-      const cfContainer = $('#radar-codeforces-list');
+      const grid = $('#radar-events-grid');
+      grid.innerHTML = `
+        <div class="col-span-full text-center py-16 bg-ctf-card border border-ctf-border rounded-xl">
+          <i class="fa-solid fa-satellite-dish text-3xl text-ctf-yellow fa-spin mb-3"></i>
+          <p class="text-sm text-white font-medium">Scanning multi-platform tournament telemetry...</p>
+          <p class="text-xs text-ctf-muted mt-1 font-mono">Querying CTFtime, Codeforces, AtCoder, and CodeChef feeds</p>
+        </div>
+      `;
 
       try {
         const res = await fetch('/api/events/upcoming');
         if (res.ok) {
-          const events = await res.json();
-          
-          // Render CTFtime events
-          const ctfs = events.filter(e => e.source === 'CTFTIME' || e.type === 'CTF');
-          if (ctfs.length === 0) {
-            ctftimeContainer.innerHTML = `<div class="text-xs text-ctf-muted text-center py-4">No upcoming CTFs scheduled on radar.</div>`;
-          } else {
-            ctftimeContainer.innerHTML = ctfs.map(e => `
-              <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg flex items-center justify-between">
-                <div>
-                  <h5 class="text-xs font-bold text-white">${escapeHtml(e.title)}</h5>
-                  <div class="text-[10px] text-ctf-muted mt-0.5">Format: ${escapeHtml(e.format || 'Jeopardy')} | Weight: ${escapeHtml(e.weight || '1.0')}</div>
-                </div>
-                <a href="${escapeHtml(e.url || '#')}" target="_blank" class="px-2.5 py-1 bg-ctf-blue/10 hover:bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/30 rounded text-[11px] font-semibold">
-                  CTFtime <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-                </a>
-              </div>
-            `).join('');
-          }
+          radarEventsData = await res.json();
+          updateRadarCounts();
+          renderRadarEvents();
 
-          // Render Codeforces events
-          const cfs = events.filter(e => e.source === 'CODEFORCES' || e.type === 'CP');
-          if (cfs.length === 0) {
-            cfContainer.innerHTML = `<div class="text-xs text-ctf-muted text-center py-4">No upcoming Codeforces rounds detected.</div>`;
-          } else {
-            cfContainer.innerHTML = cfs.map(e => `
-              <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg flex items-center justify-between">
-                <div>
-                  <h5 class="text-xs font-bold text-white">${escapeHtml(e.title)}</h5>
-                  <div class="text-[10px] text-ctf-muted mt-0.5">Duration: ${escapeHtml(e.durationSeconds ? Math.floor(e.durationSeconds/3600) + 'h' : '2h')}</div>
-                </div>
-                <a href="${escapeHtml(e.url || 'https://codeforces.com/contests')}" target="_blank" class="px-2.5 py-1 bg-ctf-yellow/10 hover:bg-ctf-yellow/20 text-ctf-yellow border border-ctf-yellow/30 rounded text-[11px] font-semibold">
-                  Register <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-                </a>
-              </div>
-            `).join('');
+          if (!radarTimerInterval) {
+            radarTimerInterval = setInterval(updateRadarCountdowns, 1000);
           }
+        } else {
+          showRadarErrorFallback();
         }
       } catch (err) {
-        showToast('Radar telemetry acquisition failed', 'error');
+        showRadarErrorFallback();
+      }
+    }
+
+    function showRadarErrorFallback() {
+      const grid = $('#radar-events-grid');
+      grid.innerHTML = `
+        <div class="col-span-full text-center py-12 bg-ctf-card border border-ctf-border rounded-xl">
+          <i class="fa-solid fa-triangle-exclamation text-3xl text-ctf-yellow mb-3"></i>
+          <p class="text-sm text-white font-semibold">External Radar Horizon Unreachable</p>
+          <p class="text-xs text-ctf-muted mt-1 max-w-md mx-auto">Operating in resilient offline cache mode. Check network connection or click refresh to retry.</p>
+        </div>
+      `;
+    }
+
+    function updateRadarCounts() {
+      const all = radarEventsData.length;
+      const ctf = radarEventsData.filter(e => (e.platform || '').toUpperCase() === 'CTFTIME').length;
+      const cf = radarEventsData.filter(e => (e.platform || '').toUpperCase() === 'CODEFORCES').length;
+      const ac = radarEventsData.filter(e => (e.platform || '').toUpperCase() === 'ATCODER').length;
+      const cc = radarEventsData.filter(e => (e.platform || '').toUpperCase() === 'CODECHEF').length;
+
+      const elAll = $('#radar-count-all'); if (elAll) elAll.textContent = all;
+      const elCtf = $('#radar-count-ctftime'); if (elCtf) elCtf.textContent = ctf;
+      const elCf = $('#radar-count-codeforces'); if (elCf) elCf.textContent = cf;
+      const elAc = $('#radar-count-atcoder'); if (elAc) elAc.textContent = ac;
+      const elCc = $('#radar-count-codechef'); if (elCc) elCc.textContent = cc;
+    }
+
+    function renderRadarEvents() {
+      const grid = $('#radar-events-grid');
+      grid.innerHTML = '';
+
+      let list = radarEventsData;
+      if (activeRadarFilter !== 'ALL') {
+        list = list.filter(e => (e.platform || '').toUpperCase() === activeRadarFilter);
+      }
+
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-16 bg-ctf-card border border-ctf-border rounded-xl">
+            <i class="fa-regular fa-calendar-xmark text-3xl text-ctf-muted mb-3"></i>
+            <p class="text-sm text-ctf-muted">No tournaments currently scheduled under this platform filter.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(e => {
+        const card = document.createElement('div');
+        card.className = "bg-ctf-card border border-ctf-border hover:border-ctf-blue/60 rounded-xl p-5 card-glow flex flex-col justify-between space-y-4 transition-all";
+
+        const plat = (e.platform || 'OTHER').toUpperCase();
+        let badgeClass = 'bg-ctf-blue/15 text-ctf-blue border-ctf-blue/30';
+        let platIcon = '<i class="fa-solid fa-shield-halved text-ctf-blue mr-1.5"></i> CTFtime';
+        let btnAccent = 'bg-ctf-blue/15 hover:bg-ctf-blue text-ctf-blue hover:text-white border-ctf-blue/40';
+
+        if (plat === 'CODEFORCES') {
+          badgeClass = 'bg-ctf-yellow/15 text-ctf-yellow border-ctf-yellow/30';
+          platIcon = '<i class="fa-solid fa-bolt text-ctf-yellow mr-1.5"></i> Codeforces';
+          btnAccent = 'bg-ctf-yellow/15 hover:bg-ctf-yellow text-ctf-yellow hover:text-black border-ctf-yellow/40';
+        } else if (plat === 'ATCODER') {
+          badgeClass = 'bg-red-500/15 text-red-400 border-red-500/30';
+          platIcon = '<span class="mr-1">🇯🇵</span> AtCoder';
+          btnAccent = 'bg-red-500/15 hover:bg-red-500 text-red-400 hover:text-white border-red-500/40';
+        } else if (plat === 'CODECHEF') {
+          badgeClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+          platIcon = '<i class="fa-solid fa-utensils text-amber-400 mr-1.5"></i> CodeChef';
+          btnAccent = 'bg-amber-500/15 hover:bg-amber-500 text-amber-400 hover:text-black border-amber-500/40';
+        }
+
+        const startIso = e.startTimeIso || e.startTime;
+        const durSec = e.durationSeconds || 7200;
+        const durFormatted = durSec >= 86400 ? `${Math.floor(durSec/86400)}d ${Math.floor((durSec%86400)/3600)}h` : `${Math.floor(durSec/3600)}h ${Math.floor((durSec%3600)/60)}m`;
+
+        card.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}">
+                ${platIcon}
+              </span>
+              <span class="text-[11px] font-mono text-ctf-muted flex items-center gap-1">
+                <i class="fa-regular fa-clock text-[10px]"></i> ${durFormatted}
+              </span>
+            </div>
+
+            <h4 class="font-bold text-sm text-white line-clamp-2 leading-snug">${escapeHtml(e.title)}</h4>
+            
+            <div class="p-2.5 bg-[#0d1117] border border-ctf-border/60 rounded-lg">
+              <div class="text-[10px] text-ctf-muted uppercase font-mono tracking-wider mb-0.5">LAUNCH COUNTDOWN</div>
+              <div class="text-xs font-mono font-bold text-ctf-yellow radar-countdown" data-start="${escapeHtml(startIso)}">
+                Calculating...
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-ctf-border/40 flex items-center justify-between text-xs">
+            <span class="text-[11px] text-ctf-muted">${startIso ? new Date(startIso).toLocaleDateString() : '-'}</span>
+            <a href="${escapeHtml(e.url || '#')}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg border font-semibold text-xs transition-all flex items-center gap-1.5 ${btnAccent}">
+              <span>Register / Open</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      updateRadarCountdowns();
+    }
+
+    function updateRadarCountdowns() {
+      document.querySelectorAll('.radar-countdown').forEach(el => {
+        const startStr = el.getAttribute('data-start');
+        if (!startStr) { el.textContent = 'Scheduled'; return; }
+
+        const startTime = new Date(startStr).getTime();
+        const now = Date.now();
+        const diff = startTime - now;
+
+        if (diff <= 0) {
+          el.innerHTML = '<span class="text-ctf-green font-bold"><i class="fa-solid fa-circle-play mr-1"></i> LIVE NOW</span>';
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        if (days > 0) {
+          el.textContent = `Starts in ${days}d ${hours}h ${mins}m`;
+        } else {
+          el.textContent = `Starts in ${hours}h ${mins}m ${secs}s`;
+        }
+      });
+    }
+
+    // Admin Multi-Platform Problem Sync Handlers
+    async function adminSyncAtCoder() {
+      const btn = $('#btn-admin-sync-atcoder');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Ingesting AtCoder...`;
+      try {
+        const res = await fetch('/api/admin/sync/atcoder', { method: 'POST' });
+        const d = await res.json();
+        if (res.ok) {
+          showToast(`Ingested ${d.syncedCount} AtCoder problems.`, 'success');
+          fetchChallenges();
+        } else {
+          showToast(d.error || 'AtCoder sync error', 'error');
+        }
+      } catch (e) {
+        showToast('AtCoder sync request failed', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-download mr-1.5"></i> Ingest AtCoder Problems`;
+      }
+    }
+
+    async function adminSyncCodeChef() {
+      const btn = $('#btn-admin-sync-codechef');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Ingesting CodeChef...`;
+      try {
+        const res = await fetch('/api/admin/sync/codechef', { method: 'POST' });
+        const d = await res.json();
+        if (res.ok) {
+          showToast(`Ingested ${d.syncedCount} CodeChef problems.`, 'success');
+          fetchChallenges();
+        } else {
+          showToast(d.error || 'CodeChef sync error', 'error');
+        }
+      } catch (e) {
+        showToast('CodeChef sync request failed', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-download mr-1.5"></i> Ingest CodeChef Problems`;
       }
     }
 

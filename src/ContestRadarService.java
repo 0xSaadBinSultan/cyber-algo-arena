@@ -7,16 +7,19 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Aggregator service for upcoming competitive programming and CTF tournaments.
- * Fetches and caches feeds from CTFtime and Codeforces with a 10-minute TTL and resilient offline fallbacks.
+ * Multi-platform aggregator for competitive programming and CTF tournaments.
+ * Concurrently ingests feeds from CTFtime, Codeforces, AtCoder, and CodeChef
+ * with 15-minute in-memory caching and isolated error boundaries.
  */
 public final class ContestRadarService {
 
-    private static final long CACHE_TTL_MILLIS = 10 * 60 * 1000L; // 10 minutes
+    private static final long CACHE_TTL_MILLIS = 15 * 60 * 1000L; // 15 minutes
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     private final HttpClient httpClient;
@@ -27,7 +30,7 @@ public final class ContestRadarService {
 
     public ContestRadarService() {
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(6))
+                .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.ALWAYS)
                 .build();
         this.mapper = new ObjectMapper();
@@ -49,36 +52,25 @@ public final class ContestRadarService {
     private synchronized void refreshEvents() {
         List<Map<String, Object>> merged = new ArrayList<>();
 
-        // 1. Fetch CTFtime
-        List<Map<String, Object>> ctfEvents = new ArrayList<>();
+        // Concurrently query 4 platforms with isolated error handling
+        CompletableFuture<List<Map<String, Object>>> ctftimeFuture = CompletableFuture.supplyAsync(this::fetchCtftimeSafely);
+        CompletableFuture<List<Map<String, Object>>> cfFuture = CompletableFuture.supplyAsync(this::fetchCodeforcesSafely);
+        CompletableFuture<List<Map<String, Object>>> atcoderFuture = CompletableFuture.supplyAsync(this::fetchAtCoderSafely);
+        CompletableFuture<List<Map<String, Object>>> codechefFuture = CompletableFuture.supplyAsync(this::fetchCodeChefSafely);
+
         try {
-            ctfEvents = fetchCtftimeEvents();
-        } catch (Exception ex) {
-            System.err.println("[ContestRadar] CTFtime fetch warning: " + ex.getMessage());
-        }
+            CompletableFuture.allOf(ctftimeFuture, cfFuture, atcoderFuture, codechefFuture).get(7, TimeUnit.SECONDS);
+        } catch (Exception ignored) {}
 
-        if (ctfEvents.isEmpty()) {
-            ctfEvents = getFallbackCtftimeEvents();
-        }
-        merged.addAll(ctfEvents);
+        merged.addAll(joinSafely(ctftimeFuture, this::getFallbackCtftimeEvents));
+        merged.addAll(joinSafely(cfFuture, this::getFallbackCodeforcesEvents));
+        merged.addAll(joinSafely(atcoderFuture, this::getFallbackAtCoderEvents));
+        merged.addAll(joinSafely(codechefFuture, this::getFallbackCodeChefEvents));
 
-        // 2. Fetch Codeforces
-        List<Map<String, Object>> cfEvents = new ArrayList<>();
-        try {
-            cfEvents = fetchCodeforcesEvents();
-        } catch (Exception ex) {
-            System.err.println("[ContestRadar] Codeforces fetch warning: " + ex.getMessage());
-        }
-
-        if (cfEvents.isEmpty()) {
-            cfEvents = getFallbackCodeforcesEvents();
-        }
-        merged.addAll(cfEvents);
-
-        // 3. Sort chronologically by startTime
+        // Sort chronologically by startTimeIso
         merged.sort((a, b) -> {
-            String t1 = (String) a.getOrDefault("startTime", "");
-            String t2 = (String) b.getOrDefault("startTime", "");
+            String t1 = String.valueOf(a.getOrDefault("startTimeIso", a.getOrDefault("startTime", "")));
+            String t2 = String.valueOf(b.getOrDefault("startTimeIso", b.getOrDefault("startTime", "")));
             return t1.compareTo(t2);
         });
 
@@ -86,131 +78,213 @@ public final class ContestRadarService {
         this.lastFetchTimestamp = System.currentTimeMillis();
     }
 
-    private List<Map<String, Object>> fetchCtftimeEvents() throws Exception {
-        long startSeconds = System.currentTimeMillis() / 1000L;
-        long finishSeconds = startSeconds + (30L * 24L * 3600L); // 30 days ahead
-        String url = "https://ctftime.org/api/v1/events/?limit=10&start=" + startSeconds + "&finish=" + finishSeconds;
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(6))
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .header("Accept-Language", "en-US,en;q=0.9")
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            return List.of();
-        }
-
-        List<Map<String, Object>> list = new ArrayList<>();
-        JsonNode root = mapper.readTree(response.body());
-        if (root.isArray()) {
-            for (JsonNode item : root) {
-                Map<String, Object> map = new LinkedHashMap<>();
-                map.put("id", "CTFTIME-" + item.path("id").asText());
-                map.put("title", item.path("title").asText("CTF Tournament"));
-                map.put("platform", "CTFtime");
-                map.put("format", item.path("format").asText("Jeopardy"));
-                map.put("url", item.path("ctftime_url").asText(item.path("url").asText("https://ctftime.org")));
-                map.put("startTime", item.path("start").asText());
-                map.put("endTime", item.path("finish").asText());
-                map.put("weight", item.path("weight").asDouble(0.0));
-                map.put("description", item.path("description").asText(""));
-                list.add(map);
+    private List<Map<String, Object>> joinSafely(CompletableFuture<List<Map<String, Object>>> future, java.util.function.Supplier<List<Map<String, Object>>> fallback) {
+        try {
+            List<Map<String, Object>> res = future.getNow(List.of());
+            if (res != null && !res.isEmpty()) {
+                return res;
             }
-        }
-        return list;
+        } catch (Exception ignored) {}
+        return fallback.get();
     }
 
-    private List<Map<String, Object>> fetchCodeforcesEvents() throws Exception {
-        String url = "https://codeforces.com/api/contest.list?gym=false";
+    // ── 1. CTFtime Feed ──
+    private List<Map<String, Object>> fetchCtftimeSafely() {
+        try {
+            long startSec = System.currentTimeMillis() / 1000L;
+            String url = "https://ctftime.org/api/v1/events/?limit=8&start=" + startSec;
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(6))
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .GET()
-                .build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(4))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return List.of();
+
+            List<Map<String, Object>> list = new ArrayList<>();
+            JsonNode root = mapper.readTree(response.body());
+            if (root.isArray()) {
+                for (JsonNode item : root) {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    String startIso = parseIsoOrFallback(item.path("start").asText(), Instant.now().plusSeconds(86400));
+                    long durationSeconds = 86400 * 2;
+                    try {
+                        Instant s = Instant.parse(startIso);
+                        Instant e = Instant.parse(parseIsoOrFallback(item.path("finish").asText(), s.plusSeconds(86400 * 2)));
+                        durationSeconds = Math.max(3600, Duration.between(s, e).getSeconds());
+                    } catch (Exception ignored) {}
+
+                    map.put("id", "CTFTIME-" + item.path("id").asText());
+                    map.put("title", item.path("title").asText("CTF Championship"));
+                    map.put("platform", "CTFTIME");
+                    map.put("url", item.path("ctftime_url").asText(item.path("url").asText("https://ctftime.org")));
+                    map.put("startTimeIso", startIso);
+                    map.put("startTime", startIso);
+                    map.put("durationSeconds", durationSeconds);
+                    map.put("status", "UPCOMING");
+                    map.put("format", item.path("format").asText("Jeopardy"));
+                    list.add(map);
+                }
+            }
+            return list;
+        } catch (Exception ex) {
             return List.of();
         }
+    }
 
-        List<Map<String, Object>> list = new ArrayList<>();
-        JsonNode root = mapper.readTree(response.body());
-        if ("OK".equalsIgnoreCase(root.path("status").asText())) {
-            JsonNode result = root.path("result");
-            int count = 0;
-            if (result.isArray()) {
-                for (JsonNode item : result) {
-                    if ("BEFORE".equalsIgnoreCase(item.path("phase").asText())) {
-                        Map<String, Object> map = new LinkedHashMap<>();
-                        int contestId = item.path("id").asInt();
-                        long startTimeSec = item.path("startTimeSeconds").asLong();
-                        long durationSec = item.path("durationSeconds").asLong();
+    // ── 2. Codeforces Feed ──
+    private List<Map<String, Object>> fetchCodeforcesSafely() {
+        try {
+            String url = "https://codeforces.com/api/contest.list?gym=false";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(4))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
 
-                        Instant startInstant = Instant.ofEpochSecond(startTimeSec);
-                        Instant endInstant = startInstant.plusSeconds(durationSec);
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return List.of();
 
-                        map.put("id", "CF-" + contestId);
-                        map.put("title", item.path("name").asText("Codeforces Round"));
-                        map.put("platform", "Codeforces");
-                        map.put("format", item.path("type").asText("CF-ICPC"));
-                        map.put("url", "https://codeforces.com/contests/" + contestId);
-                        map.put("startTime", startInstant.toString());
-                        map.put("endTime", endInstant.toString());
-                        map.put("durationSeconds", durationSec);
-                        map.put("description", "Official Codeforces Round");
-                        list.add(map);
+            List<Map<String, Object>> list = new ArrayList<>();
+            JsonNode root = mapper.readTree(response.body());
+            if ("OK".equalsIgnoreCase(root.path("status").asText())) {
+                JsonNode result = root.path("result");
+                if (result.isArray()) {
+                    int count = 0;
+                    for (JsonNode item : result) {
+                        if ("BEFORE".equalsIgnoreCase(item.path("phase").asText())) {
+                            int contestId = item.path("id").asInt();
+                            long startTimeSec = item.path("startTimeSeconds").asLong();
+                            long durationSec = item.path("durationSeconds").asLong();
+                            Instant start = Instant.ofEpochSecond(startTimeSec);
 
-                        count++;
-                        if (count >= 5) break;
+                            Map<String, Object> map = new LinkedHashMap<>();
+                            map.put("id", "CF-" + contestId);
+                            map.put("title", item.path("name").asText("Codeforces Round"));
+                            map.put("platform", "CODEFORCES");
+                            map.put("url", "https://codeforces.com/contests/" + contestId);
+                            map.put("startTimeIso", start.toString());
+                            map.put("startTime", start.toString());
+                            map.put("durationSeconds", durationSec > 0 ? durationSec : 7200);
+                            map.put("status", "UPCOMING");
+                            map.put("format", "CF Round");
+                            list.add(map);
+
+                            count++;
+                            if (count >= 6) break;
+                        }
                     }
                 }
             }
+            return list;
+        } catch (Exception ex) {
+            return List.of();
         }
-        return list;
     }
 
+    // ── 3. AtCoder Feed (via Kontests Zero-Auth API) ──
+    private List<Map<String, Object>> fetchAtCoderSafely() {
+        return fetchKontestsPlatform("https://kontests.net/api/v1/at_coder", "ATCODER", "AtCoder Contest");
+    }
+
+    // ── 4. CodeChef Feed (via Kontests Zero-Auth API) ──
+    private List<Map<String, Object>> fetchCodeChefSafely() {
+        return fetchKontestsPlatform("https://kontests.net/api/v1/code_chef", "CODECHEF", "CodeChef Challenge");
+    }
+
+    private List<Map<String, Object>> fetchKontestsPlatform(String url, String platform, String defaultTitle) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(4))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return List.of();
+
+            List<Map<String, Object>> list = new ArrayList<>();
+            JsonNode root = mapper.readTree(response.body());
+            if (root.isArray()) {
+                int count = 0;
+                for (JsonNode item : root) {
+                    String name = item.path("name").asText(defaultTitle);
+                    String contestUrl = item.path("url").asText("https://kontests.net");
+                    String startTimeStr = item.path("start_time").asText();
+                    double durationSec = item.path("duration").asDouble(7200.0);
+
+                    String startIso = parseIsoOrFallback(startTimeStr, Instant.now().plusSeconds(86400 * 2));
+
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", platform + "-" + Math.abs(name.hashCode() % 10000));
+                    map.put("title", name);
+                    map.put("platform", platform);
+                    map.put("url", contestUrl);
+                    map.put("startTimeIso", startIso);
+                    map.put("startTime", startIso);
+                    map.put("durationSeconds", (long) durationSec);
+                    map.put("status", "UPCOMING");
+                    map.put("format", platform);
+                    list.add(map);
+
+                    count++;
+                    if (count >= 5) break;
+                }
+            }
+            return list;
+        } catch (Exception ex) {
+            return List.of();
+        }
+    }
+
+    private String parseIsoOrFallback(String input, Instant fallback) {
+        if (input == null || input.isBlank()) return fallback.toString();
+        try {
+            // Check if standard ISO-8601
+            return Instant.parse(input).toString();
+        } catch (DateTimeParseException ex) {
+            try {
+                // Try format 'yyyy-MM-dd HH:mm:ss UTC'
+                String clean = input.replace(" UTC", "Z").replace(" ", "T");
+                return Instant.parse(clean).toString();
+            } catch (Exception e2) {
+                return fallback.toString();
+            }
+        }
+    }
+
+    // ── Fallback Datasets ──
     private List<Map<String, Object>> getFallbackCtftimeEvents() {
         return List.of(
                 Map.of(
                         "id", "CTFTIME-3159",
                         "title", "PwnSec CTF 2026",
-                        "platform", "CTFtime",
-                        "format", "Jeopardy",
+                        "platform", "CTFTIME",
                         "url", "https://ctftime.org/event/3159",
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 2).toString(),
                         "startTime", Instant.now().plusSeconds(86400 * 2).toString(),
-                        "endTime", Instant.now().plusSeconds(86400 * 3).toString(),
-                        "weight", 33.89,
-                        "description", "Premier jeopardy CTF featuring Web, Crypto, Rev, Pwn and Cloud."
+                        "durationSeconds", 86400 * 2L,
+                        "status", "UPCOMING",
+                        "format", "Jeopardy"
                 ),
                 Map.of(
                         "id", "CTFTIME-3065",
                         "title", "BrunnerCTF 2026",
-                        "platform", "CTFtime",
-                        "format", "Jeopardy",
+                        "platform", "CTFTIME",
                         "url", "https://ctftime.org/event/3065",
-                        "startTime", Instant.now().plusSeconds(86400 * 3).toString(),
-                        "endTime", Instant.now().plusSeconds(86400 * 5).toString(),
-                        "weight", 24.66,
-                        "description", "International CTF competition with jeopardy tasks."
-                ),
-                Map.of(
-                        "id", "CTFTIME-3402",
-                        "title", "CTFZone 2026",
-                        "platform", "CTFtime",
-                        "format", "Jeopardy",
-                        "url", "https://ctftime.org/event/3402",
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 4).toString(),
                         "startTime", Instant.now().plusSeconds(86400 * 4).toString(),
-                        "endTime", Instant.now().plusSeconds(86400 * 5).toString(),
-                        "weight", 45.00,
-                        "description", "Flagship international tournament."
+                        "durationSeconds", 86400 * 2L,
+                        "status", "UPCOMING",
+                        "format", "Jeopardy"
                 )
         );
     }
@@ -219,25 +293,57 @@ public final class ContestRadarService {
         return List.of(
                 Map.of(
                         "id", "CF-2257",
-                        "title", "Codeforces Round (Div. 2)",
-                        "platform", "Codeforces",
-                        "format", "CF",
+                        "title", "Codeforces Round 998 (Div. 2)",
+                        "platform", "CODEFORCES",
                         "url", "https://codeforces.com/contests/2257",
-                        "startTime", Instant.now().plusSeconds(86400 * 2).toString(),
-                        "endTime", Instant.now().plusSeconds(86400 * 2 + 7200).toString(),
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 1 + 3600 * 4).toString(),
+                        "startTime", Instant.now().plusSeconds(86400 * 1 + 3600 * 4).toString(),
                         "durationSeconds", 7200L,
-                        "description", "Official Codeforces Round"
+                        "status", "UPCOMING",
+                        "format", "CF Round"
                 ),
                 Map.of(
                         "id", "CF-2258",
-                        "title", "Codeforces Round (Div. 3)",
-                        "platform", "Codeforces",
-                        "format", "CF",
+                        "title", "Codeforces Round 999 (Div. 3)",
+                        "platform", "CODEFORCES",
                         "url", "https://codeforces.com/contests/2258",
-                        "startTime", Instant.now().plusSeconds(86400 * 4).toString(),
-                        "endTime", Instant.now().plusSeconds(86400 * 4 + 8100).toString(),
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 3 + 3600 * 2).toString(),
+                        "startTime", Instant.now().plusSeconds(86400 * 3 + 3600 * 2).toString(),
                         "durationSeconds", 8100L,
-                        "description", "Official Codeforces Round"
+                        "status", "UPCOMING",
+                        "format", "CF Round"
+                )
+        );
+    }
+
+    private List<Map<String, Object>> getFallbackAtCoderEvents() {
+        return List.of(
+                Map.of(
+                        "id", "ATCODER-368",
+                        "title", "AtCoder Beginner Contest 368",
+                        "platform", "ATCODER",
+                        "url", "https://atcoder.jp/contests/abc368",
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 2 + 7200).toString(),
+                        "startTime", Instant.now().plusSeconds(86400 * 2 + 7200).toString(),
+                        "durationSeconds", 6000L,
+                        "status", "UPCOMING",
+                        "format", "ABC"
+                )
+        );
+    }
+
+    private List<Map<String, Object>> getFallbackCodeChefEvents() {
+        return List.of(
+                Map.of(
+                        "id", "CODECHEF-START150",
+                        "title", "CodeChef Starters 150 (Rated)",
+                        "platform", "CODECHEF",
+                        "url", "https://www.codechef.com/START150",
+                        "startTimeIso", Instant.now().plusSeconds(86400 * 3 + 1800).toString(),
+                        "startTime", Instant.now().plusSeconds(86400 * 3 + 1800).toString(),
+                        "durationSeconds", 7200L,
+                        "status", "UPCOMING",
+                        "format", "Starters"
                 )
         );
     }

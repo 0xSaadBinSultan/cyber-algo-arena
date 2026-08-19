@@ -26,6 +26,7 @@ public final class WebServer {
     private final ContestRadarService radarService;
     private final CodeforcesSyncService codeforcesSyncService;
     private final SecurityPuzzleSyncService securityPuzzleSyncService;
+    private final ProblemSyncService problemSyncService;
 
     public WebServer(ContestEngine engine, int port) {
         this.engine = engine;
@@ -34,6 +35,7 @@ public final class WebServer {
         this.radarService = new ContestRadarService();
         this.codeforcesSyncService = new CodeforcesSyncService();
         this.securityPuzzleSyncService = new SecurityPuzzleSyncService();
+        this.problemSyncService = new ProblemSyncService();
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -121,6 +123,8 @@ public final class WebServer {
         app.delete("/api/admin/challenges/{id}", this::handleDeleteChallenge);
         app.post("/api/admin/sync", this::handleSync);
         app.post("/api/admin/sync/codeforces", this::handleSyncCodeforces);
+        app.post("/api/admin/sync/atcoder", this::handleSyncAtCoder);
+        app.post("/api/admin/sync/codechef", this::handleSyncCodeChef);
         app.post("/api/admin/sync/security-exercises", this::handleSyncSecurityExercises);
     }
 
@@ -675,6 +679,30 @@ public final class WebServer {
         response.put("message", "Security exercise sync complete");
         response.put("syncedCount", result.syncedCount());
         response.put("problems", result.problems());
+        ctx.json(response);
+    }
+
+    private void handleSyncAtCoder(Context ctx) {
+        User user = requireAdmin(ctx);
+        if (user == null) return;
+
+        ProblemSyncService.SyncResult result = problemSyncService.syncAtCoder(engine);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", "AtCoder challenge sync complete");
+        response.put("syncedCount", result.syncedCount());
+        response.put("problems", result.problemIds());
+        ctx.json(response);
+    }
+
+    private void handleSyncCodeChef(Context ctx) {
+        User user = requireAdmin(ctx);
+        if (user == null) return;
+
+        ProblemSyncService.SyncResult result = problemSyncService.syncCodeChef(engine);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", "CodeChef challenge sync complete");
+        response.put("syncedCount", result.syncedCount());
+        response.put("problems", result.problemIds());
         ctx.json(response);
     }
 
