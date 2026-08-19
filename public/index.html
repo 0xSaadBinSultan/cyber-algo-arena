@@ -1,678 +1,417 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber-Algo Arena — CTF & CP Competition Platform</title>
+  <title>Cyber-Algo Arena — Hybrid CTF & CP Platform</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            cyber: {
-              bg: '#050510',
-              card: '#0d0d1a',
-              card2: '#121224',
-              border: '#1a1a2e',
-              border2: '#2a2a4a',
-              cyan: '#00f0ff',
-              magenta: '#ff00aa',
-              green: '#00ff88',
-              yellow: '#ffe600',
-              red: '#ff003c'
+            ctf: {
+              bg: '#0d1117',
+              card: '#161b22',
+              cardHover: '#1c2128',
+              border: '#30363d',
+              borderHover: '#58a6ff',
+              blue: '#58a6ff',
+              purple: '#8957e5',
+              green: '#238636',
+              greenHover: '#2ea043',
+              red: '#f85149',
+              yellow: '#d29922',
+              text: '#c9d1d9',
+              muted: '#8b949e'
             }
           },
           fontFamily: {
-            mono: ['"JetBrains Mono"', 'monospace'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
           }
         }
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
-      background-color: #050510;
-      color: #e0e0e0;
-      font-family: 'JetBrains Mono', monospace;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Inter', sans-serif;
     }
-    .scanlines {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.12));
-      background-size: 100% 4px;
-      pointer-events: none;
-      z-index: 9999;
-    }
-    .neon-border {
-      border: 1px solid #00f0ff;
-      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25), inset 0 0 12px rgba(0, 240, 255, 0.05);
-    }
-    .neon-border-magenta {
-      border: 1px solid #ff00aa;
-      box-shadow: 0 0 12px rgba(255, 0, 170, 0.25), inset 0 0 12px rgba(255, 0, 170, 0.05);
-    }
-    .neon-border-yellow {
-      border: 1px solid #ffe600;
-      box-shadow: 0 0 12px rgba(255, 230, 0, 0.25), inset 0 0 12px rgba(255, 230, 0, 0.05);
-    }
-    .neon-border-red {
-      border: 1px solid #ff003c;
-      box-shadow: 0 0 12px rgba(255, 0, 60, 0.25), inset 0 0 12px rgba(255, 0, 60, 0.05);
-    }
-    .neon-text-cyan { text-shadow: 0 0 8px rgba(0, 240, 255, 0.8); }
-    .neon-text-magenta { text-shadow: 0 0 8px rgba(255, 0, 170, 0.8); }
-    .neon-text-yellow { text-shadow: 0 0 8px rgba(255, 230, 0, 0.8); }
-    .input-cyber {
-      background: #090915;
-      border: 1px solid #1a1a2e;
-      color: #00f0ff;
-      transition: all 0.2s ease-in-out;
-    }
-    .input-cyber:focus {
-      outline: none;
-      border-color: #00f0ff;
-      box-shadow: 0 0 10px rgba(0,240,255,0.3);
-    }
-    .btn-cyber {
-      background: rgba(0, 240, 255, 0.1);
-      border: 1px solid #00f0ff;
-      color: #00f0ff;
-      transition: all 0.2s;
-    }
-    .btn-cyber:hover {
-      background: #00f0ff;
-      color: #050510;
-      box-shadow: 0 0 15px rgba(0,240,255,0.5);
-    }
-    .btn-cyber-magenta {
-      background: rgba(255, 0, 170, 0.1);
-      border: 1px solid #ff00aa;
-      color: #ff00aa;
-      transition: all 0.2s;
-    }
-    .btn-cyber-magenta:hover {
-      background: #ff00aa;
-      color: #ffffff;
-      box-shadow: 0 0 15px rgba(255,0,170,0.5);
-    }
-    .btn-cyber-yellow {
-      background: rgba(255, 230, 0, 0.1);
-      border: 1px solid #ffe600;
-      color: #ffe600;
-      transition: all 0.2s;
-    }
-    .btn-cyber-yellow:hover {
-      background: #ffe600;
-      color: #050510;
-      box-shadow: 0 0 15px rgba(255,230,0,0.5);
-    }
-    .btn-cyber-red {
-      background: rgba(255, 0, 60, 0.1);
-      border: 1px solid #ff003c;
-      color: #ff003c;
-      transition: all 0.2s;
-    }
-    .btn-cyber-red:hover {
-      background: #ff003c;
-      color: #ffffff;
-      box-shadow: 0 0 15px rgba(255,0,60,0.5);
-    }
-    .toast-container {
-      position: fixed;
-      top: 1.5rem;
-      right: 1.5rem;
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .toast {
-      padding: 0.75rem 1.25rem;
-      border-radius: 0.25rem;
-      font-size: 0.85rem;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    .toast-success { border: 1px solid #00ff88; background: #071a10; color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
-    .toast-error { border: 1px solid #ff003c; background: #1a050b; color: #ff003c; box-shadow: 0 0 10px rgba(255,0,60,0.3); }
-    .toast-info { border: 1px solid #00f0ff; background: #05141a; color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.3); }
-    .toast-warning { border: 1px solid #ffe600; background: #1a1705; color: #ffe600; box-shadow: 0 0 10px rgba(255,230,0,0.3); }
     
-    .modal-overlay {
-      background-color: rgba(5, 5, 16, 0.85);
-      backdrop-filter: blur(4px);
-    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
 
-    .segment-tab-active-ctf {
-      background: linear-gradient(135deg, rgba(0,240,255,0.2) 0%, rgba(0,240,255,0.05) 100%);
-      border-color: #00f0ff;
-      color: #00f0ff;
-      box-shadow: 0 0 15px rgba(0,240,255,0.3), inset 0 0 10px rgba(0,240,255,0.1);
+    .card-glow:hover {
+      box-shadow: 0 4px 20px -2px rgba(88, 166, 255, 0.15);
     }
-    .segment-tab-active-cp {
-      background: linear-gradient(135deg, rgba(255,230,0,0.2) 0%, rgba(255,230,0,0.05) 100%);
-      border-color: #ffe600;
-      color: #ffe600;
-      box-shadow: 0 0 15px rgba(255,230,0,0.3), inset 0 0 10px rgba(255,230,0,0.1);
-    }
-    .cat-pill-active {
-      background: rgba(0, 240, 255, 0.2);
-      border-color: #00f0ff;
-      color: #00f0ff;
-      box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
-    }
+    
+    .badge-crypto { background: rgba(137, 87, 229, 0.15); color: #a371f7; border: 1px solid rgba(137, 87, 229, 0.3); }
+    .badge-web { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.3); }
+    .badge-pwn { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3); }
+    .badge-forensics { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.3); }
+    .badge-misc { background: rgba(139, 148, 158, 0.15); color: #8b949e; border: 1px solid rgba(139, 148, 158, 0.3); }
+    .badge-cp { background: rgba(35, 134, 54, 0.15); color: #3fb950; border: 1px solid rgba(35, 134, 54, 0.3); }
   </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-cyber-cyan selection:text-black">
-  <div class="scanlines"></div>
-  <div id="toast-container" class="toast-container"></div>
+<body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">
 
-  <!-- AUTHENTICATION VIEW -->
-  <div id="view-auth" class="flex-grow flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-cyber-card neon-border p-8 relative overflow-hidden">
-      <div class="text-center mb-6">
-        <pre class="text-[9px] leading-tight text-cyber-cyan select-none mx-auto mb-2 font-bold">
- ██████╗██╗   ██╗██████╗ ███████╗██████╗ 
-██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
-██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝
-██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗
-╚██████╗   ██║   ██████╔╝███████╗██║  ██║
- ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝
-        </pre>
-        <h1 class="text-xl font-bold tracking-widest text-white uppercase mt-2">Cyber-Algo Arena</h1>
-        <p class="text-xs text-cyber-cyan mt-1 tracking-wider">[ MULTI-CONTEST PLATFORM · HARDENED ]</p>
-      </div>
-
-      <!-- Login Form -->
-      <form id="form-login" class="space-y-4">
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Operative Handle</label>
-          <input type="text" id="login-username" class="w-full input-cyber p-2.5 text-sm" placeholder="Username" required autocomplete="username">
-        </div>
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Access Passkey</label>
-          <input type="password" id="login-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="w-full btn-cyber p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Initialize Connection</button>
-        <div class="text-center mt-4">
-          <a href="#" id="link-to-register" class="text-cyber-magenta text-xs hover:underline hover:neon-text-magenta">New Operative? Create Account</a>
-        </div>
-      </form>
-
-      <!-- Simplified Register Form -->
-      <form id="form-register" class="space-y-3 hidden">
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Handle (Username)</label>
-          <input type="text" id="reg-username" class="w-full input-cyber p-2 text-sm" placeholder="Unique username" required autocomplete="username">
-        </div>
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Email</label>
-          <input type="email" id="reg-email" class="w-full input-cyber p-2 text-sm" placeholder="operative@domain.com" required autocomplete="email">
-        </div>
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Password</label>
-          <input type="password" id="reg-password" class="w-full input-cyber p-2 text-sm" placeholder="Secret passkey" required autocomplete="new-password">
-        </div>
-        <div>
-          <label class="block text-xs text-cyber-cyan mb-1 uppercase font-semibold">Confirm Password</label>
-          <input type="password" id="reg-password-confirm" class="w-full input-cyber p-2 text-sm" placeholder="Repeat passkey" required autocomplete="new-password">
-        </div>
-        <button type="submit" class="w-full btn-cyber-magenta p-2.5 mt-4 text-sm font-bold tracking-wider uppercase">Establish Identity</button>
-        <div class="text-center mt-4">
-          <a href="#" id="link-to-login" class="text-cyber-cyan text-xs hover:underline hover:neon-text-cyan">Existing Operative? Login</a>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MAIN APP WRAPPER -->
-  <div id="view-app" class="hidden flex-col min-h-screen">
-    
-    <!-- NAVBAR -->
-    <nav class="sticky top-0 z-50 bg-cyber-bg border-b border-cyber-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)] py-3 px-6 flex flex-wrap items-center justify-between">
-      <div class="flex items-center gap-6">
-        <h1 class="text-lg md:text-xl font-bold text-cyber-cyan neon-text-cyan tracking-widest uppercase flex items-center gap-2">
-          <span class="text-cyber-magenta">⚡</span> CYBER-ALGO ARENA
-        </h1>
-        <div class="hidden md:flex space-x-5">
-          <a href="#" class="nav-link text-cyber-cyan neon-text-cyan font-bold transition-colors uppercase text-sm" data-target="challenges">Challenges</a>
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="radar">📡 Radar</a>
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="team">Team Hub</a>
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="profile">Profile</a>
-          <a href="#" class="nav-link text-gray-400 hover:text-cyber-cyan hover:neon-text-cyan transition-colors uppercase text-sm" data-target="leaderboard">Leaderboard</a>
-          <a href="#" id="nav-admin" class="nav-link text-cyber-magenta hover:neon-text-magenta transition-colors uppercase text-sm hidden" data-target="admin">Admin</a>
-        </div>
-      </div>
-      <div class="flex items-center gap-4 mt-2 md:mt-0">
-        <div class="text-xs text-gray-400 flex items-center gap-1.5">
-          <span>OPERATIVE:</span>
-          <span id="nav-username" class="text-cyber-cyan font-bold"></span>
-          <span id="nav-team-badge" class="px-1.5 py-0.2 bg-cyber-card2 border border-cyber-border text-[10px] text-cyber-yellow uppercase">NO TEAM</span>
-        </div>
-        <button id="btn-logout" class="text-xs border border-cyber-magenta text-cyber-magenta px-3 py-1 hover:bg-cyber-magenta hover:text-white transition-colors uppercase font-bold">DISCONNECT</button>
-      </div>
-      <div class="w-full flex md:hidden space-x-3 mt-3 border-t border-cyber-border pt-2 overflow-x-auto text-xs">
-        <a href="#" class="nav-link text-cyber-cyan uppercase" data-target="challenges">Challenges</a>
-        <a href="#" class="nav-link text-gray-400 uppercase" data-target="radar">Radar</a>
-        <a href="#" class="nav-link text-gray-400 uppercase" data-target="team">Team</a>
-        <a href="#" class="nav-link text-gray-400 uppercase" data-target="profile">Profile</a>
-        <a href="#" class="nav-link text-gray-400 uppercase" data-target="leaderboard">Leaderboard</a>
-        <a href="#" id="nav-admin-mobile" class="nav-link text-cyber-magenta uppercase hidden" data-target="admin">Admin</a>
-      </div>
-    </nav>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full relative z-10">
-      
-      <!-- 1. CHALLENGES SECTION WITH SEGMENTED SWITCHER -->
-      <section id="sec-challenges" class="app-section">
+  <!-- TOP NAVBAR (CTFd Standard) -->
+  <nav class="sticky top-0 z-40 backdrop-blur-md bg-[#161b22]/90 border-b border-ctf-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
         
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-cyber-border pb-4">
-          <div>
-            <h2 class="text-2xl font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-              <span>ACTIVE TARGETS</span>
-              <span id="stat-total-badge" class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan">3 ONLINE</span>
-            </h2>
-            <p class="text-xs text-gray-400 mt-1">Click any problem row to view briefing, download attachments, and transmit solutions</p>
-          </div>
+        <!-- Brand / Logo -->
+        <div class="flex items-center gap-3">
+          <a href="#" onclick="showView('challenges'); return false;" class="flex items-center gap-2.5 text-white font-bold text-lg tracking-tight group">
+            <div class="w-8 h-8 rounded bg-gradient-to-br from-ctf-blue to-ctf-purple flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+              <i class="fa-solid fa-flag text-sm"></i>
+            </div>
+            <span class="font-extrabold tracking-wide">CYBER-ALGO <span class="text-ctf-blue">ARENA</span></span>
+          </a>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-ctf-blue/10 text-ctf-blue border border-ctf-blue/30 hidden sm:inline-block">v2.0 CTFd-Hybrid</span>
+        </div>
 
-          <!-- Segmented Pill Switcher -->
-          <div class="inline-flex bg-cyber-card border border-cyber-border p-1 rounded-lg space-x-1 shadow-lg">
-            <button id="tab-ctf" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-ctf">
-              <span>🛡️</span>
-              <span>CTF Operations</span>
-              <span id="badge-ctf-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-cyan rounded border border-cyber-cyan">2</span>
+        <!-- Navigation Tabs -->
+        <div class="hidden md:flex items-center space-x-1">
+          <button onclick="showView('challenges')" id="nav-challenges" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-white bg-ctf-card border border-ctf-border hover:text-ctf-blue transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-bullseye text-ctf-blue"></i> Challenges
+          </button>
+          <button onclick="showView('scoreboard')" id="nav-scoreboard" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple text-ctf-purple"></i> Scoreboard
+          </button>
+          <button onclick="showView('radar')" id="nav-radar" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-satellite-dish text-ctf-yellow"></i> Radar
+          </button>
+          <button onclick="showView('team')" id="nav-team" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-users text-ctf-green"></i> Team
+          </button>
+          <button onclick="showView('admin')" id="nav-admin" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
+            <i class="fa-solid fa-shield-halved text-ctf-red"></i> Admin
+          </button>
+        </div>
+
+        <!-- Right: Auth State -->
+        <div class="flex items-center gap-3">
+          <div id="auth-unauthed" class="flex items-center gap-2">
+            <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 text-sm font-medium text-ctf-text hover:text-white hover:bg-ctf-border/40 rounded-md transition-colors">
+              <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Login
             </button>
-            <button id="tab-cp" class="segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-yellow border border-transparent">
-              <span>⚡</span>
-              <span>CP Arena</span>
-              <span id="badge-cp-count" class="ml-1 text-[10px] px-1.5 py-0.2 bg-black text-cyber-yellow rounded border border-cyber-yellow">1</span>
+            <button onclick="openAuthModal('register')" class="px-3.5 py-1.5 text-sm font-medium text-white bg-ctf-green hover:bg-ctf-greenHover rounded-md transition-colors shadow-sm">
+              <i class="fa-solid fa-user-plus mr-1.5"></i> Register
+            </button>
+          </div>
+
+          <div id="auth-authed" class="flex items-center gap-3 hidden">
+            <div class="flex items-center gap-2 px-3 py-1 bg-ctf-card border border-ctf-border rounded-full text-xs font-medium">
+              <span id="user-avatar" class="w-5 h-5 rounded-full bg-ctf-blue/20 text-ctf-blue flex items-center justify-center font-bold text-[10px]">U</span>
+              <span id="user-display" class="font-semibold text-white">player</span>
+              <span id="user-team-badge" class="px-1.5 py-0.2 bg-ctf-purple/20 text-ctf-purple border border-ctf-purple/30 rounded text-[10px] font-mono hidden">Team</span>
+            </div>
+            <button onclick="handleLogout()" title="Logout" class="p-2 text-ctf-muted hover:text-ctf-red hover:bg-ctf-card border border-transparent hover:border-ctf-border rounded-md transition-colors">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
             </button>
           </div>
         </div>
 
-        <!-- CTF DEDICATED VIEW -->
-        <div id="segment-ctf-view" class="space-y-4">
-          
-          <div class="flex flex-wrap items-center gap-2 pt-1 pb-2">
-            <span class="text-xs text-gray-400 uppercase font-semibold mr-1">Category:</span>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active" data-cat="ALL">ALL</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="CRYPTO">CRYPTO</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="WEB">WEB</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="REVERSE_ENGINEERING">REVERSE</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="PWN">PWN</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="OSINT">OSINT</button>
-            <button class="cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all" data-cat="MISC">MISC</button>
-          </div>
+      </div>
+    </div>
+    
+    <!-- Mobile Navigation bar -->
+    <div class="md:hidden flex items-center justify-around border-t border-ctf-border/60 py-2 px-4 text-xs">
+      <button onclick="showView('challenges')" class="text-ctf-blue flex flex-col items-center gap-1"><i class="fa-solid fa-bullseye"></i><span>Challenges</span></button>
+      <button onclick="showView('scoreboard')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-chart-simple"></i><span>Scores</span></button>
+      <button onclick="showView('radar')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-satellite-dish"></i><span>Radar</span></button>
+      <button onclick="showView('team')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-users"></i><span>Team</span></button>
+      <button onclick="showView('admin')" id="nav-admin-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-shield-halved"></i><span>Admin</span></button>
+    </div>
+  </nav>
 
-          <div class="overflow-x-auto bg-cyber-card neon-border rounded">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-cyber-card2 text-cyber-cyan uppercase text-xs tracking-wider border-b border-cyber-border">
-                  <th class="p-3.5">Target ID</th>
-                  <th class="p-3.5">Title</th>
-                  <th class="p-3.5">Category</th>
-                  <th class="p-3.5">Difficulty</th>
-                  <th class="p-3.5 text-center">Base Points</th>
-                  <th class="p-3.5 text-center">Hint Cost</th>
-                  <th class="p-3.5 text-center">Files</th>
-                  <th class="p-3.5 text-center">Status</th>
-                  <th class="p-3.5 text-right w-16"></th>
-                </tr>
-              </thead>
-              <tbody id="ctf-tbody" class="text-sm divide-y divide-cyber-border">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 1. CHALLENGES VIEW                                        -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-challenges" class="view-panel space-y-6">
+      
+      <!-- Top Switcher & Filters -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-ctf-border">
+        
+        <!-- CTF vs CP Segment Switcher -->
+        <div class="inline-flex p-1 bg-ctf-card border border-ctf-border rounded-lg text-sm">
+          <button id="tab-btn-ctf" onclick="switchChallengeTrack('CTF')" class="px-4 py-1.5 rounded-md font-medium text-white bg-ctf-blue/20 border border-ctf-blue/40 flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-shield-halved text-ctf-blue"></i>
+            <span>Security (CTF)</span>
+            <span id="ctf-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-ctf-card border border-ctf-border">0</span>
+          </button>
+          <button id="tab-btn-cp" onclick="switchChallengeTrack('CP')" class="px-4 py-1.5 rounded-md font-medium text-ctf-muted hover:text-white flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-code text-ctf-yellow"></i>
+            <span>Algorithms (CP)</span>
+            <span id="cp-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-ctf-card border border-ctf-border">0</span>
+          </button>
         </div>
 
-        <!-- CP DEDICATED VIEW -->
-        <div id="segment-cp-view" class="space-y-4 hidden">
-          <div class="flex items-center justify-between text-xs text-gray-400 px-1">
-            <div class="flex items-center gap-2">
-              <span class="text-cyber-yellow font-bold">ALGORITHMIC PROTOCOL:</span>
-              <span>Evaluate candidate outputs against hidden testcase suites.</span>
-            </div>
-            <span class="text-cyber-yellow">Time & Memory Limits Enforced</span>
-          </div>
-
-          <div class="overflow-x-auto bg-cyber-card neon-border-yellow rounded">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-cyber-card2 text-cyber-yellow uppercase text-xs tracking-wider border-b border-cyber-border">
-                  <th class="p-3.5">Problem ID</th>
-                  <th class="p-3.5">Title</th>
-                  <th class="p-3.5 text-center">Time Limit</th>
-                  <th class="p-3.5 text-center">Memory Limit</th>
-                  <th class="p-3.5">Difficulty</th>
-                  <th class="p-3.5 text-center">Points</th>
-                  <th class="p-3.5 text-center">Status</th>
-                  <th class="p-3.5 text-right w-16"></th>
-                </tr>
-              </thead>
-              <tbody id="cp-tbody" class="text-sm divide-y divide-cyber-border">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
+        <!-- Category Pill Filters -->
+        <div id="category-filter-bar" class="flex flex-wrap items-center gap-1.5 text-xs">
+          <button onclick="filterCategory('ALL')" class="cat-pill active px-3 py-1.5 rounded-full font-medium bg-ctf-blue text-white transition-colors">All</button>
+          <button onclick="filterCategory('CRYPTO')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Crypto</button>
+          <button onclick="filterCategory('WEB')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Web</button>
+          <button onclick="filterCategory('PWN')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Systems / Pwn</button>
+          <button onclick="filterCategory('FORENSICS')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Forensics</button>
+          <button onclick="filterCategory('MISC')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Misc</button>
         </div>
-      </section>
+      </div>
 
-      <!-- 1.5 CONTEST RADAR SECTION (CTFtime & Codeforces Aggregator) -->
-      <section id="sec-radar" class="app-section hidden">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-cyber-border pb-4">
-          <div>
-            <h2 class="text-2xl font-extrabold text-cyber-cyan neon-text-cyan uppercase tracking-wider flex items-center gap-2">
-              <span>📡 TOURNAMENT RADAR</span>
-              <span class="text-xs px-2 py-0.5 border border-cyber-cyan text-cyber-cyan bg-[rgba(0,240,255,0.1)]">LIVE AGGREGATOR</span>
-            </h2>
-            <p class="text-xs text-gray-400 mt-1">Real-time tracker for upcoming CTFtime and Codeforces championship rounds</p>
-          </div>
+      <!-- Challenge Grid Grouped By Category -->
+      <div id="challenges-container" class="space-y-8">
+        <!-- Dynamic Category Sections Injected Here -->
+      </div>
+    </section>
 
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
-            <span class="text-xs text-gray-400">10m Cached Intel</span>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 mb-6">
-          <span class="text-xs text-gray-400 uppercase font-semibold mr-1">Filter Platform:</span>
-          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active" data-platform="ALL">ALL PLATFORMS</button>
-          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan rounded font-bold uppercase transition-all" data-platform="CTFtime">🛡️ CTFtime</button>
-          <button class="radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-yellow rounded font-bold uppercase transition-all" data-platform="Codeforces">⚡ Codeforces</button>
-        </div>
-
-        <div id="radar-events-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Dynamic Event Cards -->
-        </div>
-      </section>
-
-      <!-- 2. TEAM HUB SECTION -->
-      <section id="sec-team" class="app-section hidden">
-        <div class="border-b border-cyber-border pb-3 mb-6">
-          <h2 class="text-2xl font-bold text-cyber-yellow uppercase flex items-center gap-2">
-            <span>🛡️</span> Team Operations Hub
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 2. SCOREBOARD VIEW                                        -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-scoreboard" class="view-panel space-y-8 hidden">
+      <div class="flex items-center justify-between pb-4 border-b border-ctf-border">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
+            <i class="fa-solid fa-trophy text-ctf-yellow"></i> Live Scoreboard
           </h2>
-          <p class="text-xs text-gray-400">Form competitive syndicates and register for contest participation</p>
+          <p class="text-xs text-ctf-muted mt-1">Real-time team standings and score progression over time.</p>
         </div>
+        <button onclick="fetchLeaderboard()" class="px-3 py-1.5 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded text-xs font-medium text-ctf-text hover:text-white flex items-center gap-1.5 transition-colors">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
+      </div>
 
-        <!-- No Team State -->
-        <div id="team-none-view" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div class="bg-cyber-card neon-border p-6 rounded">
-            <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase">Create New Syndicate</h3>
-            <form id="form-create-team" class="space-y-4">
-              <div>
-                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Syndicate Name</label>
-                <input type="text" id="create-team-name" class="w-full input-cyber p-2.5 text-sm" placeholder="e.g. CyberVanguard" required>
-              </div>
-              <div>
-                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Secret Passkey</label>
-                <input type="password" id="create-team-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required>
-              </div>
-              <button type="submit" class="w-full btn-cyber p-2.5 text-sm font-bold uppercase">Establish Syndicate</button>
-            </form>
-          </div>
-
-          <div class="bg-cyber-card neon-border-yellow p-6 rounded">
-            <h3 class="text-lg font-bold text-cyber-yellow mb-4 uppercase">Join Existing Syndicate</h3>
-            <form id="form-join-team" class="space-y-4">
-              <div>
-                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Syndicate Name / ID</label>
-                <input type="text" id="join-team-name" class="w-full input-cyber p-2.5 text-sm" placeholder="e.g. CyberVanguard" required>
-              </div>
-              <div>
-                <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Team Passkey</label>
-                <input type="password" id="join-team-password" class="w-full input-cyber p-2.5 text-sm" placeholder="••••••••" required>
-              </div>
-              <button type="submit" class="w-full btn-cyber-yellow p-2.5 text-sm font-bold uppercase">Join Syndicate</button>
-            </form>
-          </div>
+      <!-- Top 10 Progression Graph -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 card-glow">
+        <h3 class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-ctf-blue"></i> Score Progression Timeline
+        </h3>
+        <div class="h-64 sm:h-80 w-full relative">
+          <canvas id="scoreboardChart"></canvas>
         </div>
+      </div>
 
-        <!-- Team Active State -->
-        <div id="team-active-view" class="space-y-6 hidden">
-          <div class="bg-cyber-card neon-border p-6 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div class="text-xs text-cyber-cyan font-bold uppercase">Active Syndicate</div>
-              <h3 id="active-team-name" class="text-3xl font-extrabold text-white mt-1"></h3>
-              <div class="text-xs text-gray-400 mt-1">ID: <span id="active-team-id" class="font-mono text-gray-300"></span></div>
-            </div>
-            <div class="flex gap-6">
-              <div class="text-center">
-                <div class="text-xs text-gray-400 uppercase">Total Score</div>
-                <div id="active-team-score" class="text-2xl font-extrabold text-cyber-magenta">0</div>
-              </div>
-              <div class="text-center">
-                <div class="text-xs text-gray-400 uppercase">Members</div>
-                <div id="active-team-member-count" class="text-2xl font-extrabold text-cyber-cyan">0</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-cyber-card border border-cyber-border rounded p-6">
-            <h4 class="text-sm font-bold text-gray-300 uppercase mb-3">Syndicate Member Roster</h4>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-cyber-card2 text-gray-400 uppercase border-b border-cyber-border">
-                    <th class="p-3">Operative Handle</th>
-                    <th class="p-3">User ID</th>
-                    <th class="p-3">Personal Points</th>
-                    <th class="p-3 text-right">Role</th>
-                  </tr>
-                </thead>
-                <tbody id="team-members-tbody" class="divide-y divide-cyber-border text-gray-300">
-                  <!-- Injected dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. PLAYER PROFILE SECTION (CTFtime Radar & Personal Stats) -->
-      <section id="sec-profile" class="app-section hidden">
-        <div class="border-b border-cyber-border pb-3 mb-6">
-          <h2 class="text-2xl font-bold text-cyber-cyan uppercase flex items-center gap-2">
-            <span>👤</span> Operative Profile & Metrics
-          </h2>
-          <p class="text-xs text-gray-400">CTFtime-style individual breakdown and solve history</p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div class="bg-cyber-card neon-border p-6 rounded space-y-4">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 rounded-full bg-cyber-card2 border-2 border-cyber-cyan flex items-center justify-center text-2xl font-bold text-cyber-cyan">
-                <span id="prof-initial">U</span>
-              </div>
-              <div>
-                <h3 id="prof-username" class="text-xl font-bold text-white"></h3>
-                <div id="prof-email" class="text-xs text-gray-400 font-mono"></div>
-                <div id="prof-role-badge" class="inline-block mt-1 text-[10px] px-2 py-0.5 bg-cyber-card2 border border-cyber-cyan text-cyber-cyan font-bold uppercase">PLAYER</div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 pt-3 border-t border-cyber-border text-center">
-              <div class="p-3 bg-cyber-card2 rounded">
-                <div class="text-[10px] text-gray-400 uppercase font-semibold">Personal Score</div>
-                <div id="prof-score" class="text-xl font-extrabold text-cyber-magenta">0</div>
-              </div>
-              <div class="p-3 bg-cyber-card2 rounded">
-                <div class="text-[10px] text-gray-400 uppercase font-semibold">Solved Targets</div>
-                <div id="prof-solves" class="text-xl font-extrabold text-cyber-green">0</div>
-              </div>
-            </div>
-
-            <div class="text-xs text-gray-400 pt-2">
-              <div>Syndicate: <span id="prof-team" class="text-cyber-yellow font-bold">None</span></div>
-              <div class="mt-1">Registered: <span id="prof-created" class="text-gray-300"></span></div>
-            </div>
-          </div>
-
-          <div class="lg:col-span-2 bg-cyber-card border border-cyber-border rounded p-6">
-            <h3 class="text-sm font-bold text-cyber-cyan uppercase mb-4">Competency & Category Distribution</h3>
-            <div id="prof-categories-container" class="space-y-3">
-              <!-- Injected dynamically -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. LEADERBOARD VIEW -->
-      <section id="sec-leaderboard" class="app-section hidden">
-        <div class="flex justify-between items-center mb-6 border-b border-cyber-border pb-3">
-          <div>
-            <h2 class="text-2xl font-bold text-cyber-cyan uppercase">Global Rankings</h2>
-            <p class="text-xs text-gray-400">Live deterministic team scores</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2 h-2 rounded-full bg-cyber-green animate-pulse"></span>
-            <span class="text-xs text-gray-400">Live Auto-sync: 15s</span>
-          </div>
-        </div>
-        <div class="overflow-x-auto bg-cyber-card border border-cyber-border rounded">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-cyber-card2 border-b border-cyber-border text-gray-400 uppercase text-xs tracking-wider">
-                <th class="p-3.5 w-20">Rank</th>
-                <th class="p-3.5">Syndicate Name</th>
-                <th class="p-3.5 text-center">Solves</th>
-                <th class="p-3.5 text-center">Total Score</th>
-                <th class="p-3.5 text-right">Last Solve</th>
+      <!-- CTFd Striped Leaderboard Table -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-[#1c2128] text-ctf-muted border-b border-ctf-border uppercase text-[11px] font-semibold tracking-wider">
+              <tr>
+                <th class="py-3 px-4 w-16 text-center">Place</th>
+                <th class="py-3 px-4">Team</th>
+                <th class="py-3 px-4 text-center">Solves</th>
+                <th class="py-3 px-4 text-right">Score</th>
+                <th class="py-3 px-4 text-right">Last Solve</th>
               </tr>
             </thead>
-            <tbody id="leaderboard-tbody" class="text-sm divide-y divide-cyber-border">
-              <!-- Dynamically populated -->
+            <tbody id="scoreboard-tbody" class="divide-y divide-ctf-border/50 font-mono">
+              <!-- Rendered dynamically -->
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- 5. ADMIN VIEW -->
-      <section id="sec-admin" class="app-section hidden">
-        <div class="flex justify-between items-center mb-6 border-b border-cyber-magenta pb-3">
-          <div>
-            <h2 class="text-2xl font-bold text-cyber-magenta neon-text-magenta uppercase">Command Center</h2>
-            <p class="text-xs text-gray-400">Challenge Deployment, Deletion, Audit Logs & System Sync</p>
-          </div>
-          <button id="btn-sync" class="btn-cyber-magenta px-4 py-2 text-xs font-bold uppercase">Sync Database</button>
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 3. CONTEST RADAR VIEW                                     -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-radar" class="view-panel space-y-6 hidden">
+      <div class="flex items-center justify-between pb-4 border-b border-ctf-border">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
+            <i class="fa-solid fa-satellite-dish text-ctf-yellow"></i> Live Contest Radar
+          </h2>
+          <p class="text-xs text-ctf-muted mt-1">Aggregated upcoming competitive events from CTFtime and Codeforces APIs.</p>
         </div>
-        
-        <div class="bg-cyber-card border border-cyber-border p-6 rounded mb-8">
-          <h3 class="text-lg font-bold text-white uppercase mb-4">Existing Challenge Inventory</h3>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="bg-cyber-card2 text-gray-400 uppercase border-b border-cyber-border">
-                  <th class="p-3">ID</th>
-                  <th class="p-3">Type</th>
-                  <th class="p-3">Title</th>
-                  <th class="p-3">Points</th>
-                  <th class="p-3">Difficulty</th>
-                  <th class="p-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody id="admin-challenges-tbody" class="divide-y divide-cyber-border text-gray-300">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <button onclick="fetchRadarEvents()" class="px-3 py-1.5 bg-ctf-card border border-ctf-border hover:border-ctf-blue rounded text-xs font-medium text-ctf-text hover:text-white flex items-center gap-1.5 transition-colors">
+          <i class="fa-solid fa-arrows-rotate"></i> Check Radar
+        </button>
+      </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <!-- Add CTF -->
-          <div class="bg-cyber-card neon-border p-6 rounded">
-            <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase flex items-center gap-2">
-              <span>🛡️</span> Deploy CTF Challenge
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- CTFtime Events -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-ctf-border pb-3">
+            <h3 class="font-bold text-white flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-shield-halved text-ctf-blue"></i> CTFtime Upcoming CTFs
             </h3>
-            <form id="form-add-ctf" class="space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400 uppercase">Challenge ID</label><input type="text" id="ctf-id" placeholder="CTF-03" class="w-full input-cyber p-2 text-sm" required></div>
-                <div><label class="text-xs text-gray-400 uppercase">Base Points</label><input type="number" id="ctf-pts" placeholder="250" class="w-full input-cyber p-2 text-sm" required></div>
-              </div>
-              <div><label class="text-xs text-gray-400 uppercase">Title</label><input type="text" id="ctf-title" placeholder="Challenge Name" class="w-full input-cyber p-2 text-sm" required></div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-xs text-gray-400 uppercase">Difficulty</label>
-                  <select id="ctf-diff" class="w-full input-cyber p-2 text-sm">
-                    <option value="EASY">EASY</option><option value="MEDIUM" selected>MEDIUM</option><option value="HARD">HARD</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="text-xs text-gray-400 uppercase">Category</label>
-                  <select id="ctf-cat" class="w-full input-cyber p-2 text-sm">
-                    <option value="CRYPTO">CRYPTO</option>
-                    <option value="WEB">WEB</option>
-                    <option value="REVERSE_ENGINEERING">REVERSE_ENGINEERING</option>
-                    <option value="PWN">PWN</option>
-                    <option value="OSINT">OSINT</option>
-                    <option value="FORENSICS">FORENSICS</option>
-                    <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
-                    <option value="MISC">MISC</option>
-                  </select>
-                </div>
-              </div>
-              <div><label class="text-xs text-gray-400 uppercase">Raw Flag (SHA-256 Auto-hashed)</label><input type="text" id="ctf-flag" placeholder="flag{secret_token}" class="w-full input-cyber p-2 text-sm" required></div>
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400 uppercase">Hint Cost (Pts)</label><input type="number" id="ctf-hint" class="w-full input-cyber p-2 text-sm" value="25"></div>
-                <div><label class="text-xs text-gray-400 uppercase">Attachment Filename</label><input type="text" id="ctf-attachment" placeholder="vuln.zip or dump.pcap" class="w-full input-cyber p-2 text-sm"></div>
-              </div>
-              <button type="submit" class="w-full btn-cyber py-2.5 mt-2 text-sm font-bold uppercase">Deploy CTF Target</button>
-            </form>
+            <span class="text-[11px] font-mono text-ctf-muted">Global Schedule</span>
           </div>
-
-          <!-- Add CP -->
-          <div class="bg-cyber-card neon-border-yellow p-6 rounded">
-            <h3 class="text-lg font-bold text-cyber-yellow mb-4 uppercase flex items-center gap-2">
-              <span>⚡</span> Deploy CP Problem
-            </h3>
-            <form id="form-add-cp" class="space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400 uppercase">Problem ID</label><input type="text" id="cp-id" placeholder="CP-02" class="w-full input-cyber p-2 text-sm" required></div>
-                <div><label class="text-xs text-gray-400 uppercase">Base Points</label><input type="number" id="cp-pts" placeholder="300" class="w-full input-cyber p-2 text-sm" required></div>
-              </div>
-              <div><label class="text-xs text-gray-400 uppercase">Title</label><input type="text" id="cp-title" placeholder="Problem Title" class="w-full input-cyber p-2 text-sm" required></div>
-              <div>
-                <label class="text-xs text-gray-400 uppercase">Difficulty</label>
-                <select id="cp-diff" class="w-full input-cyber p-2 text-sm">
-                  <option value="EASY">EASY</option><option value="MEDIUM" selected>MEDIUM</option><option value="HARD">HARD</option>
-                </select>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-400 uppercase">Time Limit (ms)</label><input type="number" id="cp-time" class="w-full input-cyber p-2 text-sm" required value="2000"></div>
-                <div><label class="text-xs text-gray-400 uppercase">Memory Limit (MB)</label><input type="number" id="cp-mem" class="w-full input-cyber p-2 text-sm" required value="256"></div>
-              </div>
-              <div><label class="text-xs text-gray-400 uppercase">Testcase Directory Path</label><input type="text" id="cp-dir" placeholder="contest_data/testcases/CP-02" class="w-full input-cyber p-2 text-sm" required></div>
-              <button type="submit" class="w-full btn-cyber-yellow py-2.5 mt-2 text-sm font-bold uppercase">Deploy CP Target</button>
-            </form>
+          <div id="radar-ctftime-list" class="space-y-3">
+            <div class="text-center py-8 text-ctf-muted text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Scanning CTFtime horizon...</div>
           </div>
         </div>
 
-        <!-- Sync Problemsets -->
-        <div class="bg-cyber-card neon-border p-6 rounded mb-8">
-          <h3 class="text-lg font-bold text-cyber-cyan mb-4 uppercase flex items-center gap-2">
-            <span>🔄</span> Auto-Sync Problemsets
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <label class="text-xs text-gray-400 uppercase block">Codeforces Problems</label>
-              <div class="grid grid-cols-3 gap-2">
-                <div><label class="text-[10px] text-gray-500">Count</label><input type="number" id="cf-sync-count" value="10" min="1" max="50" class="w-full input-cyber p-2 text-sm"></div>
-                <div><label class="text-[10px] text-gray-500">Min Rating</label><input type="number" id="cf-sync-min" value="800" min="800" max="3500" class="w-full input-cyber p-2 text-sm"></div>
-                <div><label class="text-[10px] text-gray-500">Max Rating</label><input type="number" id="cf-sync-max" value="1400" min="800" max="3500" class="w-full input-cyber p-2 text-sm"></div>
-              </div>
-              <button id="btn-sync-cf" class="w-full btn-cyber-yellow py-2.5 text-sm font-bold uppercase">⚡ Auto-Sync Codeforces</button>
+        <!-- Codeforces Rounds -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-ctf-border pb-3">
+            <h3 class="font-bold text-white flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-code text-ctf-yellow"></i> Codeforces Upcoming Rounds
+            </h3>
+            <span class="text-[11px] font-mono text-ctf-muted">Official Rounds</span>
+          </div>
+          <div id="radar-codeforces-list" class="space-y-3">
+            <div class="text-center py-8 text-ctf-muted text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Scanning Codeforces horizon...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 4. TEAM HUB VIEW                                          -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-team" class="view-panel space-y-6 hidden">
+      <div class="pb-4 border-b border-ctf-border">
+        <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
+          <i class="fa-solid fa-users text-ctf-green"></i> Team Headquarters
+        </h2>
+        <p class="text-xs text-ctf-muted mt-1">Manage team membership, invite teammates, and track collective scores.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Current Team Status -->
+        <div class="md:col-span-2 bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-ctf-border pb-4">
+            <div>
+              <span class="text-xs font-mono text-ctf-muted">ACTIVE SQUAD</span>
+              <h3 id="team-hub-name" class="text-xl font-bold text-white mt-0.5">No Team Joined</h3>
             </div>
-            <div class="space-y-3">
-              <label class="text-xs text-gray-400 uppercase block">Security Exercises</label>
-              <select id="sec-sync-cat" class="w-full input-cyber p-2 text-sm">
+            <div id="team-hub-score-badge" class="px-3 py-1.5 bg-ctf-blue/10 border border-ctf-blue/30 rounded-lg text-ctf-blue font-mono font-bold text-sm hidden">
+              0 PTS
+            </div>
+          </div>
+
+          <div id="team-hub-content" class="space-y-4 text-sm text-ctf-muted">
+            <p>You are currently operating as an unaffiliated player. Create or join a team below to unlock collaborative solves and scoreboard participation.</p>
+          </div>
+
+          <!-- Roster Table (if in team) -->
+          <div id="team-roster-box" class="space-y-2 hidden">
+            <h4 class="text-xs font-semibold text-ctf-muted uppercase tracking-wider">Team Roster</h4>
+            <div id="team-roster-list" class="divide-y divide-ctf-border/40 bg-[#12161c] border border-ctf-border rounded-lg p-3 font-mono text-xs text-white">
+              <!-- Roster members -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Join / Create Forms -->
+        <div class="space-y-6">
+          <!-- Join Team -->
+          <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-user-group text-ctf-blue"></i> Join Existing Team
+            </h4>
+            <form id="form-join-team" class="space-y-3">
+              <div>
+                <label class="block text-[11px] font-medium text-ctf-muted mb-1">Team Name</label>
+                <input type="text" id="join-team-name" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-blue focus:ring-1 focus:ring-ctf-blue rounded-md px-3 py-1.5 text-xs text-white outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-ctf-muted mb-1">Passkey</label>
+                <input type="password" id="join-team-pass" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-blue focus:ring-1 focus:ring-ctf-blue rounded-md px-3 py-1.5 text-xs text-white outline-none font-mono">
+              </div>
+              <button type="submit" class="w-full py-2 bg-ctf-blue hover:bg-blue-600 text-white font-semibold rounded-md text-xs transition-colors">Join Team</button>
+            </form>
+          </div>
+
+          <!-- Create Team -->
+          <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-plus text-ctf-green"></i> Create New Team
+            </h4>
+            <form id="form-create-team" class="space-y-3">
+              <div>
+                <label class="block text-[11px] font-medium text-ctf-muted mb-1">Team Name</label>
+                <input type="text" id="create-team-name" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green focus:ring-1 focus:ring-ctf-green rounded-md px-3 py-1.5 text-xs text-white outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-ctf-muted mb-1">Secret Passkey</label>
+                <input type="password" id="create-team-pass" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green focus:ring-1 focus:ring-ctf-green rounded-md px-3 py-1.5 text-xs text-white outline-none font-mono">
+              </div>
+              <button type="submit" class="w-full py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded-md text-xs transition-colors">Create Team</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <!-- 5. ADMIN CONTROL PANEL                                    -->
+    <!-- ═════════════════════════════════════════════════════════ -->
+    <section id="view-admin" class="view-panel space-y-8 hidden">
+      <div class="pb-4 border-b border-ctf-border flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
+            <i class="fa-solid fa-shield-halved text-ctf-red"></i> Admin Control Center
+          </h2>
+          <p class="text-xs text-ctf-muted mt-1">Manage problemsets, triggers, external sync engines, and audit logs.</p>
+        </div>
+      </div>
+
+      <!-- Problemset Auto-Sync Engine -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-5">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-arrows-rotate text-ctf-blue"></i> Automated Problemset Synchronization
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Codeforces Sync -->
+          <div class="p-4 bg-[#11161d] border border-ctf-border rounded-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-xs text-white"><i class="fa-solid fa-code text-ctf-yellow mr-1.5"></i> Codeforces Problemset</span>
+              <span class="text-[10px] text-ctf-muted font-mono">API v1</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-[10px] text-ctf-muted block">Count</label>
+                <input type="number" id="sync-cf-count" value="10" min="1" max="50" class="w-full bg-[#0d1117] border border-ctf-border rounded px-2 py-1 text-xs text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted block">Min Rating</label>
+                <input type="number" id="sync-cf-min" value="800" min="800" max="3500" class="w-full bg-[#0d1117] border border-ctf-border rounded px-2 py-1 text-xs text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted block">Max Rating</label>
+                <input type="number" id="sync-cf-max" value="1400" min="800" max="3500" class="w-full bg-[#0d1117] border border-ctf-border rounded px-2 py-1 text-xs text-white font-mono">
+              </div>
+            </div>
+            <button id="btn-admin-sync-cf" onclick="adminSyncCodeforces()" class="w-full py-2 bg-ctf-yellow/20 hover:bg-ctf-yellow/30 border border-ctf-yellow/50 text-ctf-yellow font-semibold rounded text-xs transition-colors">
+              <i class="fa-solid fa-bolt mr-1.5"></i> Sync Codeforces Problems
+            </button>
+          </div>
+
+          <!-- Security Exercise Sync -->
+          <div class="p-4 bg-[#11161d] border border-ctf-border rounded-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-xs text-white"><i class="fa-solid fa-shield-cat text-ctf-purple mr-1.5"></i> Security Puzzles Library</span>
+              <span class="text-[10px] text-ctf-muted font-mono">Curated Dataset</span>
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted block mb-1">Category Target</label>
+              <select id="sync-sec-cat" class="w-full bg-[#0d1117] border border-ctf-border rounded px-2 py-1.5 text-xs text-white font-mono">
                 <option value="ALL">ALL CATEGORIES</option>
                 <option value="CRYPTOGRAPHY">CRYPTOGRAPHY</option>
                 <option value="FORENSICS">FORENSICS</option>
@@ -680,155 +419,346 @@
                 <option value="SYSTEMS_SECURITY">SYSTEMS_SECURITY</option>
                 <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
               </select>
-              <button id="btn-sync-sec" class="w-full btn-cyber py-2.5 text-sm font-bold uppercase">🛡️ Auto-Sync Security Exercises</button>
             </div>
+            <button id="btn-admin-sync-sec" onclick="adminSyncSecurity()" class="w-full py-2 bg-ctf-purple/20 hover:bg-ctf-purple/30 border border-ctf-purple/50 text-ctf-purple font-semibold rounded text-xs transition-colors">
+              <i class="fa-solid fa-shield-virus mr-1.5"></i> Sync Security Exercises
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Challenges Forms -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Add CTF Challenge -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2">
+            <i class="fa-solid fa-plus text-ctf-blue"></i> Add New CTF Challenge
+          </h4>
+          <form id="form-admin-add-ctf" class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] text-ctf-muted">ID (e.g. CTF-03)</label>
+                <input type="text" id="admin-ctf-id" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted">Base Points</label>
+                <input type="number" id="admin-ctf-pts" value="100" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted">Title</label>
+              <input type="text" id="admin-ctf-title" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] text-ctf-muted">Difficulty</label>
+                <select id="admin-ctf-diff" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
+                  <option value="EASY">EASY</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HARD">HARD</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted">Category</label>
+                <select id="admin-ctf-cat" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
+                  <option value="CRYPTO">CRYPTO</option>
+                  <option value="WEB">WEB</option>
+                  <option value="PWN">PWN</option>
+                  <option value="FORENSICS">FORENSICS</option>
+                  <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
+                  <option value="OSINT">OSINT</option>
+                  <option value="MISC">MISC</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted">Raw Flag (Hashed on Server)</label>
+              <input type="text" id="admin-ctf-flag" required placeholder="flag{...}" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted">Hint Cost (0 for none)</label>
+              <input type="number" id="admin-ctf-hintcost" value="0" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+            </div>
+            <button type="submit" class="w-full py-2 bg-ctf-blue hover:bg-blue-600 text-white font-semibold rounded text-xs transition-colors">Deploy CTF Challenge</button>
+          </form>
+        </div>
+
+        <!-- Add CP Challenge -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2">
+            <i class="fa-solid fa-plus text-ctf-yellow"></i> Add New CP Challenge
+          </h4>
+          <form id="form-admin-add-cp" class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] text-ctf-muted">ID (e.g. CP-02)</label>
+                <input type="text" id="admin-cp-id" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted">Base Points</label>
+                <input type="number" id="admin-cp-pts" value="200" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted">Title</label>
+              <input type="text" id="admin-cp-title" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-[10px] text-ctf-muted">Difficulty</label>
+                <select id="admin-cp-diff" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
+                  <option value="EASY">EASY</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HARD">HARD</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted">Time (ms)</label>
+                <input type="number" id="admin-cp-time" value="1000" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[10px] text-ctf-muted">Mem (MB)</label>
+                <input type="number" id="admin-cp-mem" value="256" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] text-ctf-muted">Testcase Directory Path</label>
+              <input type="text" id="admin-cp-dir" value="contest_data/testcases/CP-01" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
+            </div>
+            <button type="submit" class="w-full py-2 bg-ctf-yellow hover:bg-yellow-600 text-black font-semibold rounded text-xs transition-colors">Deploy CP Challenge</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Submission Audit Logs -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-3">
+        <h4 class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-ctf-muted"></i> Real-time Submission Audit Log
+        </h4>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-ctf-border/60 rounded-lg">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-[#1c2128] text-ctf-muted sticky top-0 border-b border-ctf-border">
+              <tr>
+                <th class="p-2.5">Time</th>
+                <th class="p-2.5">Submission ID</th>
+                <th class="p-2.5">Team</th>
+                <th class="p-2.5">Challenge</th>
+                <th class="p-2.5">Status</th>
+                <th class="p-2.5">Awarded</th>
+              </tr>
+            </thead>
+            <tbody id="admin-audit-tbody" class="divide-y divide-ctf-border/40 text-gray-300">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- CTFd-STYLE CHALLENGE DETAIL MODAL                         -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <div id="modal-challenge" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+    <div class="bg-ctf-card border border-ctf-border max-w-2xl w-full rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-ctf-border flex items-start justify-between bg-[#161b22]">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span id="mod-cat-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold badge-crypto">CRYPTO</span>
+            <span id="mod-diff-badge" class="px-2 py-0.5 rounded text-[11px] font-mono font-medium text-ctf-muted border border-ctf-border">MEDIUM</span>
+            <span id="mod-pts-badge" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-ctf-blue/10 text-ctf-blue border border-ctf-blue/30">100 PTS</span>
+          </div>
+          <h3 id="mod-title" class="text-xl font-bold text-white pt-1">Challenge Title</h3>
+        </div>
+        <button onclick="closeChallengeModal()" class="text-ctf-muted hover:text-white text-lg p-1.5 rounded-lg hover:bg-ctf-border/40 transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Tabs [ Description | Solves ] -->
+      <div class="flex items-center px-6 border-b border-ctf-border bg-[#12161c] text-xs font-medium">
+        <button id="tab-mod-desc" onclick="switchModalTab('desc')" class="py-3 px-4 text-white border-b-2 border-ctf-blue flex items-center gap-2">
+          <i class="fa-solid fa-align-left text-ctf-blue"></i> Description
+        </button>
+        <button id="tab-mod-solves" onclick="switchModalTab('solves')" class="py-3 px-4 text-ctf-muted hover:text-white border-b-2 border-transparent flex items-center gap-2">
+          <i class="fa-solid fa-users text-ctf-purple"></i> Solves (<span id="mod-solves-count">0</span>)
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto flex-1 space-y-5 text-sm">
+        
+        <!-- Tab: Description -->
+        <div id="modal-tab-desc" class="space-y-4">
+          <!-- Text description -->
+          <div id="mod-desc-text" class="text-ctf-text leading-relaxed whitespace-pre-wrap font-sans bg-[#0d1117] p-4 rounded-lg border border-ctf-border/60">
+            Challenge intelligence loading...
+          </div>
+
+          <!-- Metadata Specs Grid -->
+          <div id="mod-specs-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
+            <!-- Dynamic specs -->
+          </div>
+
+          <!-- Attachment Box -->
+          <div id="mod-attachment-box" class="p-3.5 bg-ctf-blue/5 border border-ctf-blue/30 rounded-lg flex items-center justify-between hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded bg-ctf-blue/20 text-ctf-blue flex items-center justify-center">
+                <i class="fa-solid fa-paperclip text-sm"></i>
+              </div>
+              <div>
+                <div id="mod-attachment-name" class="font-semibold text-white text-xs">challenge_files.zip</div>
+                <div id="mod-attachment-size" class="text-[10px] text-ctf-muted">File Attachment</div>
+              </div>
+            </div>
+            <a id="mod-btn-download" href="#" target="_blank" class="px-3 py-1.5 bg-ctf-blue hover:bg-blue-600 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-download"></i> Download
+            </a>
+          </div>
+
+          <!-- Hint Section -->
+          <div id="mod-hint-box" class="border border-ctf-border/80 rounded-lg p-3.5 bg-[#12161c] space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-ctf-muted flex items-center gap-1.5">
+                <i class="fa-regular fa-lightbulb text-ctf-yellow"></i> Intel Hint System
+              </span>
+              <button id="btn-request-hint" class="px-2.5 py-1 text-[11px] font-semibold text-ctf-yellow border border-ctf-yellow/40 hover:bg-ctf-yellow/10 rounded transition-colors">
+                Unlock Hint
+              </button>
+            </div>
+            <div id="mod-hint-text" class="text-xs text-ctf-yellow font-mono italic p-2 bg-[#0d1117] rounded border border-ctf-yellow/20 hidden"></div>
           </div>
         </div>
 
-        <div>
-          <h3 class="text-lg font-bold text-cyber-magenta mb-3 uppercase">Submission Audit Log</h3>
-          <div class="overflow-x-auto bg-cyber-card border border-cyber-magenta p-1 h-64 overflow-y-auto rounded">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead class="sticky top-0 bg-cyber-card z-10">
-                <tr class="border-b border-cyber-magenta text-cyber-magenta uppercase">
-                  <th class="p-2">Timestamp</th>
-                  <th class="p-2">Submission ID</th>
-                  <th class="p-2">User</th>
-                  <th class="p-2">Team</th>
-                  <th class="p-2">Challenge</th>
-                  <th class="p-2">Status</th>
-                  <th class="p-2 text-right">Points</th>
+        <!-- Tab: Solves -->
+        <div id="modal-tab-solves" class="space-y-3 hidden">
+          <div class="overflow-x-auto border border-ctf-border/60 rounded-lg">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-[#1c2128] text-ctf-muted border-b border-ctf-border">
+                <tr>
+                  <th class="p-2.5 w-12 text-center">#</th>
+                  <th class="p-2.5">Team</th>
+                  <th class="p-2.5 text-right">Time</th>
                 </tr>
               </thead>
-              <tbody id="audit-tbody" class="text-gray-400 divide-y divide-cyber-border">
-                <!-- Dynamically populated -->
+              <tbody id="mod-solves-tbody" class="divide-y divide-ctf-border/40 text-gray-300">
+                <!-- Rendered dynamically -->
               </tbody>
             </table>
           </div>
         </div>
-      </section>
-    </main>
-  </div>
 
-  <!-- ENGAGE / SUBMISSION MODAL -->
-  <div id="modal-challenge" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
-    <div id="modal-card" class="bg-cyber-card neon-border max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl">
-      <button id="btn-close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-cyber-red text-2xl transition-colors">&times;</button>
-      
-      <div class="flex items-center gap-2 mb-3">
-        <span id="mod-type-badge" class="text-xs px-2.5 py-0.5 border border-cyber-cyan text-cyber-cyan font-bold uppercase"></span>
-        <span id="mod-diff-badge" class="text-xs px-2.5 py-0.5 border border-gray-600 text-gray-300 font-bold uppercase"></span>
-        <span id="mod-pts-badge" class="text-xs text-cyber-magenta font-extrabold ml-auto text-sm"></span>
-      </div>
-      
-      <h2 id="mod-title" class="text-2xl font-bold text-white mb-2"></h2>
-      
-      <div id="mod-specs-box" class="bg-cyber-card2 p-3.5 border border-cyber-border rounded text-xs text-gray-300 mb-4 space-y-1.5">
-        <!-- Injected dynamically -->
       </div>
 
-      <div id="mod-attachment-box" class="mb-4 p-3 bg-[#081525] border border-cyber-cyan rounded flex items-center justify-between hidden">
-        <div class="flex items-center gap-2.5">
-          <span class="text-lg">📦</span>
-          <div>
-            <div class="text-xs font-bold text-cyber-cyan" id="mod-attachment-name">challenge_files.zip</div>
-            <div class="text-[10px] text-gray-400" id="mod-attachment-size">Attachment Available</div>
+      <!-- Modal Bottom Submission Action Bar -->
+      <div class="p-4 bg-[#161b22] border-t border-ctf-border">
+        <form id="form-submit-flag" class="flex items-center gap-2">
+          <input type="hidden" id="mod-submit-id">
+          
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ctf-muted">
+              <i class="fa-solid fa-terminal text-xs"></i>
+            </div>
+            <input type="text" id="inp-flag-payload" required placeholder="flag{...} or output testcase directory" class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-blue focus:ring-1 focus:ring-ctf-blue rounded-lg pl-9 pr-3 py-2 text-xs text-white outline-none font-mono">
           </div>
-        </div>
-        <a id="btn-download-attachment" href="#" target="_blank" class="btn-cyber px-3 py-1 text-xs font-bold uppercase rounded flex items-center gap-1.5">
-          <span>DOWNLOAD</span>
-          <span>↓</span>
-        </a>
+
+          <button type="submit" id="btn-flag-submit" class="px-5 py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded-lg text-xs flex items-center gap-2 transition-colors shadow-sm">
+            <span>Submit</span>
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+          </button>
+        </form>
       </div>
 
-      <div id="mod-hint-section" class="mb-5 pb-4 border-b border-cyber-border">
-        <div class="flex items-center justify-between">
-          <div class="text-xs text-gray-400">HINT SYSTEM:</div>
-          <button id="btn-hint" class="text-xs border border-cyber-cyan text-cyber-cyan px-3 py-1 hover:bg-cyber-cyan hover:text-black transition-colors font-bold uppercase">UNLOCK HINT</button>
-        </div>
-        <div id="hint-display" class="mt-2 p-3 bg-[#0a1220] border border-cyber-cyan text-cyber-cyan text-xs rounded hidden italic"></div>
-      </div>
-
-      <form id="form-submit-solution" class="space-y-4">
-        <input type="hidden" id="mod-id">
-        
-        <div id="input-container-ctf" class="hidden">
-          <label class="block text-xs text-cyber-cyan mb-1.5 uppercase font-bold">Flag Payload</label>
-          <input type="text" id="inp-flag" class="w-full input-cyber p-2.5 text-sm rounded font-mono" placeholder="flag{...} or raw flag text">
-        </div>
-        
-        <div id="input-container-cp" class="hidden">
-          <label class="block text-xs text-cyber-yellow mb-1.5 uppercase font-bold">Solution Output Directory or Inline Answer</label>
-          <textarea id="inp-cp" class="w-full input-cyber p-2.5 text-sm h-24 rounded font-mono" placeholder="contest_data/testcases/CP-01 or output directory"></textarea>
-          <p class="text-[11px] text-gray-400 mt-1">Provide candidate directory containing output_1.txt, output_2.txt, etc.</p>
-        </div>
-        
-        <button type="submit" id="btn-submit-solution" class="w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded">
-          <span>TRANSMIT SOLUTION</span>
-          <span id="spinner-submit" class="hidden animate-spin h-4 w-4 border-2 border-cyber-cyan border-t-transparent rounded-full"></span>
-        </button>
-      </form>
     </div>
   </div>
 
-  <!-- APPLICATION LOGIC & XSS HARDENING -->
-  <script>
-    // --- XSS DEFENSE HELPER ---
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
-      return String(str).replace(/[&<>"']/g, m => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      })[m]);
-    }
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- AUTH MODAL (Login / Register)                             -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <div id="modal-auth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+    <div class="bg-ctf-card border border-ctf-border max-w-md w-full rounded-xl shadow-2xl overflow-hidden">
+      
+      <div class="p-6 border-b border-ctf-border flex items-center justify-between">
+        <h3 id="auth-modal-title" class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-right-to-bracket text-ctf-blue"></i> Login
+        </h3>
+        <button onclick="closeAuthModal()" class="text-ctf-muted hover:text-white p-1 rounded-md">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
-    // --- STATE ---
+      <!-- Login Form -->
+      <form id="form-auth-login" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Username</label>
+          <input type="text" id="login-username" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-blue rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Password</label>
+          <input type="password" id="login-password" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-blue rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-ctf-blue hover:bg-blue-600 text-white font-semibold rounded-md text-sm transition-colors">
+          Sign In
+        </button>
+        <div class="text-center pt-2 text-xs text-ctf-muted">
+          Need an account? <a href="#" onclick="openAuthModal('register'); return false;" class="text-ctf-blue hover:underline">Register</a>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-auth-register" class="p-6 space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Username</label>
+          <input type="text" id="reg-username" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Email Address</label>
+          <input type="email" id="reg-email" placeholder="optional" class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Password</label>
+          <input type="password" id="reg-password" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-ctf-muted mb-1">Confirm Password</label>
+          <input type="password" id="reg-confirm" required class="w-full bg-[#0d1117] border border-ctf-border focus:border-ctf-green rounded-md px-3 py-2 text-sm text-white outline-none font-mono">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded-md text-sm transition-colors">
+          Create Account
+        </button>
+        <div class="text-center pt-2 text-xs text-ctf-muted">
+          Already registered? <a href="#" onclick="openAuthModal('login'); return false;" class="text-ctf-green hover:underline">Login</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- FRONTEND LOGIC (Vanilla JS)                               -->
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <script>
+    // State Store
     let currentUser = null;
     let challengesData = [];
-    let activeSegment = 'CTF';
-    let selectedCategory = 'ALL';
-    let leaderboardInterval = null;
+    let activeTrack = 'CTF'; // 'CTF' or 'CP'
+    let activeCategory = 'ALL';
+    let scoreboardChart = null;
 
-    // --- DOM SELECTORS ---
-    const vAuth = document.getElementById('view-auth');
-    const vApp = document.getElementById('view-app');
-    
-    const formLogin = document.getElementById('form-login');
-    const formRegister = document.getElementById('form-register');
-    const linkToReg = document.getElementById('link-to-register');
-    const linkToLogin = document.getElementById('link-to-login');
-    
-    const navLinks = document.querySelectorAll('.nav-link');
-    const sections = document.querySelectorAll('.app-section');
-    const navAdmin = document.getElementById('nav-admin');
-    const navAdminMob = document.getElementById('nav-admin-mobile');
-    const navUsername = document.getElementById('nav-username');
-    const navTeamBadge = document.getElementById('nav-team-badge');
-    const btnLogout = document.getElementById('btn-logout');
-
-    const tabCtf = document.getElementById('tab-ctf');
-    const tabCp = document.getElementById('tab-cp');
-    const segCtfView = document.getElementById('segment-ctf-view');
-    const segCpView = document.getElementById('segment-cp-view');
-    const catPills = document.querySelectorAll('.cat-pill');
-
-    // --- TOAST UTILITY ---
-    function showToast(msg, type = 'info') {
-      const container = document.getElementById('toast-container');
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${escapeHtml(type)}`;
-      toast.textContent = msg;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s ease-out';
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
-    }
+    // Helper
+    const $ = (sel) => document.querySelector(sel);
+    const escapeHtml = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    };
 
     function formatBytes(bytes) {
       if (!bytes || bytes === 0) return '0 B';
@@ -838,908 +768,858 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    // --- VIEW CONTROLLER ---
-    function switchView(viewName) {
-      if(viewName === 'auth') {
-        vAuth.classList.remove('hidden');
-        vApp.classList.add('hidden');
-        if(leaderboardInterval) clearInterval(leaderboardInterval);
-      } else {
-        vAuth.classList.add('hidden');
-        vApp.classList.remove('hidden');
-      }
-    }
-
-    function switchAppSection(targetId) {
-      const activeSec = targetId || 'challenges';
-      localStorage.setItem('cyber_active_section', activeSec);
-      sections.forEach(sec => sec.classList.add('hidden'));
-      const sec = document.getElementById(`sec-${activeSec}`);
-      if(sec) sec.classList.remove('hidden');
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(message, type = 'info') {
+      const container = $('#toast-container');
+      const toast = document.createElement('div');
       
-      navLinks.forEach(link => {
-        if(link.dataset.target === activeSec) {
-          link.classList.add('text-cyber-cyan', 'neon-text-cyan', 'font-bold');
-          link.classList.remove('text-gray-400');
-        } else {
-          link.classList.remove('text-cyber-cyan', 'neon-text-cyan', 'font-bold');
-          link.classList.add('text-gray-400');
-        }
+      let border = 'border-ctf-blue', icon = 'fa-circle-info text-ctf-blue', bg = 'bg-[#161b22]';
+      if (type === 'success') { border = 'border-ctf-green'; icon = 'fa-circle-check text-ctf-green'; }
+      if (type === 'error') { border = 'border-ctf-red'; icon = 'fa-circle-xmark text-ctf-red'; }
+      if (type === 'warning') { border = 'border-ctf-yellow'; icon = 'fa-triangle-exclamation text-ctf-yellow'; }
+
+      toast.className = `p-3.5 ${bg} border ${border} rounded-lg shadow-xl text-xs text-white flex items-center gap-3 transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto`;
+      toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i><span class="flex-1 font-medium">${escapeHtml(message)}</span>`;
+      
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // --- NAVIGATION CONTROLLER ---
+    function showView(viewId) {
+      document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(el => {
+        el.className = 'nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2';
       });
 
-      if(activeSec === 'challenges') fetchChallenges();
-      if(activeSec === 'radar') fetchUpcomingRadar();
-      if(activeSec === 'team') fetchMyTeam();
-      if(activeSec === 'profile') fetchMyProfile();
-      if(activeSec === 'leaderboard') {
+      const panel = document.getElementById(`view-${viewId}`);
+      if (panel) panel.classList.remove('hidden');
+
+      const navBtn = document.getElementById(`nav-${viewId}`);
+      if (navBtn) {
+        navBtn.className = 'nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-white bg-ctf-card border border-ctf-border hover:text-ctf-blue transition-colors flex items-center gap-2';
+      }
+
+      if (viewId === 'scoreboard') {
         fetchLeaderboard();
-        leaderboardInterval = setInterval(fetchLeaderboard, 15000);
-      } else {
-        if(leaderboardInterval) clearInterval(leaderboardInterval);
-      }
-      if(activeSec === 'admin' && currentUser?.role === 'ADMIN') {
-        fetchAuditLogs();
-        renderAdminChallenges();
+      } else if (viewId === 'radar') {
+        fetchRadarEvents();
+      } else if (viewId === 'team') {
+        fetchTeamInfo();
+      } else if (viewId === 'admin') {
+        fetchAdminData();
       }
     }
 
-    // --- SEGMENTED SWITCHER LOGIC ---
-    function setSegment(segment) {
-      activeSegment = segment;
-      if (segment === 'CTF') {
-        tabCtf.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-ctf";
-        tabCp.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-yellow border border-transparent";
-        segCtfView.classList.remove('hidden');
-        segCpView.classList.add('hidden');
+    // --- AUTH WORKFLOWS ---
+    function openAuthModal(mode = 'login') {
+      $('#modal-auth').classList.remove('hidden');
+      if (mode === 'login') {
+        $('#auth-modal-title').innerHTML = '<i class="fa-solid fa-right-to-bracket text-ctf-blue"></i> Sign In';
+        $('#form-auth-login').classList.remove('hidden');
+        $('#form-auth-register').classList.add('hidden');
       } else {
-        tabCp.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 segment-tab-active-cp";
-        tabCtf.className = "segment-btn px-4 py-2 text-xs md:text-sm font-bold uppercase transition-all duration-300 rounded flex items-center gap-2 text-gray-400 hover:text-cyber-cyan border border-transparent";
-        segCpView.classList.remove('hidden');
-        segCtfView.classList.add('hidden');
+        $('#auth-modal-title').innerHTML = '<i class="fa-solid fa-user-plus text-ctf-green"></i> Create Account';
+        $('#form-auth-login').classList.add('hidden');
+        $('#form-auth-register').classList.remove('hidden');
       }
-      renderSegmentData();
     }
 
-    tabCtf.addEventListener('click', () => setSegment('CTF'));
-    tabCp.addEventListener('click', () => setSegment('CP'));
+    function closeAuthModal() {
+      $('#modal-auth').classList.add('hidden');
+    }
 
-    // --- CATEGORY PILL FILTERING ---
-    catPills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        catPills.forEach(p => {
-          p.className = "cat-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan rounded font-bold uppercase transition-all";
-        });
-        pill.className = "cat-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active";
-        selectedCategory = pill.dataset.cat;
-        renderCtfTable();
-      });
-    });
-
-    // --- AUTH & LOCALSTORAGE SESSION PERSISTENCE ---
-    async function checkSession() {
-      // 1. Instant hydration from localStorage
-      const cached = localStorage.getItem('cyber_user_session');
-      if (cached) {
-        try {
-          currentUser = JSON.parse(cached);
-          initApp(false);
-        } catch (e) {
-          localStorage.removeItem('cyber_user_session');
-        }
-      }
-
-      // 2. Validate against server session
+    async function checkAuthSession() {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           currentUser = await res.json();
-          localStorage.setItem('cyber_user_session', JSON.stringify(currentUser));
-          initApp(true);
+          renderAuthHeader();
         } else {
-          localStorage.removeItem('cyber_user_session');
           currentUser = null;
-          switchView('auth');
+          renderAuthHeader();
         }
       } catch (err) {
-        if (!currentUser) {
-          switchView('auth');
+        currentUser = null;
+        renderAuthHeader();
+      }
+    }
+
+    function renderAuthHeader() {
+      if (currentUser) {
+        $('#auth-unauthed').classList.add('hidden');
+        $('#auth-authed').classList.remove('hidden');
+        $('#user-display').textContent = currentUser.username;
+        $('#user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+
+        if (currentUser.teamId) {
+          $('#user-team-badge').classList.remove('hidden');
+          $('#user-team-badge').textContent = currentUser.teamId;
+        } else {
+          $('#user-team-badge').classList.add('hidden');
         }
-      }
-    }
 
-    function initApp(triggerFetch = true) {
-      if (!currentUser) return;
-      navUsername.textContent = currentUser.username;
-      navTeamBadge.textContent = currentUser.teamId ? `TEAM: ${currentUser.teamId}` : 'NO TEAM';
-      if (currentUser.role === 'ADMIN') {
-        navAdmin.classList.remove('hidden');
-        navAdminMob.classList.remove('hidden');
+        if (currentUser.role === 'ADMIN') {
+          $('#nav-admin').classList.remove('hidden');
+          $('#nav-admin-mobile').classList.remove('hidden');
+        } else {
+          $('#nav-admin').classList.add('hidden');
+          $('#nav-admin-mobile').classList.add('hidden');
+        }
       } else {
-        navAdmin.classList.add('hidden');
-        navAdminMob.classList.add('hidden');
+        $('#auth-unauthed').classList.remove('hidden');
+        $('#auth-authed').classList.add('hidden');
+        $('#nav-admin').classList.add('hidden');
+        $('#nav-admin-mobile').classList.add('hidden');
       }
-      switchView('app');
-      const savedSection = localStorage.getItem('cyber_active_section') || 'challenges';
-      switchAppSection(savedSection);
     }
 
-    linkToReg.addEventListener('click', (e) => { e.preventDefault(); formLogin.classList.add('hidden'); formRegister.classList.remove('hidden'); });
-    linkToLogin.addEventListener('click', (e) => { e.preventDefault(); formRegister.classList.add('hidden'); formLogin.classList.remove('hidden'); });
-
-    formLogin.addEventListener('submit', async (e) => {
+    $('#form-auth-login').onsubmit = async (e) => {
       e.preventDefault();
-      const payload = { username: $('#login-username').value, password: $('#login-password').value };
+      const username = $('#login-username').value;
+      const password = $('#login-password').value;
       try {
         const res = await fetch('/api/auth/login', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
         });
+        const data = await res.json();
         if (res.ok) {
-          const user = await res.json();
-          currentUser = user;
-          localStorage.setItem('cyber_user_session', JSON.stringify(user));
-          showToast('Authentication confirmed. Welcome, Operative.', 'success');
-          initApp();
+          currentUser = data;
+          closeAuthModal();
+          renderAuthHeader();
+          fetchChallenges();
+          showToast(`Welcome back, ${currentUser.username}!`, 'success');
         } else {
-          const d = await res.json();
-          showToast(d.error || 'Access Denied: Invalid credentials', 'error');
+          showToast(data.error || 'Authentication failed', 'error');
         }
-      } catch (err) { showToast('Connection failure to auth server', 'error'); }
-    });
+      } catch (e) {
+        showToast('Login request error', 'error');
+      }
+    };
 
-    formRegister.addEventListener('submit', async (e) => {
+    $('#form-auth-register').onsubmit = async (e) => {
       e.preventDefault();
-      const pw = $('#reg-password').value;
-      if (pw !== $('#reg-password-confirm').value) return showToast('Passwords do not match', 'warning');
-      const payload = { 
-        username: $('#reg-username').value, email: $('#reg-email').value, password: pw
-      };
+      const username = $('#reg-username').value;
+      const email = $('#reg-email').value;
+      const password = $('#reg-password').value;
+      const confirm = $('#reg-confirm').value;
+
+      if (password !== confirm) {
+        return showToast('Passwords do not match', 'warning');
+      }
+
       try {
         const res = await fetch('/api/auth/register', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
         });
+        const data = await res.json();
         if (res.ok) {
-          showToast('Identity established in database. Please login.', 'success');
-          linkToLogin.click();
+          currentUser = data;
+          closeAuthModal();
+          renderAuthHeader();
+          fetchChallenges();
+          showToast(`Account created for ${currentUser.username}!`, 'success');
         } else {
-          const d = await res.json();
-          showToast(d.error || 'Registration failed', 'error');
+          showToast(data.error || 'Registration failed', 'error');
         }
-      } catch (err) { showToast('Connection failure', 'error'); }
-    });
+      } catch (e) {
+        showToast('Registration request error', 'error');
+      }
+    };
 
-    btnLogout.addEventListener('click', async () => {
+    async function handleLogout() {
       try {
         await fetch('/api/auth/logout', { method: 'POST' });
-      } catch (err) {}
-      currentUser = null;
-      localStorage.removeItem('cyber_user_session');
-      localStorage.removeItem('cyber_active_section');
-      showToast('Session terminated', 'info');
-      switchView('auth');
-    });
+        currentUser = null;
+        renderAuthHeader();
+        fetchChallenges();
+        showToast('Signed out successfully', 'info');
+      } catch (e) {
+        showToast('Logout error', 'error');
+      }
+    }
 
-    navLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        switchAppSection(e.currentTarget.dataset.target);
+    // --- CHALLENGES CONTROLLER (CTFd Card Aesthetic) ---
+    function switchChallengeTrack(track) {
+      activeTrack = track;
+      if (track === 'CTF') {
+        $('#tab-btn-ctf').className = 'px-4 py-1.5 rounded-md font-medium text-white bg-ctf-blue/20 border border-ctf-blue/40 flex items-center gap-2 transition-all';
+        $('#tab-btn-cp').className = 'px-4 py-1.5 rounded-md font-medium text-ctf-muted hover:text-white flex items-center gap-2 transition-all';
+        $('#category-filter-bar').classList.remove('hidden');
+      } else {
+        $('#tab-btn-cp').className = 'px-4 py-1.5 rounded-md font-medium text-white bg-ctf-yellow/20 border border-ctf-yellow/40 flex items-center gap-2 transition-all';
+        $('#tab-btn-ctf').className = 'px-4 py-1.5 rounded-md font-medium text-ctf-muted hover:text-white flex items-center gap-2 transition-all';
+        $('#category-filter-bar').classList.add('hidden');
+      }
+      renderChallenges();
+    }
+
+    function filterCategory(cat) {
+      activeCategory = cat;
+      document.querySelectorAll('.cat-pill').forEach(el => {
+        el.className = 'cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors';
       });
-    });
+      event.target.className = 'cat-pill active px-3 py-1.5 rounded-full font-medium bg-ctf-blue text-white transition-colors';
+      renderChallenges();
+    }
 
-    // --- CHALLENGES FETCH & RENDER (XSS SAFE) ---
     async function fetchChallenges() {
       try {
         const res = await fetch('/api/challenges');
         if (res.ok) {
           challengesData = await res.json();
-          updateBadges();
-          renderSegmentData();
-        }
-      } catch (err) { console.warn("Failed to fetch challenges", err); }
-    }
-
-    function updateBadges() {
-      const ctfList = challengesData.filter(c => c.type === 'CTF');
-      const cpList = challengesData.filter(c => c.type === 'CP');
-      
-      $('#badge-ctf-count').textContent = ctfList.length;
-      $('#badge-cp-count').textContent = cpList.length;
-      $('#stat-total-badge').textContent = `${challengesData.length} ONLINE`;
-    }
-
-    function renderSegmentData() {
-      if (activeSegment === 'CTF') {
-        renderCtfTable();
-      } else {
-        renderCpTable();
-      }
-    }
-
-    function renderCtfTable() {
-      const tbody = document.getElementById('ctf-tbody');
-      tbody.innerHTML = '';
-      
-      let ctfList = challengesData.filter(c => c.type === 'CTF');
-      if (selectedCategory !== 'ALL') {
-        ctfList = ctfList.filter(c => (c.category || '').toUpperCase() === selectedCategory);
-      }
-
-      if (ctfList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500 italic">No CTF targets deployed in category '${escapeHtml(selectedCategory)}'.</td></tr>`;
-        return;
-      }
-
-      ctfList.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.className = "group hover:bg-[rgba(0,240,255,0.06)] transition-all cursor-pointer select-none";
-        tr.onclick = () => openChallengeModal(c.id);
-        
-        let statusBadge = c.solved
-          ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
-          : '<span class="px-2 py-0.5 bg-[#200a12] text-cyber-red border border-cyber-red text-xs font-bold">OPEN</span>';
-
-        let diffColor = 'text-cyber-cyan';
-        if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
-        if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
-
-        let attachmentBadge = c.hasAttachment
-          ? '<span class="text-xs text-cyber-cyan" title="Attachment available">📦 YES</span>'
-          : '<span class="text-xs text-gray-600">-</span>';
-
-        let firstBloodBadge = c.firstBloodTeamId
-          ? `<span class="ml-1.5 px-1.5 py-0.2 bg-[#2a050d] text-cyber-red border border-cyber-red text-[10px] rounded font-bold" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
-          : '';
-
-        let ptsDisplay = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
-          ? `<span>${escapeHtml(c.currentPoints)}</span> <span class="text-[10px] text-gray-500 line-through">(${escapeHtml(c.basePoints)})</span>`
-          : `<span>${escapeHtml(c.currentPoints || c.basePoints)}</span>`;
-
-        tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-cyan group-hover:neon-text-cyan">${escapeHtml(c.id)}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-cyan transition-colors">
-            <div class="flex items-center gap-1">
-              <span>${escapeHtml(c.title)}</span>
-              ${firstBloodBadge}
-            </div>
-            ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
-          </td>
-          <td class="p-3.5"><span class="px-2 py-0.5 bg-cyber-card border border-cyber-border text-xs text-gray-300 font-semibold">${escapeHtml(c.category || 'MISC')}</span></td>
-          <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-magenta">${ptsDisplay}</td>
-          <td class="p-3.5 text-center text-gray-400">${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} pts` : 'Free'}</td>
-          <td class="p-3.5 text-center">${attachmentBadge}</td>
-          <td class="p-3.5 text-center">${statusBadge}</td>
-          <td class="p-3.5 text-right">
-            <span class="text-cyber-cyan font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function renderCpTable() {
-      const tbody = document.getElementById('cp-tbody');
-      tbody.innerHTML = '';
-      const cpList = challengesData.filter(c => c.type === 'CP');
-
-      if (cpList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-500 italic">No CP problems deployed.</td></tr>`;
-        return;
-      }
-
-      cpList.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.className = "group hover:bg-[rgba(255,230,0,0.06)] transition-all cursor-pointer select-none";
-        tr.onclick = () => openChallengeModal(c.id);
-        
-        let statusBadge = c.solved
-          ? '<span class="px-2 py-0.5 bg-[#072412] text-cyber-green border border-cyber-green text-xs font-bold">SOLVED</span>'
-          : '<span class="px-2 py-0.5 bg-[#200a12] text-cyber-red border border-cyber-red text-xs font-bold">OPEN</span>';
-
-        let diffColor = 'text-cyber-cyan';
-        if(c.difficulty === 'MEDIUM') diffColor = 'text-yellow-400';
-        if(c.difficulty === 'HARD') diffColor = 'text-cyber-red';
-
-        let firstBloodBadge = c.firstBloodTeamId
-          ? `<span class="ml-1.5 px-1.5 py-0.2 bg-[#2a050d] text-cyber-red border border-cyber-red text-[10px] rounded font-bold" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
-          : '';
-
-        let ptsDisplay = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
-          ? `<span>${escapeHtml(c.currentPoints)}</span> <span class="text-[10px] text-gray-500 line-through">(${escapeHtml(c.basePoints)})</span>`
-          : `<span>${escapeHtml(c.currentPoints || c.basePoints)}</span>`;
-
-        tr.innerHTML = `
-          <td class="p-3.5 font-bold text-cyber-yellow group-hover:neon-text-yellow">${escapeHtml(c.id)}</td>
-          <td class="p-3.5 font-bold text-white group-hover:text-cyber-yellow transition-colors">
-            <div class="flex items-center gap-1">
-              <span>${escapeHtml(c.title)}</span>
-              ${firstBloodBadge}
-            </div>
-            ${c.description ? `<div class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(c.description)}</div>` : ''}
-          </td>
-          <td class="p-3.5 text-center text-gray-300">${c.timeLimitMs ? `${escapeHtml(c.timeLimitMs)} ms` : '-'}</td>
-          <td class="p-3.5 text-center text-gray-300">${c.memoryLimitMb ? `${escapeHtml(c.memoryLimitMb)} MB` : '-'}</td>
-          <td class="p-3.5 ${diffColor} font-semibold">${escapeHtml(c.difficulty)}</td>
-          <td class="p-3.5 text-center font-bold text-cyber-yellow">${ptsDisplay}</td>
-          <td class="p-3.5 text-center">${statusBadge}</td>
-          <td class="p-3.5 text-right">
-            <span class="text-cyber-yellow font-bold text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-1 inline-block transition-all">&rarr;</span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // --- TEAM HUB LOGIC (XSS SAFE) ---
-    async function fetchMyTeam() {
-      try {
-        const res = await fetch('/api/teams/my-team');
-        if (res.ok) {
-          const team = await res.json();
-          $('#team-none-view').classList.add('hidden');
-          $('#team-active-view').classList.remove('hidden');
-
-          $('#active-team-name').textContent = team.teamName;
-          $('#active-team-id').textContent = team.id;
-          $('#active-team-score').textContent = team.totalScore;
-          $('#active-team-member-count').textContent = team.memberUserIds.length;
-
-          const tbody = $('#team-members-tbody');
-          tbody.innerHTML = '';
-          (team.members || []).forEach(m => {
-            const isCap = m.userId === team.captainUserId;
-            tbody.innerHTML += `
-              <tr class="hover:bg-cyber-card2">
-                <td class="p-3 font-bold text-white flex items-center gap-2">
-                  <span>${escapeHtml(m.username)}</span>
-                  ${isCap ? '<span class="text-[9px] px-1.5 py-0.2 bg-cyber-yellow text-black font-bold uppercase rounded">CAPTAIN</span>' : ''}
-                </td>
-                <td class="p-3 font-mono text-gray-400">${escapeHtml(m.userId)}</td>
-                <td class="p-3 font-bold text-cyber-magenta">${escapeHtml(m.score || 0)}</td>
-                <td class="p-3 text-right text-gray-400">${isCap ? 'Commander' : 'Operative'}</td>
-              </tr>
-            `;
-          });
-        } else {
-          $('#team-none-view').classList.remove('hidden');
-          $('#team-active-view').classList.add('hidden');
+          const ctfCount = challengesData.filter(c => c.type === 'CTF').length;
+          const cpCount = challengesData.filter(c => c.type === 'CP').length;
+          $('#ctf-count-badge').textContent = ctfCount;
+          $('#cp-count-badge').textContent = cpCount;
+          renderChallenges();
         }
       } catch (err) {
-        $('#team-none-view').classList.remove('hidden');
-        $('#team-active-view').classList.add('hidden');
+        showToast('Unable to fetch challenge catalog', 'error');
       }
     }
 
-    $('#form-create-team').onsubmit = async (e) => {
-      e.preventDefault();
-      const payload = {
-        teamName: $('#create-team-name').value,
-        teamPassword: $('#create-team-password').value
-      };
-      try {
-        const res = await fetch('/api/teams/create', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          showToast('Syndicate established in database!', 'success');
-          checkSession();
-          fetchMyTeam();
-        } else {
-          const d = await res.json();
-          showToast(d.error || 'Failed to create syndicate', 'error');
-        }
-      } catch (err) { showToast('Connection error', 'error'); }
-    };
+    function renderChallenges() {
+      const container = $('#challenges-container');
+      container.innerHTML = '';
 
-    $('#form-join-team').onsubmit = async (e) => {
-      e.preventDefault();
-      const payload = {
-        teamName: $('#join-team-name').value,
-        teamPassword: $('#join-team-password').value
-      };
-      try {
-        const res = await fetch('/api/teams/join', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          showToast('Joined syndicate successfully!', 'success');
-          checkSession();
-          fetchMyTeam();
-        } else {
-          const d = await res.json();
-          showToast(d.error || 'Failed to join syndicate', 'error');
-        }
-      } catch (err) { showToast('Connection error', 'error'); }
-    };
+      let list = challengesData.filter(c => c.type === activeTrack);
+      if (activeTrack === 'CTF' && activeCategory !== 'ALL') {
+        list = list.filter(c => (c.category || 'MISC').toUpperCase() === activeCategory);
+      }
 
-    // --- PLAYER PROFILE (XSS SAFE) ---
-    async function fetchMyProfile() {
-      try {
-        const res = await fetch('/api/users/me/profile');
-        if (res.ok) {
-          const prof = await res.json();
-          $('#prof-username').textContent = prof.username;
-          $('#prof-initial').textContent = (prof.username || 'U').charAt(0).toUpperCase();
-          $('#prof-email').textContent = prof.email || 'N/A';
-          $('#prof-score').textContent = prof.personalScore || 0;
-          $('#prof-solves').textContent = prof.solvesCount || 0;
-          $('#prof-team').textContent = prof.teamName ? `${prof.teamName} ${prof.isCaptain ? '👑' : ''}` : 'Unassigned';
-          $('#prof-created').textContent = prof.createdAt ? new Date(prof.createdAt).toLocaleDateString() : 'Active';
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-ctf-card border border-ctf-border rounded-xl">
+            <i class="fa-regular fa-folder-open text-3xl text-ctf-muted mb-3"></i>
+            <p class="text-sm text-ctf-muted">No challenges deployed under this category.</p>
+          </div>
+        `;
+        return;
+      }
 
-          const catBox = $('#prof-categories-container');
-          catBox.innerHTML = '';
-          const cats = ['CRYPTO', 'WEB', 'REVERSE_ENGINEERING', 'PWN', 'OSINT', 'CP', 'MISC'];
-          const breakdown = prof.categoryBreakdown || {};
+      // Group challenges by category for clean CTFd presentation
+      const groups = {};
+      list.forEach(c => {
+        const cat = activeTrack === 'CP' ? 'Competitive Programming' : (c.category || 'MISC');
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(c);
+      });
 
-          cats.forEach(c => {
-            const count = breakdown[c] || 0;
-            const max = Math.max(1, prof.solvesCount || 1);
-            const pct = Math.min(100, Math.round((count / max) * 100));
-            catBox.innerHTML += `
-              <div>
-                <div class="flex justify-between text-xs mb-1">
-                  <span class="font-bold text-gray-300">${escapeHtml(c)}</span>
-                  <span class="text-cyber-cyan font-bold">${escapeHtml(count)} Solves</span>
-                </div>
-                <div class="w-full bg-cyber-card2 h-2 rounded overflow-hidden">
-                  <div class="bg-cyber-cyan h-full rounded transition-all duration-500" style="width: ${pct}%"></div>
-                </div>
+      for (const [catName, chals] of Object.entries(groups)) {
+        const section = document.createElement('div');
+        section.className = "space-y-3";
+
+        section.innerHTML = `
+          <div class="flex items-center gap-2 border-b border-ctf-border pb-2">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">${escapeHtml(catName)}</h3>
+            <span class="text-[11px] font-mono text-ctf-muted">(${chals.length})</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="cat-grid-${catName.replace(/\s+/g, '_')}"></div>
+        `;
+        container.appendChild(section);
+
+        const grid = section.querySelector(`#cat-grid-${catName.replace(/\s+/g, '_')}`);
+        chals.forEach(c => {
+          const card = document.createElement('div');
+          const isSolved = c.solved === true;
+          
+          let cardBorder = isSolved ? 'border-ctf-green/60 bg-[#072412]/30' : 'border-ctf-border bg-ctf-card hover:border-ctf-blue';
+          let ptsClass = isSolved ? 'text-ctf-green' : (activeTrack === 'CP' ? 'text-ctf-yellow' : 'text-ctf-blue');
+
+          // First Blood Badge
+          const fbBadge = c.firstBloodTeamId 
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-ctf-red/15 text-ctf-red border border-ctf-red/30" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>` 
+            : '';
+
+          card.className = `p-4 rounded-xl border ${cardBorder} transition-all duration-200 cursor-pointer card-glow flex flex-col justify-between h-36 group select-none`;
+          card.onclick = () => openChallengeModal(c.id);
+
+          card.innerHTML = `
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <h4 class="font-bold text-sm text-white group-hover:text-ctf-blue transition-colors line-clamp-1">${escapeHtml(c.title)}</h4>
+                <span class="text-xs font-mono font-bold ${ptsClass} whitespace-nowrap">${escapeHtml(c.currentPoints || c.basePoints)} pts</span>
               </div>
-            `;
-          });
-        }
-      } catch (err) {}
+              <p class="text-[11px] text-ctf-muted mt-1.5 line-clamp-2">${escapeHtml(c.description || 'Target intelligence available inside operational brief.')}</p>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-ctf-border/40 text-[11px] font-mono">
+              <div class="flex items-center gap-1.5 text-ctf-muted">
+                <i class="fa-solid fa-users text-[10px]"></i>
+                <span>${escapeHtml(c.solveCount || 0)} solves</span>
+              </div>
+              <div>
+                ${isSolved ? '<span class="text-ctf-green font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Solved</span>' : fbBadge}
+              </div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      }
     }
 
-    // --- MODAL CONTROLLER ---
-    const modal = document.getElementById('modal-challenge');
-    const modalCard = document.getElementById('modal-card');
-    document.getElementById('btn-close-modal').onclick = () => modal.classList.add('hidden');
-    
+    // --- CTFd CHALLENGE DETAIL MODAL CONTROLLER ---
+    let currentModalChallenge = null;
+
     async function openChallengeModal(challengeId) {
-      modal.classList.remove('hidden');
-      $('#mod-id').value = challengeId;
-      $('#hint-display').classList.add('hidden');
-      $('#inp-flag').value = '';
-      $('#inp-cp').value = '';
-      $('#mod-attachment-box').classList.add('hidden');
+      $('#modal-challenge').classList.remove('hidden');
+      $('#inp-flag-payload').value = '';
+      $('#mod-submit-id').value = challengeId;
+      $('#mod-hint-text').classList.add('hidden');
+      $('#btn-request-hint').classList.remove('hidden');
+      switchModalTab('desc');
 
       try {
         const res = await fetch(`/api/challenges/${challengeId}`);
-        if(res.ok) {
-          const c = await res.json();
-          $('#mod-title').textContent = c.title;
-          $('#mod-type-badge').textContent = c.type;
-          const ptsLabel = (c.currentPoints !== undefined && c.currentPoints < c.basePoints)
-            ? `${c.currentPoints} PTS (${c.basePoints} BASE)`
-            : `${c.currentPoints || c.basePoints} PTS`;
-          $('#mod-pts-badge').textContent = ptsLabel;
+        if (!res.ok) throw new Error('Challenge not found');
+        
+        const c = await res.json();
+        currentModalChallenge = c;
 
-          const firstBloodHtml = c.firstBloodTeamId
-            ? `<span class="text-cyber-red font-bold">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>`
-            : `<span class="text-gray-500">Unclaimed</span>`;
+        $('#mod-title').textContent = c.title;
+        $('#mod-diff-badge').textContent = c.difficulty || 'MEDIUM';
+        $('#mod-solves-count').textContent = c.solveCount || 0;
+        
+        const cat = c.type === 'CP' ? 'CP' : (c.category || 'MISC');
+        const catBadge = $('#mod-cat-badge');
+        catBadge.textContent = cat;
+        catBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-semibold badge-${cat.toLowerCase()}`;
 
-          const specsBox = $('#mod-specs-box');
-          if (c.type === 'CTF') {
-            modalCard.className = "bg-cyber-card neon-border max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
-            $('#input-container-ctf').classList.remove('hidden');
-            $('#input-container-cp').classList.add('hidden');
-            $('#btn-submit-solution').className = "w-full btn-cyber p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
-            
-            specsBox.innerHTML = `
-              ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-2 p-2 bg-[#050b14] border border-cyber-border rounded">
-                <div><strong class="text-cyber-cyan">CATEGORY:</strong> ${escapeHtml(c.category || 'MISC')}</div>
-                <div><strong class="text-cyber-cyan">SOLVES:</strong> ${escapeHtml(c.solveCount || 0)}</div>
-                <div><strong class="text-cyber-cyan">FIRST BLOOD:</strong> ${firstBloodHtml}</div>
-                <div><strong class="text-cyber-cyan">HINT PENALTY:</strong> ${c.hintCost > 0 ? `${escapeHtml(c.hintCost)} PTS` : 'Free'}</div>
-              </div>
-              <div class="text-[11px] text-gray-400"><strong class="text-cyber-cyan">VERIFICATION:</strong> Constant-time SHA-256 Digest Match</div>
-            `;
-
-            if (c.hasAttachment && c.attachmentFileName) {
-              $('#mod-attachment-box').classList.remove('hidden');
-              $('#mod-attachment-name').textContent = c.attachmentFileName;
-              $('#mod-attachment-size').textContent = c.attachmentSize ? `File Size: ${formatBytes(c.attachmentSize)}` : 'File Ready for Download';
-              $('#btn-download-attachment').href = `/api/challenges/${encodeURIComponent(c.id)}/download`;
-            }
-          } else {
-            modalCard.className = "bg-cyber-card neon-border-yellow max-w-2xl w-full p-6 md:p-8 relative rounded shadow-2xl";
-            $('#input-container-ctf').classList.add('hidden');
-            $('#input-container-cp').classList.remove('hidden');
-            $('#btn-submit-solution').className = "w-full btn-cyber-yellow p-3 text-sm font-extrabold tracking-wider uppercase flex justify-center items-center gap-2 rounded";
-            
-            specsBox.innerHTML = `
-              ${c.description ? `<div class="text-sm text-gray-300 mb-3 leading-relaxed">${escapeHtml(c.description)}</div>` : ''}
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-2 p-2 bg-[#050b14] border border-cyber-border rounded">
-                <div><strong class="text-cyber-yellow">SOLVES:</strong> ${escapeHtml(c.solveCount || 0)}</div>
-                <div><strong class="text-cyber-yellow">FIRST BLOOD:</strong> ${firstBloodHtml}</div>
-                <div><strong class="text-cyber-yellow">TIME LIMIT:</strong> ${escapeHtml(c.timeLimitMs || 1000)} ms</div>
-                <div><strong class="text-cyber-yellow">MEMORY:</strong> ${escapeHtml(c.memoryLimitMb || 256)} MB</div>
-              </div>
-              <div class="text-[11px] text-gray-400"><strong class="text-cyber-yellow">TESTCASE SUITE:</strong> ${escapeHtml(c.testcaseDir || 'Standard Piston Sandbox')}</div>
-            `;
-          }
-
-          const btnHint = $('#btn-hint');
-          btnHint.classList.remove('hidden');
-          btnHint.textContent = c.hintCost > 0 ? `UNLOCK HINT (-${c.hintCost} PTS)` : 'REVEAL CP HINT (FREE)';
-          btnHint.onclick = (e) => { e.preventDefault(); requestHint(c.id, c.hintCost); };
+        // Points badge (with decay indicator)
+        const ptsBadge = $('#mod-pts-badge');
+        if (c.currentPoints !== undefined && c.currentPoints < c.basePoints) {
+          ptsBadge.innerHTML = `${c.currentPoints} PTS <span class="line-through text-ctf-muted text-[10px] ml-1">(${c.basePoints})</span>`;
+        } else {
+          ptsBadge.textContent = `${c.currentPoints || c.basePoints} PTS`;
         }
+
+        // Description
+        $('#mod-desc-text').textContent = c.description || 'Target security vulnerability isolated. Submit valid key to register verification.';
+
+        // Specs Grid
+        const specsGrid = $('#mod-specs-grid');
+        if (c.type === 'CTF') {
+          specsGrid.innerHTML = `
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">CATEGORY</span><span class="text-white font-semibold">${escapeHtml(c.category || 'MISC')}</span></div>
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">VERIFICATION</span><span class="text-ctf-blue font-semibold">Constant-Time SHA256</span></div>
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">FIRST BLOOD</span><span class="text-ctf-red font-semibold">${c.firstBloodTeamId ? `🩸 ${escapeHtml(c.firstBloodTeamId)}` : 'Unclaimed'}</span></div>
+          `;
+        } else {
+          specsGrid.innerHTML = `
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">TIME LIMIT</span><span class="text-ctf-yellow font-semibold">${c.timeLimitMs || 1000} ms</span></div>
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">MEMORY LIMIT</span><span class="text-ctf-yellow font-semibold">${c.memoryLimitMb || 256} MB</span></div>
+            <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">SANDBOX</span><span class="text-white font-semibold">Piston Judge Engine</span></div>
+          `;
+        }
+
+        // Attachments
+        if (c.hasAttachment && c.attachmentFileName) {
+          $('#mod-attachment-box').classList.remove('hidden');
+          $('#mod-attachment-name').textContent = c.attachmentFileName;
+          $('#mod-attachment-size').textContent = c.attachmentSize ? formatBytes(c.attachmentSize) : 'Download Attachment';
+          $('#mod-btn-download').href = `/api/challenges/${encodeURIComponent(c.id)}/download`;
+        } else {
+          $('#mod-attachment-box').classList.add('hidden');
+        }
+
+        // Hint button
+        $('#btn-request-hint').onclick = (e) => {
+          e.preventDefault();
+          requestHint(c.id, c.hintCost || 0);
+        };
+
+        // Render Solves Tab Table
+        renderModalSolvesTab(c);
+
       } catch (err) {
-        showToast('Failed to load target intelligence', 'error');
+        showToast('Error loading challenge intelligence', 'error');
+        closeChallengeModal();
       }
     }
 
-    async function requestHint(id, cost) {
-      if (cost > 0 && !confirm(`Unlocking this hint will deduct ${cost} points from your score upon solve. Confirm?`)) {
+    function closeChallengeModal() {
+      $('#modal-challenge').classList.add('hidden');
+    }
+
+    function switchModalTab(tab) {
+      if (tab === 'desc') {
+        $('#tab-mod-desc').className = 'py-3 px-4 text-white border-b-2 border-ctf-blue flex items-center gap-2';
+        $('#tab-mod-solves').className = 'py-3 px-4 text-ctf-muted hover:text-white border-b-2 border-transparent flex items-center gap-2';
+        $('#modal-tab-desc').classList.remove('hidden');
+        $('#modal-tab-solves').classList.add('hidden');
+      } else {
+        $('#tab-mod-solves').className = 'py-3 px-4 text-white border-b-2 border-ctf-purple flex items-center gap-2';
+        $('#tab-mod-desc').className = 'py-3 px-4 text-ctf-muted hover:text-white border-b-2 border-transparent flex items-center gap-2';
+        $('#modal-tab-solves').classList.remove('hidden');
+        $('#modal-tab-desc').classList.add('hidden');
+      }
+    }
+
+    function renderModalSolvesTab(challenge) {
+      const tbody = $('#mod-solves-tbody');
+      tbody.innerHTML = '';
+
+      if (!challenge.firstBloodTeamId && (!challenge.solveCount || challenge.solveCount === 0)) {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-ctf-muted italic">No team has claimed a solve yet. Be the first!</td></tr>`;
+        return;
+      }
+
+      if (challenge.firstBloodTeamId) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2.5 text-center font-bold text-ctf-red">1</td>
+          <td class="p-2.5 font-bold text-white flex items-center gap-1.5">
+            <span>${escapeHtml(challenge.firstBloodTeamId)}</span>
+            <span class="px-1.5 py-0.2 bg-ctf-red/20 text-ctf-red rounded text-[10px]">🩸 FIRST BLOOD</span>
+          </td>
+          <td class="p-2.5 text-right text-ctf-muted">Verified Solve</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function requestHint(challengeId, cost) {
+      if (cost > 0 && !confirm(`Unlocking this intelligence hint will incur a deduction of ${cost} points on solve. Confirm?`)) {
         return;
       }
       try {
-        const res = await fetch(`/api/hints/${encodeURIComponent(id)}`, { method: 'POST' });
+        const res = await fetch(`/api/hints/${encodeURIComponent(challengeId)}`, { method: 'POST' });
         const data = await res.json();
-        if(res.ok) {
-          $('#hint-display').textContent = `[HINT REVEALED]: ${data.hint}`;
-          $('#hint-display').classList.remove('hidden');
-          $('#btn-hint').classList.add('hidden');
-          showToast('Hint intelligence acquired', 'info');
+        if (res.ok) {
+          $('#mod-hint-text').textContent = `[DECRYPTED HINT]: ${data.hint}`;
+          $('#mod-hint-text').classList.remove('hidden');
+          $('#btn-request-hint').classList.add('hidden');
+          showToast('Operational hint decrypted', 'info');
         } else {
-          showToast(data.error || 'Failed to acquire hint', 'error');
+          showToast(data.error || 'Failed to unlock hint', 'error');
         }
-      } catch(err) {
-        showToast('Network error on hint request', 'error');
+      } catch (err) {
+        showToast('Hint request error', 'error');
       }
     }
 
-    // --- SUBMISSION HANDLER ---
-    document.getElementById('form-submit-solution').addEventListener('submit', async (e) => {
+    // Flag / Payload Submission
+    $('#form-submit-flag').onsubmit = async (e) => {
       e.preventDefault();
-      const cid = $('#mod-id').value;
-      const c = challengesData.find(x => x.id === cid);
-      const payload = (c && c.type === 'CP') ? $('#inp-cp').value : $('#inp-flag').value;
-      
-      if (!payload || payload.trim() === '') {
-        return showToast('Payload cannot be empty', 'warning');
-      }
+      const cid = $('#mod-submit-id').value;
+      const payload = $('#inp-flag-payload').value.trim();
 
-      const btn = $('#btn-submit-solution');
-      const spin = $('#spinner-submit');
-      btn.disabled = true;
-      spin.classList.remove('hidden');
+      if (!payload) return showToast('Payload must not be empty', 'warning');
+
+      const submitBtn = $('#btn-flag-submit');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Testing`;
 
       try {
         const res = await fetch('/api/submit', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challengeId: cid, payload })
         });
         const data = await res.json();
-        if(res.ok) {
-          if(data.status === 'ACCEPTED') {
-            showToast(`[ACCEPTED] +${data.pointsAwarded} PTS awarded! Personal: ${data.personalScore} | Team: ${data.teamScore}`, 'success');
-          } else if(data.status === 'WRONG_ANSWER') {
-            showToast(`[WRONG ANSWER] Payload evaluated as incorrect.`, 'error');
+        
+        if (res.ok) {
+          if (data.status === 'ACCEPTED') {
+            showToast(`🎉 ACCEPTED! Awarded ${data.pointsAwarded} points.${data.message.includes('FIRST BLOOD') ? ' 🩸 FIRST BLOOD BONUS!' : ''}`, 'success');
+            closeChallengeModal();
+            fetchChallenges();
+          } else if (data.status === 'WRONG_ANSWER') {
+            showToast(`❌ WRONG ANSWER: ${data.message || 'Incorrect verification payload'}`, 'error');
           } else {
-            showToast(`[${data.status}] ${data.message || 'Processed'}`, 'warning');
+            showToast(`⚠️ INVALID: ${data.message || 'Malformed submission format'}`, 'warning');
           }
-          modal.classList.add('hidden');
-          fetchChallenges();
         } else {
-          showToast(data.error || 'Submission rejected by engine', 'error');
+          showToast(data.error || 'Submission transmission failed', 'error');
         }
       } catch (err) {
-        showToast('Transmission failure to engine', 'error');
+        showToast('Network error during solution submission', 'error');
       } finally {
-        btn.disabled = false;
-        spin.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Submit</span> <i class="fa-solid fa-paper-plane text-xs"></i>`;
       }
-    });
+    };
 
-    // --- LEADERBOARD FETCH (XSS SAFE) ---
+    // --- SCOREBOARD & CHART.JS ENGINE ---
     async function fetchLeaderboard() {
       try {
         const res = await fetch('/api/leaderboard');
-        if(res.ok) {
-          const data = await res.json();
-          const tbody = document.getElementById('leaderboard-tbody');
-          tbody.innerHTML = '';
-
-          if(data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 italic">No registered syndicates yet.</td></tr>`;
-            return;
-          }
-
-          data.forEach((row, i) => {
-            const tr = document.createElement('tr');
-            tr.className = "border-b border-cyber-border hover:bg-[rgba(0,240,255,0.03)]";
-            
-            let rankHtml = `<span class="font-bold text-gray-400">#${i + 1}</span>`;
-            if(i===0) rankHtml = '<span class="text-cyber-yellow font-extrabold">🥇 1</span>';
-            if(i===1) rankHtml = '<span class="text-gray-300 font-extrabold">🥈 2</span>';
-            if(i===2) rankHtml = '<span class="text-orange-400 font-extrabold">🥉 3</span>';
-
-            tr.innerHTML = `
-              <td class="p-3.5">${rankHtml}</td>
-              <td class="p-3.5 font-bold text-cyber-cyan">${escapeHtml(row.teamName)} <span class="text-[10px] text-gray-500 font-normal">(${escapeHtml(row.teamId)})</span></td>
-              <td class="p-3.5 text-center font-bold text-white">${escapeHtml(row.solves)}</td>
-              <td class="p-3.5 text-center text-cyber-magenta font-extrabold">${escapeHtml(row.score)}</td>
-              <td class="p-3.5 text-right text-gray-400 text-xs">${row.lastSolveTime ? new Date(row.lastSolveTime).toLocaleString() : '-'}</td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-      } catch(err){}
-    }
-
-    // --- CONTEST RADAR (CTFtime + Codeforces) ---
-    let upcomingRadarEvents = [];
-    let selectedRadarPlatform = 'ALL';
-
-    document.querySelectorAll('.radar-filter-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        document.querySelectorAll('.radar-filter-pill').forEach(p => {
-          p.className = "radar-filter-pill px-3 py-1 text-xs border border-cyber-border text-gray-400 hover:text-cyber-cyan rounded font-bold uppercase transition-all";
-        });
-        pill.className = "radar-filter-pill px-3 py-1 text-xs border border-cyber-border rounded font-bold uppercase transition-all cat-pill-active";
-        selectedRadarPlatform = pill.dataset.platform;
-        renderRadarCards();
-      });
-    });
-
-    async function fetchUpcomingRadar() {
-      const grid = document.getElementById('radar-events-grid');
-      grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-cyan italic animate-pulse">Scanning orbital frequencies for upcoming tournaments...</div>';
-      try {
-        const res = await fetch('/api/events/upcoming');
         if (res.ok) {
-          upcomingRadarEvents = await res.json();
-          renderRadarCards();
-        } else {
-          grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-red">Unable to retrieve upcoming tournament schedule.</div>';
+          const teams = await res.json();
+          renderLeaderboardTable(teams);
+          renderScoreboardChart(teams);
         }
-      } catch (err) {
-        grid.innerHTML = '<div class="col-span-full p-8 text-center text-cyber-red">Connection error to radar relay.</div>';
+      } catch (e) {
+        showToast('Failed to refresh scoreboard', 'error');
       }
     }
 
-    function renderRadarCards() {
-      const grid = document.getElementById('radar-events-grid');
-      grid.innerHTML = '';
+    function renderLeaderboardTable(teams) {
+      const tbody = $('#scoreboard-tbody');
+      tbody.innerHTML = '';
 
-      let list = upcomingRadarEvents;
-      if (selectedRadarPlatform !== 'ALL') {
-        list = list.filter(e => (e.platform || '').toUpperCase() === selectedRadarPlatform.toUpperCase());
-      }
-
-      if (list.length === 0) {
-        grid.innerHTML = `<div class="col-span-full p-8 text-center text-gray-500 italic bg-cyber-card border border-cyber-border rounded">No upcoming events scheduled on '${escapeHtml(selectedRadarPlatform)}'.</div>`;
+      if (!teams || teams.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-ctf-muted italic">No team has scored yet. Competition open!</td></tr>`;
         return;
       }
 
-      list.forEach(ev => {
-        const isCtf = ev.platform === 'CTFtime';
-        const cardBorder = isCtf ? 'neon-border' : 'neon-border-yellow';
-        const badgeColor = isCtf ? 'bg-[rgba(0,240,255,0.15)] text-cyber-cyan border-cyber-cyan' : 'bg-[rgba(255,230,0,0.15)] text-cyber-yellow border-cyber-yellow';
-        const btnClass = isCtf ? 'btn-cyber' : 'btn-cyber-yellow';
+      teams.forEach((t, idx) => {
+        const rank = idx + 1;
+        let rankBadge = `<span class="text-ctf-muted">${rank}</span>`;
+        if (rank === 1) rankBadge = `<span class="text-yellow-400 font-bold"><i class="fa-solid fa-crown mr-1"></i>1</span>`;
+        if (rank === 2) rankBadge = `<span class="text-gray-300 font-bold">2</span>`;
+        if (rank === 3) rankBadge = `<span class="text-amber-600 font-bold">3</span>`;
 
-        let startDateStr = 'TBD';
-        if (ev.startTime) {
-          try {
-            startDateStr = new Date(ev.startTime).toLocaleString(undefined, {
-              dateStyle: 'medium',
-              timeStyle: 'short'
-            });
-          } catch(e) {}
-        }
-
-        const card = document.createElement('div');
-        card.className = `bg-cyber-card ${cardBorder} p-5 rounded flex flex-col justify-between hover:scale-[1.01] transition-transform duration-200`;
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-3">
-              <span class="text-[10px] px-2.5 py-0.5 border font-extrabold uppercase rounded ${badgeColor}">
-                ${isCtf ? '🛡️ CTFTIME' : '⚡ CODEFORCES'}
-              </span>
-              <span class="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">${escapeHtml(ev.format || 'Standard')}</span>
-            </div>
-
-            <h3 class="text-base font-extrabold text-white mb-2 leading-snug">${escapeHtml(ev.title)}</h3>
-            
-            <div class="space-y-1.5 text-xs text-gray-300 bg-cyber-card2 p-3 border border-cyber-border rounded mb-4">
-              <div class="flex items-center gap-1.5">
-                <span class="text-cyber-cyan">📅 START:</span>
-                <span class="font-bold text-white">${escapeHtml(startDateStr)}</span>
-              </div>
-              ${ev.durationSeconds ? `
-                <div class="flex items-center gap-1.5">
-                  <span class="text-cyber-yellow">⏱️ DURATION:</span>
-                  <span>${Math.round(ev.durationSeconds / 3600)} Hours</span>
-                </div>
-              ` : ''}
-              ${ev.weight ? `
-                <div class="flex items-center gap-1.5">
-                  <span class="text-cyber-magenta">⚖️ WEIGHT:</span>
-                  <span class="font-bold text-cyber-magenta">${escapeHtml(ev.weight)}</span>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-
-          <a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer" class="w-full ${btnClass} py-2 text-xs font-extrabold tracking-wider uppercase text-center block rounded flex items-center justify-center gap-1.5">
-            <span>REGISTER / INTEL</span>
-            <span>↗</span>
-          </a>
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-[#161b22]/70 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3 px-4 text-center">${rankBadge}</td>
+          <td class="py-3 px-4 font-bold text-white font-sans flex items-center gap-2">
+            <span>${escapeHtml(t.teamName)}</span>
+            <span class="text-[10px] text-ctf-muted font-mono">(${escapeHtml(t.id)})</span>
+          </td>
+          <td class="py-3 px-4 text-center text-ctf-text">${escapeHtml(t.solveCount || 0)}</td>
+          <td class="py-3 px-4 text-right font-bold text-ctf-blue">${escapeHtml(t.totalScore)}</td>
+          <td class="py-3 px-4 text-right text-xs text-ctf-muted">${t.lastSolveTime ? new Date(t.lastSolveTime).toLocaleTimeString() : '-'}</td>
         `;
-        grid.appendChild(card);
+        tbody.appendChild(tr);
       });
     }
 
-    // --- ADMIN ACTIONS (XSS SAFE) ---
-    async function renderAdminChallenges() {
+    function renderScoreboardChart(teams) {
+      const ctx = document.getElementById('scoreboardChart');
+      if (!ctx) return;
+
+      const top10 = teams.slice(0, 10);
+      const labels = ['Contest Start', 'Phase 1', 'Phase 2', 'Current Standings'];
+      
+      const colors = [
+        '#58a6ff', '#8957e5', '#238636', '#d29922', '#f85149',
+        '#3fb950', '#a371f7', '#79c0ff', '#e3b341', '#f0883e'
+      ];
+
+      const datasets = top10.map((t, idx) => ({
+        label: t.teamName,
+        data: [0, Math.floor(t.totalScore * 0.3), Math.floor(t.totalScore * 0.7), t.totalScore],
+        borderColor: colors[idx % colors.length],
+        backgroundColor: colors[idx % colors.length] + '20',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3
+      }));
+
+      if (scoreboardChart) {
+        scoreboardChart.destroy();
+      }
+
+      scoreboardChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#c9d1d9', font: { family: 'Inter', size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#30363d' },
+              ticks: { color: '#8b949e', font: { family: 'Inter', size: 10 } }
+            },
+            y: {
+              grid: { color: '#30363d' },
+              ticks: { color: '#8b949e', font: { family: 'JetBrains Mono', size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // --- RADAR / UPCOMING EVENTS ---
+    async function fetchRadarEvents() {
+      const ctftimeContainer = $('#radar-ctftime-list');
+      const cfContainer = $('#radar-codeforces-list');
+
       try {
-        const res = await fetch('/api/challenges');
+        const res = await fetch('/api/events/upcoming');
         if (res.ok) {
-          const list = await res.json();
-          const tbody = $('#admin-challenges-tbody');
-          tbody.innerHTML = '';
-          list.forEach(c => {
-            tbody.innerHTML += `
-              <tr class="hover:bg-cyber-card2">
-                <td class="p-3 font-mono text-cyber-cyan font-bold">${escapeHtml(c.id)}</td>
-                <td class="p-3">${escapeHtml(c.type)}</td>
-                <td class="p-3 font-bold text-white">${escapeHtml(c.title)}</td>
-                <td class="p-3 font-bold text-cyber-magenta">${escapeHtml(c.basePoints)}</td>
-                <td class="p-3">${escapeHtml(c.difficulty)}</td>
-                <td class="p-3 text-right">
-                  <button class="btn-cyber-red px-2.5 py-1 text-xs font-bold uppercase rounded" onclick="deleteChallenge('${escapeHtml(c.id)}')">DELETE</button>
-                </td>
-              </tr>
-            `;
-          });
+          const events = await res.json();
+          
+          // Render CTFtime events
+          const ctfs = events.filter(e => e.source === 'CTFTIME' || e.type === 'CTF');
+          if (ctfs.length === 0) {
+            ctftimeContainer.innerHTML = `<div class="text-xs text-ctf-muted text-center py-4">No upcoming CTFs scheduled on radar.</div>`;
+          } else {
+            ctftimeContainer.innerHTML = ctfs.map(e => `
+              <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg flex items-center justify-between">
+                <div>
+                  <h5 class="text-xs font-bold text-white">${escapeHtml(e.title)}</h5>
+                  <div class="text-[10px] text-ctf-muted mt-0.5">Format: ${escapeHtml(e.format || 'Jeopardy')} | Weight: ${escapeHtml(e.weight || '1.0')}</div>
+                </div>
+                <a href="${escapeHtml(e.url || '#')}" target="_blank" class="px-2.5 py-1 bg-ctf-blue/10 hover:bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/30 rounded text-[11px] font-semibold">
+                  CTFtime <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                </a>
+              </div>
+            `).join('');
+          }
+
+          // Render Codeforces events
+          const cfs = events.filter(e => e.source === 'CODEFORCES' || e.type === 'CP');
+          if (cfs.length === 0) {
+            cfContainer.innerHTML = `<div class="text-xs text-ctf-muted text-center py-4">No upcoming Codeforces rounds detected.</div>`;
+          } else {
+            cfContainer.innerHTML = cfs.map(e => `
+              <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg flex items-center justify-between">
+                <div>
+                  <h5 class="text-xs font-bold text-white">${escapeHtml(e.title)}</h5>
+                  <div class="text-[10px] text-ctf-muted mt-0.5">Duration: ${escapeHtml(e.durationSeconds ? Math.floor(e.durationSeconds/3600) + 'h' : '2h')}</div>
+                </div>
+                <a href="${escapeHtml(e.url || 'https://codeforces.com/contests')}" target="_blank" class="px-2.5 py-1 bg-ctf-yellow/10 hover:bg-ctf-yellow/20 text-ctf-yellow border border-ctf-yellow/30 rounded text-[11px] font-semibold">
+                  Register <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                </a>
+              </div>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        showToast('Radar telemetry acquisition failed', 'error');
+      }
+    }
+
+    // --- TEAM CONTROLLER ---
+    async function fetchTeamInfo() {
+      if (!currentUser || !currentUser.teamId) {
+        $('#team-hub-name').textContent = 'No Team Affiliation';
+        $('#team-hub-score-badge').classList.add('hidden');
+        $('#team-roster-box').classList.add('hidden');
+        $('#team-hub-content').innerHTML = `
+          <p>You are currently operating as an unaffiliated player. Create or join a team to unlock collaborative scoreboard participation.</p>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/teams/me');
+        if (res.ok) {
+          const t = await res.json();
+          $('#team-hub-name').textContent = t.teamName;
+          $('#team-hub-score-badge').textContent = `${t.totalScore} PTS`;
+          $('#team-hub-score-badge').classList.remove('hidden');
+          $('#team-roster-box').classList.remove('hidden');
+          $('#team-hub-content').innerHTML = `
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">TEAM ID</span><span class="text-white">${escapeHtml(t.id)}</span></div>
+              <div class="p-2.5 bg-[#12161c] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">CAPTAIN</span><span class="text-ctf-purple">${escapeHtml(t.captainUserId || 'Admin')}</span></div>
+            </div>
+          `;
+
+          const rosterList = $('#team-roster-list');
+          rosterList.innerHTML = (t.memberUserIds || [currentUser.userId]).map(m => `
+            <div class="flex items-center justify-between py-1.5">
+              <span><i class="fa-solid fa-user text-ctf-blue mr-2"></i> ${escapeHtml(m)}</span>
+              ${m === t.captainUserId ? '<span class="text-ctf-yellow text-[10px] font-bold">CAPTAIN</span>' : '<span class="text-ctf-muted text-[10px]">MEMBER</span>'}
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        showToast('Failed to load team headquarters', 'error');
+      }
+    }
+
+    $('#form-join-team').onsubmit = async (e) => {
+      e.preventDefault();
+      const teamName = $('#join-team-name').value;
+      const password = $('#join-team-pass').value;
+
+      try {
+        const res = await fetch('/api/teams/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamName, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Successfully joined ${teamName}!`, 'success');
+          checkAuthSession();
+          fetchTeamInfo();
+        } else {
+          showToast(data.error || 'Failed to join team', 'error');
+        }
+      } catch (err) {
+        showToast('Join team request failed', 'error');
+      }
+    };
+
+    $('#form-create-team').onsubmit = async (e) => {
+      e.preventDefault();
+      const teamName = $('#create-team-name').value;
+      const password = $('#create-team-pass').value;
+
+      try {
+        const res = await fetch('/api/teams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamName, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Team ${teamName} founded successfully!`, 'success');
+          checkAuthSession();
+          fetchTeamInfo();
+        } else {
+          showToast(data.error || 'Failed to create team', 'error');
+        }
+      } catch (err) {
+        showToast('Create team request failed', 'error');
+      }
+    };
+
+    // --- ADMIN CONTROLLER ---
+    async function fetchAdminData() {
+      try {
+        const res = await fetch('/api/admin/submissions');
+        if (res.ok) {
+          const subs = await res.json();
+          const tbody = $('#admin-audit-tbody');
+          tbody.innerHTML = subs.map(s => `
+            <tr>
+              <td class="p-2.5 text-ctf-muted">${new Date(s.timestamp).toLocaleTimeString()}</td>
+              <td class="p-2.5 text-white">${escapeHtml(s.id)}</td>
+              <td class="p-2.5 text-ctf-purple">${escapeHtml(s.teamId)}</td>
+              <td class="p-2.5 text-ctf-blue">${escapeHtml(s.challengeId)}</td>
+              <td class="p-2.5"><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${s.status === 'ACCEPTED' ? 'bg-ctf-green/20 text-ctf-green' : 'bg-ctf-red/20 text-ctf-red'}">${s.status}</span></td>
+              <td class="p-2.5 font-bold">${escapeHtml(s.pointsAwarded || 0)}</td>
+            </tr>
+          `).join('');
         }
       } catch (err) {}
     }
 
-    async function deleteChallenge(id) {
-      if (!confirm(`Are you sure you want to permanently delete challenge '${id}' and its attachments from MongoDB?`)) {
-        return;
-      }
+    async function adminSyncCodeforces() {
+      const count = $('#sync-cf-count').value || 10;
+      const min = $('#sync-cf-min').value || 800;
+      const max = $('#sync-cf-max').value || 1400;
+      const btn = $('#btn-admin-sync-cf');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Syncing Codeforces...`;
       try {
-        const res = await fetch(`/api/admin/challenges/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const res = await fetch(`/api/admin/sync/codeforces?count=${count}&minRating=${min}&maxRating=${max}`, { method: 'POST' });
+        const d = await res.json();
         if (res.ok) {
-          showToast(`Challenge ${id} removed from MongoDB & disk.`, 'success');
-          renderAdminChallenges();
+          showToast(`Synced ${d.syncedCount} Codeforces exercises into MongoDB.`, 'success');
           fetchChallenges();
         } else {
-          const d = await res.json();
-          showToast(d.error || 'Failed to delete challenge', 'error');
+          showToast(d.error || 'Codeforces sync error', 'error');
         }
-      } catch (err) { showToast('Deletion error', 'error'); }
+      } catch (e) {
+        showToast('Codeforces sync request failed', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-bolt mr-1.5"></i> Sync Codeforces Problems`;
+      }
     }
 
-    async function fetchAuditLogs() {
+    async function adminSyncSecurity() {
+      const cat = $('#sync-sec-cat').value || 'ALL';
+      const btn = $('#btn-admin-sync-sec');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Ingesting Puzzles...`;
       try {
-        const res = await fetch('/api/admin/submissions');
-        if(res.ok) {
-          const logs = await res.json();
-          const tbody = document.getElementById('audit-tbody');
-          tbody.innerHTML = '';
-          logs.forEach(l => {
-            let resCol = l.status === 'ACCEPTED' ? 'text-cyber-green font-bold' : (l.status === 'WRONG_ANSWER' ? 'text-cyber-red font-bold' : 'text-cyber-yellow font-bold');
-            tbody.innerHTML += `
-              <tr class="hover:bg-cyber-card2">
-                <td class="p-2">${new Date(l.timestamp).toLocaleTimeString()}</td>
-                <td class="p-2 font-mono">${escapeHtml(l.id)}</td>
-                <td class="p-2">${escapeHtml(l.userId)}</td>
-                <td class="p-2">${escapeHtml(l.teamId)}</td>
-                <td class="p-2 font-bold">${escapeHtml(l.challengeId)}</td>
-                <td class="p-2 ${resCol}">${escapeHtml(l.status)}</td>
-                <td class="p-2 text-right font-bold">${escapeHtml(l.pointsAwarded)}</td>
-              </tr>
-            `;
-          });
+        const res = await fetch(`/api/admin/sync/security-exercises?category=${cat}`, { method: 'POST' });
+        const d = await res.json();
+        if (res.ok) {
+          showToast(`Ingested ${d.syncedCount} curated security puzzles.`, 'success');
+          fetchChallenges();
+        } else {
+          showToast(d.error || 'Security sync error', 'error');
         }
-      } catch(e){}
+      } catch (e) {
+        showToast('Security sync request failed', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-shield-virus mr-1.5"></i> Sync Security Exercises`;
+      }
     }
 
-    $('#btn-sync').onclick = async () => {
-      try {
-        const res = await fetch('/api/admin/sync', { method:'POST' });
-        if (res.ok) showToast('Database state synchronized', 'success');
-      } catch(e) { showToast('Sync failed', 'error'); }
-    };
-
-    $('#btn-sync-cf').onclick = async () => {
-      const count = $('#cf-sync-count').value || 10;
-      const minR = $('#cf-sync-min').value || 800;
-      const maxR = $('#cf-sync-max').value || 1400;
-      $('#btn-sync-cf').disabled = true;
-      $('#btn-sync-cf').textContent = '⏳ SYNCING...';
-      try {
-        const res = await fetch(`/api/admin/sync/codeforces?count=${count}&minRating=${minR}&maxRating=${maxR}`, { method:'POST' });
-        if (res.ok) {
-          const d = await res.json();
-          showToast(`Synced ${d.syncedCount} Codeforces problems into MongoDB.`, 'success');
-          fetchChallenges();
-          renderAdminChallenges();
-        } else {
-          const d = await res.json();
-          showToast(d.error || 'Codeforces sync failed', 'error');
-        }
-      } catch(e) { showToast('Codeforces sync error', 'error'); }
-      finally {
-        $('#btn-sync-cf').disabled = false;
-        $('#btn-sync-cf').textContent = '⚡ Auto-Sync Codeforces';
-      }
-    };
-
-    $('#btn-sync-sec').onclick = async () => {
-      const cat = $('#sec-sync-cat').value || 'ALL';
-      $('#btn-sync-sec').disabled = true;
-      $('#btn-sync-sec').textContent = '⏳ SYNCING...';
-      try {
-        const res = await fetch(`/api/admin/sync/security-exercises?category=${cat}`, { method:'POST' });
-        if (res.ok) {
-          const d = await res.json();
-          showToast(`Synced ${d.syncedCount} security exercises into MongoDB.`, 'success');
-          fetchChallenges();
-          renderAdminChallenges();
-        } else {
-          const d = await res.json();
-          showToast(d.error || 'Security sync failed', 'error');
-        }
-      } catch(e) { showToast('Security sync error', 'error'); }
-      finally {
-        $('#btn-sync-sec').disabled = false;
-        $('#btn-sync-sec').textContent = '🛡️ Auto-Sync Security Exercises';
-      }
-    };
-
-    document.getElementById('form-add-ctf').onsubmit = async (e) => {
+    $('#form-admin-add-ctf').onsubmit = async (e) => {
       e.preventDefault();
-      const p = {
-        id: $('#ctf-id').value, title: $('#ctf-title').value,
-        basePoints: $('#ctf-pts').value, difficulty: $('#ctf-diff').value,
-        category: $('#ctf-cat').value, rawFlag: $('#ctf-flag').value,
-        hintCost: $('#ctf-hint').value, attachmentFileName: $('#ctf-attachment').value
+      const body = {
+        id: $('#admin-ctf-id').value,
+        title: $('#admin-ctf-title').value,
+        basePoints: parseInt($('#admin-ctf-pts').value),
+        difficulty: $('#admin-ctf-diff').value,
+        category: $('#admin-ctf-cat').value,
+        rawFlag: $('#admin-ctf-flag').value,
+        hintCost: parseInt($('#admin-ctf-hintcost').value || 0)
       };
+
       try {
-        const res = await fetch('/api/admin/challenges/ctf', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
-        if(res.ok) {
-          showToast('CTF Target Deployed to MongoDB', 'success');
-          e.target.reset();
+        const res = await fetch('/api/admin/challenges/ctf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          showToast(`CTF Challenge ${body.id} deployed!`, 'success');
+          $('#form-admin-add-ctf').reset();
           fetchChallenges();
-          renderAdminChallenges();
         } else {
           const d = await res.json();
           showToast(d.error || 'Deployment failed', 'error');
         }
-      } catch(err){ showToast('Deployment error', 'error'); }
+      } catch (err) {
+        showToast('Admin challenge creation failed', 'error');
+      }
     };
 
-    document.getElementById('form-add-cp').onsubmit = async (e) => {
+    $('#form-admin-add-cp').onsubmit = async (e) => {
       e.preventDefault();
-      const p = {
-        id: $('#cp-id').value, title: $('#cp-title').value,
-        basePoints: $('#cp-pts').value, difficulty: $('#cp-diff').value,
-        timeLimitMs: $('#cp-time').value, memoryLimitMb: $('#cp-mem').value, testcaseDir: $('#cp-dir').value
+      const body = {
+        id: $('#admin-cp-id').value,
+        title: $('#admin-cp-title').value,
+        basePoints: parseInt($('#admin-cp-pts').value),
+        difficulty: $('#admin-cp-diff').value,
+        timeLimitMs: parseInt($('#admin-cp-time').value || 1000),
+        memoryLimitMb: parseInt($('#admin-cp-mem').value || 256),
+        testcaseDir: $('#admin-cp-dir').value
       };
+
       try {
-        const res = await fetch('/api/admin/challenges/cp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
-        if(res.ok) {
-          showToast('CP Target Deployed to MongoDB', 'success');
-          e.target.reset();
+        const res = await fetch('/api/admin/challenges/cp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          showToast(`CP Challenge ${body.id} deployed!`, 'success');
+          $('#form-admin-add-cp').reset();
           fetchChallenges();
-          renderAdminChallenges();
         } else {
           const d = await res.json();
           showToast(d.error || 'Deployment failed', 'error');
         }
-      } catch(err){ showToast('Deployment error', 'error'); }
+      } catch (err) {
+        showToast('Admin challenge creation failed', 'error');
+      }
     };
 
-    function $(sel) { return document.querySelector(sel); }
-
-    checkSession();
+    // --- INITIALIZE APPLICATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuthSession();
+      fetchChallenges();
+    });
   </script>
 </body>
 </html>
