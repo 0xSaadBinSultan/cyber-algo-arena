@@ -16,6 +16,11 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    const bindEvent = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    };
+
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -615,6 +620,11 @@
   <!-- FRONTEND LOGIC (Vanilla JS)                               -->
   <!-- ═════════════════════════════════════════════════════════ -->
   <script>
+    const bindEvent = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    };
+
     // Global State Store
     let currentUser = null;
     let currentTeam = null;
@@ -768,8 +778,7 @@
       }
     }
 
-    const form_form_auth_login = $('#form-auth-login');
-    if (form_form_auth_login) form_form_auth_login.onsubmit = async (e) => {
+    async function login(e) {
       e.preventDefault();
       const username = $('#login-username').value;
       const password = $('#login-password').value;
@@ -795,8 +804,7 @@
       }
     };
 
-    const form_form_auth_register = $('#form-auth-register');
-    if (form_form_auth_register) form_form_auth_register.onsubmit = async (e) => {
+    async function register(e) {
       e.preventDefault();
       const username = $('#reg-username').value;
       const email = $('#reg-email').value;
@@ -979,7 +987,7 @@
       let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       
       // Code blocks
-      html = html.replace(/```([\s\S]*?)```/g, '<pre><code class="font-mono bg-black/40 p-3 rounded block overflow-x-auto my-2 border border-ctf-border">$1</code></pre>');
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code class="font-mono bg-black/50 p-3 rounded block my-2 text-sm">$1</code></pre>');
       // Inline code
       html = html.replace(/`([^`]+)`/g, '<code class="font-mono bg-black/40 px-1 rounded text-ctf-blue border border-ctf-border">$1</code>');
       
@@ -1148,8 +1156,7 @@
     }
 
     // Flag / Payload Submission
-    const form_form_submit_flag = $('#form-submit-flag');
-    if (form_form_submit_flag) form_form_submit_flag.onsubmit = async (e) => {
+    async function submitFlag(e) {
       e.preventDefault();
       const cid = $('#mod-submit-id').value;
       const payload = $('#inp-flag-payload').value.trim();
@@ -1547,8 +1554,7 @@
       }
     }
 
-    const form_form_join_team = $('#form-join-team');
-    if (form_form_join_team) form_form_join_team.onsubmit = async (e) => {
+    async function joinTeam(e) {
       e.preventDefault();
       const teamName = $('#join-team-name').value;
       const password = $('#join-team-pass').value;
@@ -1572,8 +1578,7 @@
       }
     };
 
-    const form_form_create_team = $('#form-create-team');
-    if (form_form_create_team) form_form_create_team.onsubmit = async (e) => {
+    async function createTeam(e) {
       e.preventDefault();
       const teamName = $('#create-team-name').value;
       const password = $('#create-team-pass').value;
@@ -1696,20 +1701,28 @@
 
 
 
+    async function runCode(e) { e.preventDefault(); console.log('Run code executed'); }
+    function filterArena(track) { switchChallengeTrack(track); }
+    function copyPasskey() { const pk = document.getElementById('team-passkey-display'); if(pk) { navigator.clipboard.writeText(pk.textContent); showToast('Passkey copied', 'success'); } }
+    function switchTab(tabId) { showView(tabId); }
     // Expose globals for inline HTML event handlers
+    window.switchTab = switchTab;
+    window.openChallengeModal = openChallengeModal;
+    window.closeModal = closeModal;
+    window.submitFlag = submitFlag;
+    window.runCode = runCode;
+    window.filterCategory = filterCategory;
+    window.filterArena = filterArena;
+    window.login = login;
+    window.register = register;
+    window.logout = logout;
+    window.createTeam = createTeam;
+    window.joinTeam = joinTeam;
+    window.copyPasskey = copyPasskey;
     window.showView = showView;
     window.openAuthModal = openAuthModal;
     window.closeAuthModal = closeAuthModal;
-    window.logout = logout;
-    window.switchChallengeTrack = switchChallengeTrack;
-    window.filterCategory = filterCategory;
-    window.openChallengeModal = openChallengeModal;
-    window.closeModal = closeModal;
-    window.switchModalTab = switchModalTab;
-    window.filterRadar = filterRadar;
-    window.fetchLeaderboard = fetchLeaderboard;
-    window.fetchProfile = fetchProfile;
-    window.fetchRadarEvents = fetchRadarEvents;
+
     
     // Ensure escape key closes modals securely
     window.addEventListener('keydown', (e) => {
@@ -1721,6 +1734,12 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         try {
+            bindEvent('form-auth-login', 'submit', login);
+            bindEvent('form-auth-register', 'submit', register);
+            bindEvent('form-submit-flag', 'submit', submitFlag);
+            bindEvent('form-join-team', 'submit', joinTeam);
+            bindEvent('form-create-team', 'submit', createTeam);
+            
             checkAuthSession();
             fetchChallenges();
             // Optional components:
