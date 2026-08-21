@@ -83,16 +83,15 @@ public final class WebServer {
         app.before("/api/admin/*", ctx -> {
             String userId = ctx.sessionAttribute("userId");
             if (userId == null || userId.isBlank()) {
-                ctx.status(401).json(errorMap("Unauthorized: Authentication required for administrative operations"));
-                return;
+                throw new io.javalin.http.UnauthorizedResponse("Unauthorized: Authentication required for administrative operations");
             }
             try {
                 User user = engine.getUser(userId);
                 if (user == null || user.getRole() != User.Role.ADMIN) {
-                    ctx.status(403).json(errorMap("Forbidden: Administrator privileges required"));
+                    throw new io.javalin.http.ForbiddenResponse("Forbidden: Administrator privileges required");
                 }
             } catch (Exception ex) {
-                ctx.status(403).json(errorMap("Forbidden: Administrator privileges required"));
+                throw new io.javalin.http.ForbiddenResponse("Forbidden: Administrator privileges required");
             }
         });
     }
@@ -583,6 +582,8 @@ public final class WebServer {
     // ═══════════════════════════════════════════
 
     private void handleFreezeScoreboard(Context ctx) {
+        User user = requireAdmin(ctx);
+        if (user == null) return;
         List<Contest> contests = engine.getContests();
         if (contests.isEmpty()) {
             ctx.status(404).json(errorMap("No active contest found to freeze."));
