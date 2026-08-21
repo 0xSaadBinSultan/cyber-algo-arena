@@ -156,8 +156,8 @@ public final class WebServer {
         // ── Admin ──
         app.get("/api/admin/submissions", this::handleAdminSubmissions);
         app.post("/api/admin/scoreboard/freeze", this::handleFreezeScoreboard);
-        app.post("/api/admin/challenges/ctf", this::handleAddCtf);
-        app.post("/api/admin/challenges/cp", this::handleAddCp);
+        app.post("/api/admin/challenges", this::handleAddChallenge);
+        
         app.put("/api/admin/challenges/{id}/points", this::handleUpdatePoints);
         app.delete("/api/admin/challenges/{id}", this::handleDeleteChallenge);
         app.post("/api/admin/sync", this::handleSync);
@@ -688,6 +688,7 @@ public final class WebServer {
         response.put("standings", standings != null ? standings : new ArrayList<>());
         response.put("timeline", new ArrayList<>()); // Timeline placeholder for graph
         
+        ctx.contentType("application/json");
         ctx.json(response);
     }
 
@@ -719,47 +720,58 @@ public final class WebServer {
         ctx.json(result);
     }
 
-    private void handleAddCtf(Context ctx) {
+    private void handleAddChallenge(Context ctx) {
         User user = requireAdmin(ctx);
         if (user == null) return;
 
         Map<String, String> body = parseBody(ctx);
         try {
+            String type = requireField(body, "type");
             String id = requireField(body, "id");
             String title = requireField(body, "title");
+            String description = body.getOrDefault("description", "");
             int basePoints = Integer.parseInt(requireField(body, "basePoints"));
             Challenge.Difficulty difficulty = Challenge.Difficulty.fromToken(requireField(body, "difficulty"));
-            String category = requireField(body, "category");
-            String rawFlag = requireField(body, "rawFlag");
-            int hintCost = Integer.parseInt(requireField(body, "hintCost"));
-            String attachmentFileName = body.get("attachmentFileName");
-            if (attachmentFileName == null || attachmentFileName.isBlank()) {
-                attachmentFileName = body.get("attachment");
+
+            Challenge created = null;
+
+            if ("CTF".equalsIgnoreCase(type)) {
+                String category = requireField(body, "category");
+                String rawFlag = requireField(body, "rawFlag");
+                int hintCost = Integer.parseInt(body.getOrDefault("hintCost", "0"));
+                String attachmentFileName = body.get("attachmentFileName");
+                if (attachmentFileName == null || attachmentFileName.isBlank()) {
+                    attachmentFileName = body.get("attachment");
+                }
+                CTFChallenge ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, attachmentFileName);
+                ctf.setDescription(description);
+                engine.getRepository().saveChallenge(ctf);
+                created = ctf;
+            } else if ("CP".equalsIgnoreCase(type)) {
+                long timeLimitMs = Long.parseLong(body.getOrDefault("timeLimitMs", "1000"));
+                int memoryLimitMb = Integer.parseInt(body.getOrDefault("memoryLimitMb", "256"));
+                
+                String sampleIn = body.getOrDefault("sampleInput", "");
+                String sampleOut = body.getOrDefault("sampleOutput", "");
+                
+                java.nio.file.Path testcaseDir = java.nio.file.Path.of("contest_data", "testcases", id);
+                if (!sampleIn.isEmpty() || !sampleOut.isEmpty()) {
+                    try {
+                        java.nio.file.Files.createDirectories(testcaseDir);
+                        java.nio.file.Files.writeString(testcaseDir.resolve("input_1.txt"), sampleIn + "\n");
+                        java.nio.file.Files.writeString(testcaseDir.resolve("output_1.txt"), sampleOut + "\n");
+                    } catch (Exception e) {}
+                }
+                
+                CPProblem cp = engine.addCpChallenge(id, title, basePoints, difficulty, timeLimitMs, memoryLimitMb, testcaseDir);
+                cp.setDescription(description);
+                engine.getRepository().saveChallenge(cp);
+                created = cp;
+            } else {
+                throw new IllegalArgumentException("Invalid challenge type");
             }
 
-            CTFChallenge ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, attachmentFileName);
-            ctx.status(201).json(Map.of("message", "CTF challenge created", "id", ctf.getId()));
-        } catch (IllegalArgumentException ex) {
-            ctx.status(400).json(errorMap(ex.getMessage()));
-        }
-    }
-
-    private void handleAddCp(Context ctx) {
-        User user = requireAdmin(ctx);
-        if (user == null) return;
-
-        Map<String, String> body = parseBody(ctx);
-        try {
-            String id = requireField(body, "id");
-            String title = requireField(body, "title");
-            int basePoints = Integer.parseInt(requireField(body, "basePoints"));
-            Challenge.Difficulty difficulty = Challenge.Difficulty.fromToken(requireField(body, "difficulty"));
-            long timeLimitMs = Long.parseLong(requireField(body, "timeLimitMs"));
-            int memoryLimitMb = Integer.parseInt(requireField(body, "memoryLimitMb"));
-            Path testcaseDir = Path.of(requireField(body, "testcaseDir"));
-
-            CPProblem cp = engine.addCpChallenge(id, title, basePoints, difficulty, timeLimitMs, memoryLimitMb, testcaseDir);
-            ctx.status(201).json(Map.of("message", "CP challenge created", "id", cp.getId()));
+            ctx.status(201).json(Map.of("message", "Challenge created", "id", created.getId()));
         } catch (IllegalArgumentException ex) {
             ctx.status(400).json(errorMap(ex.getMessage()));
         }
@@ -789,7 +801,7 @@ public final class WebServer {
         String id = ctx.pathParam("id");
         try {
             engine.removeChallenge(id);
-            ctx.json(Map.of("status", "SUCCESS", "message", "Challenge deleted successfully", "id", id));
+            ctx.json(Map.of("status", "SUCCESS", "message", "Challenge deleted"));
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
         }

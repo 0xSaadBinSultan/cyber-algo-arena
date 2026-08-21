@@ -1190,12 +1190,13 @@
       try {
         const res = await fetch('/api/leaderboard');
         if (res.ok) {
-          const teams = await res.json();
-          renderLeaderboardTable(teams);
-          renderScoreboardChart(teams);
+          const data = await res.json();
+          const standings = data.standings || [];
+          renderLeaderboardTable(standings);
+          renderScoreboardChart(data);
         }
       } catch (e) {
-        showToast('Failed to refresh scoreboard', 'error');
+        console.warn('Failed to refresh scoreboard:', e);
       }
     }
     
@@ -1215,7 +1216,7 @@
       tbody.innerHTML = '';
 
       if (!teams || teams.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-ctf-muted italic">No team has scored yet. Competition open!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-ctf-muted italic">No submissions yet</td></tr>`;
         return;
       }
 
@@ -1234,21 +1235,22 @@
             <span>${escapeHtml(t.teamName)}</span>
             <span class="text-[10px] text-ctf-muted font-mono">(${escapeHtml(t.id)})</span>
           </td>
-          <td class="py-3 px-4 text-center text-ctf-text">${escapeHtml(t.solveCount || 0)}</td>
-          <td class="py-3 px-4 text-right font-bold text-ctf-blue">${escapeHtml(t.totalScore)}</td>
+          <td class="py-3 px-4 text-center text-ctf-text">${escapeHtml(t.solves || 0)}</td>
+          <td class="py-3 px-4 text-right font-bold text-ctf-blue">${escapeHtml(t.score || 0)}</td>
           <td class="py-3 px-4 text-right text-xs text-ctf-muted">${t.lastSolveTime ? new Date(t.lastSolveTime).toLocaleTimeString() : '-'}</td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function renderScoreboardChart(teams) {
+    function renderScoreboardChart(data) {
       const ctx = document.getElementById('scoreboardChart');
       if (!ctx) return;
-      if (window.scoreboardChart) {
+      if (window.scoreboardChart instanceof Chart) {
           window.scoreboardChart.destroy();
       }
 
+      const teams = data.standings || [];
       const top10 = teams.slice(0, 10);
       const labels = ['Contest Start', 'Phase 1', 'Phase 2', 'Current Standings'];
       

@@ -618,107 +618,14 @@
         </div>
       </div>
 
-      <!-- Add Challenges Forms -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Add CTF Challenge -->
-        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
-          <h4 class="font-bold text-white text-sm flex items-center gap-2">
-            <i class="fa-solid fa-plus text-ctf-blue"></i> Add New CTF Challenge
-          </h4>
-          <form id="form-admin-add-ctf" class="space-y-3">
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[10px] text-ctf-muted">ID (e.g. CTF-03)</label>
-                <input type="text" id="admin-ctf-id" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-              <div>
-                <label class="text-[10px] text-ctf-muted">Base Points</label>
-                <input type="number" id="admin-ctf-pts" value="100" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] text-ctf-muted">Title</label>
-              <input type="text" id="admin-ctf-title" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[10px] text-ctf-muted">Difficulty</label>
-                <select id="admin-ctf-diff" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
-                  <option value="EASY">EASY</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HARD">HARD</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[10px] text-ctf-muted">Category</label>
-                <select id="admin-ctf-cat" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
-                  <option value="CRYPTO">CRYPTO</option>
-                  <option value="WEB">WEB</option>
-                  <option value="PWN">PWN</option>
-                  <option value="FORENSICS">FORENSICS</option>
-                  <option value="GENERAL_SKILLS">GENERAL_SKILLS</option>
-                  <option value="OSINT">OSINT</option>
-                  <option value="MISC">MISC</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] text-ctf-muted">Raw Flag (Hashed on Server)</label>
-              <input type="text" id="admin-ctf-flag" required placeholder="flag{...}" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-            </div>
-            <div>
-              <label class="text-[10px] text-ctf-muted">Hint Cost (0 for none)</label>
-              <input type="number" id="admin-ctf-hintcost" value="0" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-            </div>
-            <button type="submit" class="w-full py-2 bg-ctf-blue hover:bg-blue-600 text-white font-semibold rounded text-xs transition-colors">Deploy CTF Challenge</button>
-          </form>
-        </div>
-
-        <!-- Add CP Challenge -->
-        <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-4">
-          <h4 class="font-bold text-white text-sm flex items-center gap-2">
-            <i class="fa-solid fa-plus text-ctf-yellow"></i> Add New CP Challenge
-          </h4>
-          <form id="form-admin-add-cp" class="space-y-3">
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[10px] text-ctf-muted">ID (e.g. CP-02)</label>
-                <input type="text" id="admin-cp-id" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-              <div>
-                <label class="text-[10px] text-ctf-muted">Base Points</label>
-                <input type="number" id="admin-cp-pts" value="200" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] text-ctf-muted">Title</label>
-              <input type="text" id="admin-cp-title" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="text-[10px] text-ctf-muted">Difficulty</label>
-                <select id="admin-cp-diff" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white">
-                  <option value="EASY">EASY</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HARD">HARD</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[10px] text-ctf-muted">Time (ms)</label>
-                <input type="number" id="admin-cp-time" value="1000" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-              <div>
-                <label class="text-[10px] text-ctf-muted">Mem (MB)</label>
-                <input type="number" id="admin-cp-mem" value="256" class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] text-ctf-muted">Testcase Directory Path</label>
-              <input type="text" id="admin-cp-dir" value="contest_data/testcases/CP-01" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-1.5 text-xs text-white font-mono">
-            </div>
-            <button type="submit" class="w-full py-2 bg-ctf-yellow hover:bg-yellow-600 text-black font-semibold rounded text-xs transition-colors">Deploy CP Challenge</button>
-          </form>
-        </div>
+      <!-- Add Challenges Header / Button -->
+      <div class="flex justify-between items-center bg-ctf-card border border-ctf-border rounded-xl p-5 mb-6">
+        <h4 class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-cube text-ctf-blue"></i> Challenge Management
+        </h4>
+        <button onclick="document.getElementById('modal-admin-create-chal').classList.remove('hidden')" class="px-4 py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded text-sm transition-colors flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> Create New Challenge
+        </button>
       </div>
 
       <!-- Submission Audit Logs -->
@@ -2077,7 +1984,7 @@
     }
 
     async function adminDeleteChallenge(challengeId, title) {
-      if (!confirm(`⚠️ Are you sure you want to delete '${title}' (${challengeId})?\n\nThis will remove all associated submissions and attachment files permanently.`)) {
+      if (!confirm(`Delete challenge \'${title}\'? This action is irreversible.`)) {
         return;
       }
 
@@ -2166,65 +2073,58 @@
       }
     }
 
-    $('#form-admin-add-ctf').onsubmit = async (e) => {
-      e.preventDefault();
-      const body = {
-        id: $('#admin-ctf-id').value,
-        title: $('#admin-ctf-title').value,
-        basePoints: parseInt($('#admin-ctf-pts').value),
-        difficulty: $('#admin-ctf-diff').value,
-        category: $('#admin-ctf-cat').value,
-        rawFlag: $('#admin-ctf-flag').value,
-        hintCost: parseInt($('#admin-ctf-hintcost').value || 0)
-      };
 
-      try {
-        const res = await fetch('/api/admin/challenges/ctf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        if (res.ok) {
-          showToast(`CTF Challenge ${body.id} deployed!`, 'success');
-          $('#form-admin-add-ctf').reset();
-          fetchChallenges();
-        } else {
-          const d = await res.json();
-          showToast(d.error || 'Deployment failed', 'error');
-        }
-      } catch (err) {
-        showToast('Admin challenge creation failed', 'error');
+    function toggleChalType(type) {
+      if (type === 'CTF') {
+        document.getElementById('ctf-specific-fields').classList.remove('hidden');
+        document.getElementById('cp-specific-fields').classList.add('hidden');
+      } else {
+        document.getElementById('ctf-specific-fields').classList.add('hidden');
+        document.getElementById('cp-specific-fields').classList.remove('hidden');
       }
-    };
+    }
 
-    $('#form-admin-add-cp').onsubmit = async (e) => {
+    $('#form-admin-create-chal').onsubmit = async (e) => {
       e.preventDefault();
-      const body = {
-        id: $('#admin-cp-id').value,
-        title: $('#admin-cp-title').value,
-        basePoints: parseInt($('#admin-cp-pts').value),
-        difficulty: $('#admin-cp-diff').value,
-        timeLimitMs: parseInt($('#admin-cp-time').value || 1000),
-        memoryLimitMb: parseInt($('#admin-cp-mem').value || 256),
-        testcaseDir: $('#admin-cp-dir').value
+      const type = $('#create-chal-type').value;
+      const payload = {
+        type: type,
+        id: $('#create-chal-id').value,
+        title: $('#create-chal-title').value,
+        description: $('#create-chal-desc').value,
+        basePoints: parseInt($('#create-chal-pts').value),
+        difficulty: $('#create-chal-diff').value,
+        category: $('#create-chal-cat').value
       };
-
+      
+      if (type === 'CTF') {
+        payload.rawFlag = $('#create-chal-flag').value;
+        payload.attachmentFileName = $('#create-chal-attach').value;
+      } else {
+        payload.timeLimitMs = parseInt($('#create-chal-time').value || 2000);
+        payload.memoryLimitMb = parseInt($('#create-chal-mem').value || 256);
+        payload.sampleInput = $('#create-chal-samplein').value;
+        payload.sampleOutput = $('#create-chal-sampleout').value;
+      }
+      
       try {
-        const res = await fetch('/api/admin/challenges/cp', {
+        const res = await fetch('/api/admin/challenges', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(payload)
         });
+        const data = await res.json();
         if (res.ok) {
-          showToast(`CP Challenge ${body.id} deployed!`, 'success');
-          $('#form-admin-add-cp').reset();
-          fetchChallenges();
+          showToast(`Challenge ${data.id || payload.title} created successfully!`, 'success');
+          document.getElementById('modal-admin-create-chal').classList.add('hidden');
+          $('#form-admin-create-chal').reset();
+          toggleChalType('CTF');
+          fetchAdminData();
         } else {
-          const d = await res.json();
-          showToast(d.error || 'Deployment failed', 'error');
+          showToast(data.error || 'Challenge creation failed', 'error');
         }
       } catch (err) {
-        showToast('Admin challenge creation failed', 'error');
+        showToast('Challenge creation failed', 'error');
       }
     };
 
@@ -2336,5 +2236,119 @@
       fetchChallenges();
     });
   </script>
+
+    <!-- MODAL: ADMIN CREATE CHALLENGE -->
+    <div id="modal-admin-create-chal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="this.parentElement.classList.add('hidden')"></div>
+      <div class="relative bg-ctf-card border border-ctf-border rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in-up my-4 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-4 border-b border-ctf-border bg-[#161b22]">
+          <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-hammer text-ctf-blue mr-2"></i>Create New Challenge</h3>
+          <button onclick="document.getElementById('modal-admin-create-chal').classList.add('hidden')" class="text-ctf-muted hover:text-white transition-colors">
+            <i class="fa-solid fa-xmark text-xl"></i>
+          </button>
+        </div>
+        
+        <div class="p-5 overflow-y-auto">
+          <form id="form-admin-create-chal" class="space-y-4">
+            <div>
+              <label class="text-[11px] font-medium text-ctf-muted block mb-1">Challenge Type</label>
+              <select id="create-chal-type" onchange="toggleChalType(this.value)" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-bold">
+                <option value="CTF">CTF Challenge (Flag-based)</option>
+                <option value="CP">CP Problem (Algorithm/Testcases)</option>
+              </select>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">ID (e.g. CTF-01)</label>
+                <input type="text" id="create-chal-id" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Base Points</label>
+                <input type="number" id="create-chal-pts" required value="100" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+              </div>
+            </div>
+            
+            <div>
+              <label class="text-[11px] font-medium text-ctf-muted block mb-1">Title</label>
+              <input type="text" id="create-chal-title" required class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Difficulty</label>
+                <select id="create-chal-diff" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white">
+                  <option value="EASY">EASY</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HARD">HARD</option>
+                  <option value="EXPERT">EXPERT</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Category</label>
+                <select id="create-chal-cat" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white">
+                  <option value="CRYPTO">Cryptography</option>
+                  <option value="WEB">Web Exploitation</option>
+                  <option value="PWN">Binary Exploitation</option>
+                  <option value="FORENSICS">Forensics</option>
+                  <option value="SYSTEMS_SECURITY">Systems Security</option>
+                  <option value="GENERAL_SKILLS">General Skills</option>
+                  <option value="OSINT">OSINT</option>
+                  <option value="MISC">Misc</option>
+                  <option value="DYNAMIC_PROGRAMMING">Dynamic Programming (CP)</option>
+                  <option value="GRAPHS">Graphs (CP)</option>
+                  <option value="MATH">Math (CP)</option>
+                  <option value="STRINGS">Strings (CP)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <label class="text-[11px] font-medium text-ctf-muted block mb-1">Rich Markdown Description</label>
+              <textarea id="create-chal-desc" rows="4" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono" placeholder="## Scenario..."></textarea>
+            </div>
+            
+            <!-- CTF Specific -->
+            <div id="ctf-specific-fields" class="space-y-4 border-t border-ctf-border pt-4">
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Raw Flag (Hashed on Server)</label>
+                <input type="text" id="create-chal-flag" placeholder="flag{...}" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Attachment File Name (Optional)</label>
+                <input type="text" id="create-chal-attach" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+              </div>
+            </div>
+            
+            <!-- CP Specific -->
+            <div id="cp-specific-fields" class="space-y-4 border-t border-ctf-border pt-4 hidden">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="text-[11px] font-medium text-ctf-muted block mb-1">Time Limit (ms)</label>
+                  <input type="number" id="create-chal-time" value="2000" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+                </div>
+                <div>
+                  <label class="text-[11px] font-medium text-ctf-muted block mb-1">Memory Limit (MB)</label>
+                  <input type="number" id="create-chal-mem" value="256" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Sample Input (Testcase 1)</label>
+                <textarea id="create-chal-samplein" rows="2" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-ctf-muted block mb-1">Sample Expected Output (Testcase 1)</label>
+                <textarea id="create-chal-sampleout" rows="2" class="w-full bg-[#0d1117] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
+              </div>
+            </div>
+            
+            <button type="submit" class="w-full py-2.5 bg-ctf-blue hover:bg-blue-600 text-white font-semibold rounded-md text-sm transition-colors mt-4">
+              Submit & Deploy Challenge
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
