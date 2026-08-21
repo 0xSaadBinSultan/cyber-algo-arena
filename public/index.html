@@ -768,7 +768,8 @@
       }
     }
 
-    $('#form-auth-login').onsubmit = async (e) => {
+    const form_form_auth_login = $('#form-auth-login');
+    if (form_form_auth_login) form_form_auth_login.onsubmit = async (e) => {
       e.preventDefault();
       const username = $('#login-username').value;
       const password = $('#login-password').value;
@@ -794,7 +795,8 @@
       }
     };
 
-    $('#form-auth-register').onsubmit = async (e) => {
+    const form_form_auth_register = $('#form-auth-register');
+    if (form_form_auth_register) form_form_auth_register.onsubmit = async (e) => {
       e.preventDefault();
       const username = $('#reg-username').value;
       const email = $('#reg-email').value;
@@ -1067,7 +1069,8 @@
         }
 
         // Hint button
-        $('#btn-request-hint').onclick = (e) => {
+        const btn_hint = $('#btn-request-hint');
+        if (btn_hint) btn_hint.onclick = (e) => {
           e.preventDefault();
           requestHint(c.id, c.hintCost || 0);
         };
@@ -1145,7 +1148,8 @@
     }
 
     // Flag / Payload Submission
-    $('#form-submit-flag').onsubmit = async (e) => {
+    const form_form_submit_flag = $('#form-submit-flag');
+    if (form_form_submit_flag) form_form_submit_flag.onsubmit = async (e) => {
       e.preventDefault();
       const cid = $('#mod-submit-id').value;
       const payload = $('#inp-flag-payload').value.trim();
@@ -1543,7 +1547,8 @@
       }
     }
 
-    $('#form-join-team').onsubmit = async (e) => {
+    const form_form_join_team = $('#form-join-team');
+    if (form_form_join_team) form_form_join_team.onsubmit = async (e) => {
       e.preventDefault();
       const teamName = $('#join-team-name').value;
       const password = $('#join-team-pass').value;
@@ -1567,7 +1572,8 @@
       }
     };
 
-    $('#form-create-team').onsubmit = async (e) => {
+    const form_form_create_team = $('#form-create-team');
+    if (form_form_create_team) form_form_create_team.onsubmit = async (e) => {
       e.preventDefault();
       const teamName = $('#create-team-name').value;
       const password = $('#create-team-pass').value;
@@ -1687,71 +1693,42 @@
       }
     }
 
-    // --- DEDICATED ISOLATED ADMIN AUTH GATEWAY ---
-    function openAdminAuthModal() {
-      const modal = $('#modal-admin-auth');
-      if (modal) {
-        modal.classList.remove('hidden');
-        // Generate random anti-replay token
-        const randToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => b.toString(16).padStart(2, '0')).join('');
-        $('#admin-csrf-token').value = 'SEC-TOKEN-' + randToken.toUpperCase();
-        $('#admin-login-username').focus();
-      }
-    }
 
-    function closeAdminAuthModal() {
-      const modal = $('#modal-admin-auth');
-      if (modal) modal.classList.add('hidden');
-    }
 
-    const formAdminLogin = $('#form-admin-login');
-    if (formAdminLogin) {
-      formAdminLogin.onsubmit = async (e) => {
-        e.preventDefault();
-        const username = $('#admin-login-username').value;
-        const password = $('#admin-login-password').value;
-        const submitBtn = $('#btn-admin-login-submit');
 
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...`;
+    // Expose globals for inline HTML event handlers
+    window.showView = showView;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.logout = logout;
+    window.switchChallengeTrack = switchChallengeTrack;
+    window.filterCategory = filterCategory;
+    window.openChallengeModal = openChallengeModal;
+    window.closeModal = closeModal;
+    window.switchModalTab = switchModalTab;
+    window.filterRadar = filterRadar;
+    window.fetchLeaderboard = fetchLeaderboard;
+    window.fetchProfile = fetchProfile;
+    window.fetchRadarEvents = fetchRadarEvents;
+    
+    // Ensure escape key closes modals securely
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeAuthModal();
+        }
+    });
 
+    document.addEventListener('DOMContentLoaded', () => {
         try {
-          const res = await fetch('/api/auth/admin-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-          });
-          const data = await res.json();
-          if (res.ok) {
-            currentUser = data;
-            localStorage.setItem('arena_user', JSON.stringify(currentUser));
-            closeAdminAuthModal();
-            updateAuthUI();
-            showView('admin');
-            showToast(`🛡️ Root clearance verified. Welcome, Administrator ${currentUser.username}!`, 'success');
-          } else {
-            showToast(data.error || 'Authentication denied: Invalid administrator credentials', 'error');
-          }
+            checkAuthSession();
+            fetchChallenges();
+            // Optional components:
+            if (typeof fetchTeamInfo === 'function') fetchTeamInfo();
+            if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
         } catch (err) {
-          showToast('Admin authentication gateway error', 'error');
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = `<i class="fa-solid fa-lock-open text-xs"></i> <span>Authenticate Root Clearance</span>`;
+            console.error('Fatal initialization error caught safely:', err);
         }
-      };
-    }
-
-     else {
-          openAdminAuthModal();
-        }
-      }
-    }
-    window.addEventListener('hashchange', checkUrlHash);
-
-    window.addEventListener('DOMContentLoaded', () => {
-      checkAuthSession();
-      fetchChallenges();
     });
   </script>
 </body>

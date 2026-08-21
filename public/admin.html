@@ -623,32 +623,13 @@
         <h4 class="font-bold text-white text-sm flex items-center gap-2">
           <i class="fa-solid fa-cube text-ctf-blue"></i> Challenge Management
         </h4>
-        <button onclick="document.getElementById('modal-admin-create-chal').classList.remove('hidden')" class="px-4 py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded text-sm transition-colors flex items-center gap-2">
-          <i class="fa-solid fa-plus"></i> Create New Challenge
-        </button>
-      </div>
-
-      <!-- Submission Audit Logs -->
-      <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-3">
-        <h4 class="font-bold text-white text-sm flex items-center gap-2">
-          <i class="fa-solid fa-list-check text-ctf-muted"></i> Real-time Submission Audit Log
-        </h4>
-        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-ctf-border/60 rounded-lg">
-          <table class="w-full text-left text-xs font-mono">
-            <thead class="bg-[#1c2128] text-ctf-muted sticky top-0 border-b border-ctf-border">
-              <tr>
-                <th class="p-2.5">Time</th>
-                <th class="p-2.5">Submission ID</th>
-                <th class="p-2.5">Team</th>
-                <th class="p-2.5">Challenge</th>
-                <th class="p-2.5">Status</th>
-                <th class="p-2.5">Awarded</th>
-              </tr>
-            </thead>
-            <tbody id="admin-audit-tbody" class="divide-y divide-ctf-border/40 text-gray-300">
-              <!-- Rendered via JS -->
-            </tbody>
-          </table>
+        <div class="flex items-center gap-3">
+          <button onclick="adminToggleFreeze()" class="px-4 py-2 bg-ctf-purple/20 hover:bg-ctf-purple/30 border border-ctf-purple/50 text-ctf-purple font-semibold rounded text-sm transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-snowflake"></i> Toggle Freeze Scoreboard
+          </button>
+          <button onclick="document.getElementById('modal-admin-create-chal').classList.remove('hidden')" class="px-4 py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded text-sm transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Create New Challenge
+          </button>
         </div>
       </div>
     </section>
@@ -1068,7 +1049,8 @@
       }
     }
 
-    $('#form-auth-login').onsubmit = async (e) => {
+    const form_form_auth_login = $('#form-auth-login');
+    if (form_form_auth_login) form_form_auth_login.onsubmit = async (e) => {
       e.preventDefault();
       const username = $('#login-username').value;
       const password = $('#login-password').value;
@@ -1094,7 +1076,8 @@
       }
     };
 
-    $('#form-auth-register').onsubmit = async (e) => {
+    const form_form_auth_register = $('#form-auth-register');
+    if (form_form_auth_register) form_form_auth_register.onsubmit = async (e) => {
       e.preventDefault();
       const username = $('#reg-username').value;
       const email = $('#reg-email').value;
@@ -1333,7 +1316,8 @@
         }
 
         // Hint button
-        $('#btn-request-hint').onclick = (e) => {
+        const btn_hint = $('#btn-request-hint');
+        if (btn_hint) btn_hint.onclick = (e) => {
           e.preventDefault();
           requestHint(c.id, c.hintCost || 0);
         };
@@ -1411,7 +1395,8 @@
     }
 
     // Flag / Payload Submission
-    $('#form-submit-flag').onsubmit = async (e) => {
+    const form_form_submit_flag = $('#form-submit-flag');
+    if (form_form_submit_flag) form_form_submit_flag.onsubmit = async (e) => {
       e.preventDefault();
       const cid = $('#mod-submit-id').value;
       const payload = $('#inp-flag-payload').value.trim();
@@ -1806,7 +1791,8 @@
       }
     }
 
-    $('#form-join-team').onsubmit = async (e) => {
+    const form_form_join_team = $('#form-join-team');
+    if (form_form_join_team) form_form_join_team.onsubmit = async (e) => {
       e.preventDefault();
       const teamName = $('#join-team-name').value;
       const password = $('#join-team-pass').value;
@@ -1830,7 +1816,8 @@
       }
     };
 
-    $('#form-create-team').onsubmit = async (e) => {
+    const form_form_create_team = $('#form-create-team');
+    if (form_form_create_team) form_form_create_team.onsubmit = async (e) => {
       e.preventDefault();
       const teamName = $('#create-team-name').value;
       const password = $('#create-team-pass').value;
@@ -2074,6 +2061,21 @@
     }
 
 
+    
+    async function adminToggleFreeze() {
+      try {
+        const res = await fetch('/api/admin/scoreboard/freeze', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Scoreboard freeze toggled: ${data.scoreboardFrozen ? 'FROZEN' : 'ACTIVE'}`, 'success');
+        } else {
+          showToast(data.error || 'Failed to toggle freeze', 'error');
+        }
+      } catch (err) {
+        showToast('Error toggling freeze', 'error');
+      }
+    }
+    
     function toggleChalType(type) {
       if (type === 'CTF') {
         document.getElementById('ctf-specific-fields').classList.remove('hidden');
@@ -2084,7 +2086,8 @@
       }
     }
 
-    $('#form-admin-create-chal').onsubmit = async (e) => {
+    const form_form_admin_create_chal = $('#form-admin-create-chal');
+    if (form_form_admin_create_chal) form_form_admin_create_chal.onsubmit = async (e) => {
       e.preventDefault();
       const type = $('#create-chal-type').value;
       const payload = {
@@ -2231,9 +2234,46 @@
     }
     window.addEventListener('hashchange', checkUrlHash);
 
-    window.addEventListener('DOMContentLoaded', () => {
-      checkAuthSession();
-      fetchChallenges();
+
+    window.showView = showView;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.logout = logout;
+    window.switchChallengeTrack = switchChallengeTrack;
+    window.filterCategory = filterCategory;
+    window.openChallengeModal = openChallengeModal;
+    window.closeModal = closeModal;
+    window.switchModalTab = switchModalTab;
+    window.filterRadar = filterRadar;
+    window.fetchLeaderboard = fetchLeaderboard;
+    window.fetchProfile = fetchProfile;
+    window.fetchRadarEvents = fetchRadarEvents;
+    window.adminToggleFreeze = adminToggleFreeze;
+    window.openAdminAuthModal = openAdminAuthModal;
+    window.closeAdminAuthModal = closeAdminAuthModal;
+    window.adminDeleteChallenge = adminDeleteChallenge;
+    window.adminSyncAtCoder = adminSyncAtCoder;
+    window.adminSyncCodeChef = adminSyncCodeChef;
+    window.adminSyncCodeforces = adminSyncCodeforces;
+    window.adminSyncSecurity = adminSyncSecurity;
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeAuthModal();
+            if (typeof closeAdminAuthModal === 'function') closeAdminAuthModal();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            if (typeof checkAuthSession === 'function') checkAuthSession();
+            if (typeof fetchChallenges === 'function') fetchChallenges();
+            if (typeof fetchTeamInfo === 'function') fetchTeamInfo();
+            if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
+        } catch (err) {
+            console.error('Fatal initialization error caught safely:', err);
+        }
     });
   </script>
 
