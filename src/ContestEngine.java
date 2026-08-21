@@ -46,6 +46,8 @@ public final class ContestEngine {
         teamWrongAttempts.clear();
         teamHintUsage.clear();
 
+        DatabaseSeeder.seedIfEmpty(repository);
+
         for (Challenge c : repository.getAllChallenges()) {
             challengesById.put(c.getId(), c);
         }

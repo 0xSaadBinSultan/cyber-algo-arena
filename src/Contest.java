@@ -68,4 +68,26 @@ public final class Contest {
             registeredTeamIds.add(teamId);
         }
     }
+
+    private boolean scoreboardFrozen = false;
+    private long freezeTimestamp = 0;
+
+    public boolean isScoreboardFrozen() {
+        return scoreboardFrozen;
+    }
+
+    public long getFreezeTimestamp() {
+        return freezeTimestamp;
+    }
+
+    public void setFreezeTimestamp(long timestamp) {
+        this.freezeTimestamp = timestamp;
+    }
+
+    public void toggleFreeze(boolean freeze) {
+        this.scoreboardFrozen = freeze;
+        if (freeze) {
+            this.freezeTimestamp = System.currentTimeMillis();
+        }
+    }
 }

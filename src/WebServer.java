@@ -98,6 +98,27 @@ public final class WebServer {
     }
 
     private void registerRoutes() {
+        app.get("/admin", ctx -> {
+            String userId = ctx.sessionAttribute("userId");
+            boolean authorized = false;
+            try {
+                if (userId != null && !userId.isBlank()) {
+                    User user = engine.getUser(userId);
+                    if (user != null && user.getRole() == User.Role.ADMIN) {
+                        authorized = true;
+                    }
+                }
+                if (authorized) {
+                    ctx.html(java.nio.file.Files.readString(java.nio.file.Path.of("public/admin.html")));
+                } else {
+                    ctx.html(java.nio.file.Files.readString(java.nio.file.Path.of("public/admin-login.html")));
+                }
+            } catch (Exception e) {
+                ctx.status(404).result("Admin UI not found");
+            }
+        });
+
+        app.get("/api/ping", ctx -> ctx.json(Map.of("status", "ok", "time", Instant.now().toString())));
         // ── Auth ──
         app.post("/api/auth/login", this::handleLogin);
         app.post("/api/auth/admin-login", this::handleAdminLogin);
@@ -135,6 +156,7 @@ public final class WebServer {
 
         // ── Admin ──
         app.get("/api/admin/submissions", this::handleAdminSubmissions);
+        app.post("/api/admin/scoreboard/freeze", this::handleFreezeScoreboard);
         app.post("/api/admin/challenges/ctf", this::handleAddCtf);
         app.post("/api/admin/challenges/cp", this::handleAddCp);
         app.put("/api/admin/challenges/{id}/points", this::handleUpdatePoints);
@@ -560,24 +582,112 @@ public final class WebServer {
     // LEADERBOARD
     // ═══════════════════════════════════════════
 
+    private void handleFreezeScoreboard(Context ctx) {
+        List<Contest> contests = engine.getContests();
+        if (contests.isEmpty()) {
+            ctx.status(404).json(errorMap("No active contest found to freeze."));
+            return;
+        }
+        Contest activeContest = contests.get(0);
+
+        Map<String, String> body = parseBody(ctx);
+        boolean freeze = Boolean.parseBoolean(body.get("freeze"));
+
+        activeContest.toggleFreeze(freeze);
+        engine.getRepository().saveContest(activeContest);
+        engine.syncData(); // refresh anything necessary
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("scoreboardFrozen", activeContest.isScoreboardFrozen());
+        response.put("frozenAt", activeContest.getFreezeTimestamp());
+        ctx.json(response);
+    }
+
     private void handleLeaderboard(Context ctx) {
         engine.refreshLeaderboard();
-        List<Team> ranking = engine.getLeaderboard().getRanking();
+        
+        List<Contest> contests = engine.getContests();
+        Contest activeContest = contests.isEmpty() ? null : contests.get(0);
+        boolean isFrozen = activeContest != null && activeContest.isScoreboardFrozen();
+        
+        String role = ctx.sessionAttribute("role");
+        boolean isAdmin = "ADMIN".equals(role);
+        
+        List<Team> finalRanking;
+        
+        if (!isFrozen || isAdmin) {
+            finalRanking = engine.getLeaderboard().getRanking();
+        } else {
+            long freezeTimestamp = activeContest.getFreezeTimestamp();
+            Map<String, Team> snapshotTeams = new HashMap<>();
+            
+            List<Team> teams = engine.getTeams();
+            if (teams != null) {
+                for (Team t : teams) {
+                    if (t != null) {
+                        snapshotTeams.put(t.getId(), new Team(t.getId(), t.getTeamName(), t.getMemberUserIds(), 0, null));
+                    }
+                }
+            }
+            
+            List<Submission> subs = engine.getSubmissions();
+            if (subs != null) {
+                for (Submission s : subs) {
+                    if (s != null && s.getTimestamp() != null && s.getTimestamp().toEpochMilli() <= freezeTimestamp) {
+                        Team t = snapshotTeams.get(s.getTeamId());
+                        if (t != null && s.getResult() != null && s.getResult().getStatus() == SubmissionResult.Status.ACCEPTED) {
+                            t.applyScore(s.getResult().getPointsAwarded(), s.getTimestamp());
+                        }
+                    }
+                }
+            }
+            Leaderboard snapBoard = new Leaderboard();
+            snapBoard.update(snapshotTeams.values());
+            finalRanking = snapBoard.getRanking();
+        }
 
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (int i = 0; i < ranking.size(); i++) {
-            Team t = ranking.get(i);
+        if (finalRanking == null) {
+            finalRanking = new ArrayList<>();
+        }
+
+        List<Map<String, Object>> standings = new ArrayList<>();
+        for (int i = 0; i < finalRanking.size(); i++) {
+            Team t = finalRanking.get(i);
+            if (t == null) continue;
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("rank", i + 1);
             entry.put("teamId", t.getId());
             entry.put("teamName", t.getTeamName());
-            entry.put("solves", engine.getSolveCount(t.getId()));
+            if (!isFrozen || isAdmin) {
+                entry.put("solves", engine.getSolveCount(t.getId()));
+            } else {
+                long ft = activeContest != null ? activeContest.getFreezeTimestamp() : 0L;
+                long solveCount = 0;
+                List<Submission> allSubs = engine.getSubmissions();
+                if (allSubs != null) {
+                    solveCount = allSubs.stream()
+                        .filter(s -> s != null && s.getTeamId() != null && s.getTeamId().equals(t.getId()) 
+                                  && s.getTimestamp() != null && s.getTimestamp().toEpochMilli() <= ft
+                                  && s.getResult() != null 
+                                  && s.getResult().getStatus() == SubmissionResult.Status.ACCEPTED)
+                        .count();
+                }
+                entry.put("solves", solveCount);
+            }
             entry.put("score", t.getTotalScore());
-            entry.put("memberCount", t.getMemberUserIds().size());
+            entry.put("memberCount", t.getMemberUserIds() != null ? t.getMemberUserIds().size() : 0);
             entry.put("lastSolveTime", t.getLastSolveTime() != null ? t.getLastSolveTime().toString() : null);
-            result.add(entry);
+            standings.add(entry);
         }
-        ctx.json(result);
+        
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("isFrozen", isFrozen);
+        response.put("adminBypass", isFrozen && isAdmin);
+        response.put("standings", standings != null ? standings : new ArrayList<>());
+        response.put("timeline", new ArrayList<>()); // Timeline placeholder for graph
+        
+        ctx.json(response);
     }
 
     // ═══════════════════════════════════════════

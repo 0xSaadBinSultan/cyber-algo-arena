@@ -86,6 +86,7 @@ public final class MongoRepository {
         return new ArrayList<>(memUsers.values());
     }
 
+    @SuppressWarnings("unchecked")
     private Document userToDoc(User u) {
         return new Document("id", u.getId())
                 .append("username", u.getUsername())
@@ -96,7 +97,7 @@ public final class MongoRepository {
                 .append("createdAt", u.getCreatedAt().toString())
                 .append("personalScore", u.getPersonalScore())
                 .append("solvesCount", u.getSolvesCount())
-                .append("categoryBreakdown", new Document((Map) u.getCategoryBreakdown()))
+                .append("categoryBreakdown", new Document((Map<String, Object>) (Map<?, ?>) u.getCategoryBreakdown()))
                 .append("solvedChallengeIds", new ArrayList<>(u.getSolvedChallengeIds()));
     }
 
@@ -342,6 +343,8 @@ public final class MongoRepository {
                         .append("startTime", contest.getStartTime().toString())
                         .append("endTime", contest.getEndTime().toString())
                         .append("isRunning", contest.isRunning())
+                        .append("scoreboardFrozen", contest.isScoreboardFrozen())
+                        .append("freezeTimestamp", contest.getFreezeTimestamp())
                         .append("registeredTeamIds", new ArrayList<>(contest.getRegisteredTeamIds()));
 
                 mongoManager.getContestsCollection().replaceOne(
@@ -357,14 +360,17 @@ public final class MongoRepository {
             try {
                 Document doc = mongoManager.getContestsCollection().find(Filters.eq("id", id)).first();
                 if (doc != null) {
-                    return Optional.of(new Contest(
+                    Contest c = new Contest(
                             doc.getString("id"),
                             doc.getString("title"),
                             doc.getString("description"),
                             parseInstant(doc.getString("startTime")),
                             parseInstant(doc.getString("endTime")),
                             doc.getBoolean("isRunning", true),
-                            doc.getList("registeredTeamIds", String.class, List.of())));
+                            doc.getList("registeredTeamIds", String.class, List.of()));
+                    c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
+                    c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
+                    return Optional.of(c);
                 }
             } catch (Exception ignored) {}
         }
@@ -376,14 +382,17 @@ public final class MongoRepository {
             try {
                 List<Contest> list = new ArrayList<>();
                 for (Document doc : mongoManager.getContestsCollection().find()) {
-                    list.add(new Contest(
+                    Contest c = new Contest(
                             doc.getString("id"),
                             doc.getString("title"),
                             doc.getString("description"),
                             parseInstant(doc.getString("startTime")),
                             parseInstant(doc.getString("endTime")),
                             doc.getBoolean("isRunning", true),
-                            doc.getList("registeredTeamIds", String.class, List.of())));
+                            doc.getList("registeredTeamIds", String.class, List.of()));
+                    c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
+                    c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
+                    list.add(c);
                 }
                 return list;
             } catch (Exception ignored) {}

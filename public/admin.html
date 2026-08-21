@@ -108,7 +108,9 @@
           <button onclick="showView('profile')" id="nav-profile" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
             <i class="fa-solid fa-user text-ctf-blue"></i> Profile
           </button>
-          
+          <button onclick="showView('admin')" id="nav-admin" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
+            <i class="fa-solid fa-shield-halved text-ctf-red"></i> Admin
+          </button>
         </div>
 
         <!-- Right: Auth State -->
@@ -149,7 +151,7 @@
       <button onclick="showView('radar')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-satellite-dish"></i><span>Radar</span></button>
       <button onclick="showView('team')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-users"></i><span>Team</span></button>
       <button onclick="showView('profile')" id="nav-profile-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-user"></i><span>Profile</span></button>
-      
+      <button onclick="showView('admin')" id="nav-admin-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-shield-halved"></i><span>Admin</span></button>
     </div>
   </nav>
 
@@ -481,7 +483,7 @@
     <!-- ═════════════════════════════════════════════════════════ -->
     <!-- 6. ADMIN CONTROL PANEL                                    -->
     <!-- ═════════════════════════════════════════════════════════ -->
-    <section id="view-admin" class="view-panel space-y-8 hidden">
+    <section id="view-admin" class="view-panel space-y-8">
       <div class="pb-4 border-b border-ctf-border flex items-center justify-between">
         <div>
           <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
@@ -489,6 +491,20 @@
           </h2>
           <p class="text-xs text-ctf-muted mt-1">Manage problemsets, challenge deletion, automated sync engines, and audit logs.</p>
         </div>
+      </div>
+
+      
+      <!-- Disk Attachment Cleaner -->
+      <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-ctf-border pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-broom text-ctf-blue"></i> Disk Attachment Cleaner
+          </h3>
+        </div>
+        <p class="text-xs text-ctf-muted">Purge orphaned challenge attachments from disk.</p>
+        <button id="btn-admin-clean-disk" class="py-2 px-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 font-semibold rounded text-xs transition-colors">
+          <i class="fa-solid fa-trash"></i> Clean Orphaned Attachments
+        </button>
       </div>
 
       <!-- Challenge Deletion & Inventory Management -->
@@ -735,14 +751,67 @@
   <!-- ═════════════════════════════════════════════════════════ -->
   <!-- ISOLATED ADMIN LOGIN GATEWAY                              -->
   <!-- ═════════════════════════════════════════════════════════ -->
-  
+  <div id="modal-admin-auth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
+    <div class="bg-[#120708] border-2 border-ctf-red/60 max-w-md w-full rounded-xl shadow-[0_0_40px_rgba(248,81,73,0.3)] overflow-hidden font-mono">
+      
+      <!-- Security Warning Banner -->
+      <div class="p-4 bg-ctf-red/15 border-b border-ctf-red/40 flex items-center justify-between">
+        <div class="flex items-center gap-2.5 text-ctf-red">
+          <i class="fa-solid fa-triangle-exclamation text-lg animate-pulse"></i>
+          <div>
+            <div class="text-xs font-black tracking-wider uppercase">RESTRICTED ACCESS PORTAL</div>
+            <div class="text-[10px] text-red-300 font-sans">Authorized Operations Personnel Only</div>
+          </div>
+        </div>
+        <button onclick="closeAdminAuthModal()" class="text-ctf-muted hover:text-white p-1 rounded">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="form-admin-login" class="p-6 space-y-4 text-xs">
+        <div class="p-2.5 bg-red-950/40 border border-ctf-red/30 rounded text-[11px] text-red-300 leading-relaxed font-sans">
+          <i class="fa-solid fa-shield-halved text-ctf-red mr-1"></i>
+          Elevated root clearance required. Unsanctioned access attempts are logged with client network telemetry.
+        </div>
+
+        <div>
+          <label class="block text-ctf-muted mb-1 font-semibold uppercase text-[10px]">Root Identifier</label>
+          <input type="text" id="admin-login-username" required placeholder="admin" class="w-full bg-[#0d0405] border border-ctf-red/40 focus:border-ctf-red focus:ring-1 focus:ring-ctf-red rounded px-3 py-2 text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-ctf-muted mb-1 font-semibold uppercase text-[10px]">Access Key</label>
+          <input type="password" id="admin-login-password" required placeholder="••••••••••••" class="w-full bg-[#0d0405] border border-ctf-red/40 focus:border-ctf-red focus:ring-1 focus:ring-ctf-red rounded px-3 py-2 text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-ctf-muted mb-1 font-semibold uppercase text-[10px]">Anti-Replay Token</label>
+          <input type="text" id="admin-csrf-token" readonly class="w-full bg-[#0d0405]/60 border border-ctf-border rounded px-3 py-1.5 text-ctf-muted text-[11px] font-mono cursor-not-allowed select-none">
+        </div>
+
+        <button type="submit" id="btn-admin-login-submit" class="w-full py-2.5 bg-ctf-red hover:bg-red-600 text-white font-bold rounded text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
+          <i class="fa-solid fa-lock-open text-xs"></i>
+          <span>Authenticate Root Clearance</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <a href="#" onclick="closeAdminAuthModal(); showView('challenges'); return false;" class="text-[11px] text-ctf-muted hover:text-white underline font-sans">
+            Return to Arena
+          </a>
+        </div>
+      </form>
+
+    </div>
+  </div>
 
   <!-- PLATFORM FOOTER -->
   <footer class="border-t border-ctf-border/60 py-6 px-4 text-center text-xs text-ctf-muted mt-auto">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
       <div>Cyber-Algo Arena v2.0 &bull; Hybrid CTF & CP Platform</div>
       <div class="flex items-center gap-4 text-[11px]">
-        
+        <a href="#admin" onclick="openAdminAuthModal(); return false;" class="text-ctf-muted hover:text-red-400 transition-colors flex items-center gap-1">
+          <i class="fa-solid fa-lock text-[10px]"></i> Restricted Ops
+        </a>
       </div>
     </div>
   </footer>
@@ -1295,40 +1364,6 @@
     // --- CTFd CHALLENGE DETAIL MODAL CONTROLLER ---
     let currentModalChallenge = null;
 
-    function parseSimpleMarkdown(text) {
-      if (!text) return '';
-      // Escape HTML first to prevent XSS
-      let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
-      // Code blocks
-      html = html.replace(/```([\s\S]*?)```/g, '<pre><code class="font-mono bg-black/40 p-3 rounded block overflow-x-auto my-2 border border-ctf-border">$1</code></pre>');
-      // Inline code
-      html = html.replace(/`([^`]+)`/g, '<code class="font-mono bg-black/40 px-1 rounded text-ctf-blue border border-ctf-border">$1</code>');
-      
-      // Headers
-      html = html.replace(/^### (.*$)/gim, '<h3 class="text-md font-bold mt-3 mb-1 text-white">$1</h3>');
-      html = html.replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold mt-4 mb-2 text-white border-b border-ctf-border pb-1">$1</h2>');
-      html = html.replace(/^# (.*$)/gim, '<h1 class="text-xl font-bold mt-4 mb-2 text-white border-b border-ctf-border pb-1">$1</h1>');
-      
-      // Bold
-      html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-      
-      // Bullet points
-      html = html.replace(/^[\-\*]\s+(.*)$/gim, '<li class="ml-4 list-disc">$1</li>');
-      // Wrap lists
-      html = html.replace(/(<li.*<\/li>(\n<li.*<\/li>)*)/g, '<ul class="my-2">$1</ul>');
-
-      // Paragraphs / Line Breaks (skip pre/code blocks by preserving them?)
-      // A simple approach is just replace \n with <br> where it's not inside a pre block
-      // But for simplicity, we can just split by \n and wrap. Or just CSS white-space: pre-wrap on the container!
-      // Let's add whitespace-pre-wrap to the container, or just replace \n with <br> if it doesn't break things.
-      html = html.replace(/\n/g, '<br>');
-      // Fix double br in pre blocks
-      html = html.replace(/<pre>(.*?)<\/pre>/gis, match => match.replace(/<br>/g, '\n'));
-      
-      return html;
-    }
-
     async function openChallengeModal(challengeId) {
       $('#modal-challenge').classList.remove('hidden');
       $('#inp-flag-payload').value = '';
@@ -1362,7 +1397,7 @@
         }
 
         // Description
-        $('#mod-desc-text').innerHTML = parseSimpleMarkdown(c.description || 'Target security vulnerability isolated. Submit valid key to register verification.');
+        $('#mod-desc-text').textContent = c.description || 'Target security vulnerability isolated. Submit valid key to register verification.';
 
         // Specs Grid
         const specsGrid = $('#mod-specs-grid');
@@ -1522,17 +1557,6 @@
         showToast('Failed to refresh scoreboard', 'error');
       }
     }
-    
-    // Safe auto-polling for scoreboard
-    setInterval(async () => {
-      if (!$('#view-scoreboard').classList.contains('hidden')) {
-        try {
-          await fetchLeaderboard();
-        } catch (e) {
-          console.error("Scoreboard poll error ignored to avoid UI break:", e);
-        }
-      }
-    }, 20000);
 
     function renderLeaderboardTable(teams) {
       const tbody = $('#scoreboard-tbody');
@@ -1569,9 +1593,6 @@
     function renderScoreboardChart(teams) {
       const ctx = document.getElementById('scoreboardChart');
       if (!ctx) return;
-      if (window.scoreboardChart) {
-          window.scoreboardChart.destroy();
-      }
 
       const top10 = teams.slice(0, 10);
       const labels = ['Contest Start', 'Phase 1', 'Phase 2', 'Current Standings'];
@@ -1595,7 +1616,7 @@
         scoreboardChart.destroy();
       }
 
-      window.scoreboardChart = new Chart(ctx, {
+      scoreboardChart = new Chart(ctx, {
         type: 'line',
         data: { labels, datasets },
         options: {
