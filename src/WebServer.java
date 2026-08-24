@@ -74,9 +74,9 @@ public final class WebServer {
             ctx.header("X-Content-Type-Options", "nosniff");
             ctx.header("X-Frame-Options", "DENY");
             ctx.header("Content-Security-Policy",
-                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
-                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
+                    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self';");
         });
 
         // Strict RBAC Interceptor for all administrative operations
@@ -737,13 +737,22 @@ public final class WebServer {
 
             if ("CTF".equalsIgnoreCase(type)) {
                 String category = requireField(body, "category");
-                String rawFlag = requireField(body, "rawFlag");
                 int hintCost = Integer.parseInt(body.getOrDefault("hintCost", "0"));
                 String attachmentFileName = body.get("attachmentFileName");
                 if (attachmentFileName == null || attachmentFileName.isBlank()) {
                     attachmentFileName = body.get("attachment");
                 }
-                CTFChallenge ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, attachmentFileName);
+                // Verification type: exact string (rawFlag, hashed server-side) or pre-computed SHA-256 hash
+                String flagHash = body.get("flagHash");
+                CTFChallenge ctf;
+                if (flagHash != null && flagHash.trim().matches("[0-9a-fA-F]{64}")) {
+                    ctf = new CTFChallenge(id, title, basePoints, difficulty, category,
+                            flagHash.trim().toLowerCase(java.util.Locale.ROOT), hintCost, attachmentFileName);
+                    engine.addChallenge(ctf);
+                } else {
+                    String rawFlag = requireField(body, "rawFlag");
+                    ctf = engine.addCtfChallenge(id, title, basePoints, difficulty, category, rawFlag, hintCost, attachmentFileName);
+                }
                 ctf.setDescription(description);
                 engine.getRepository().saveChallenge(ctf);
                 created = ctf;
