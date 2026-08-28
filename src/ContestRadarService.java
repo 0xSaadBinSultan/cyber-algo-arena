@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class ContestRadarService {
 
-    private static final long CACHE_TTL_MILLIS = 15 * 60 * 1000L; // 15 minutes
+    private static final long CACHE_TTL_MILLIS = 60 * 1000L; // 15 minutes
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     private final HttpClient httpClient;
