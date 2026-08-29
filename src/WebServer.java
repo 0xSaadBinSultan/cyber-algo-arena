@@ -378,6 +378,7 @@ public final class WebServer {
     // ═══════════════════════════════════════════
 
     private void handleGetChallenges(Context ctx) {
+        engine.syncIfStale(); // converge with database (multi-instance safe)
         User user = getSessionUser(ctx);
         String teamId = user != null ? user.getTeamId() : null;
 
@@ -391,6 +392,7 @@ public final class WebServer {
     private void handleGetChallenge(Context ctx) {
         String id = ctx.pathParam("id");
         try {
+            engine.syncIfStale(); // converge with database (multi-instance safe)
             Challenge c = engine.getChallenge(id);
             User user = getSessionUser(ctx);
             String teamId = user != null ? user.getTeamId() : null;

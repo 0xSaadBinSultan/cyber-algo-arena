@@ -27,6 +27,10 @@ public final class ContestEngine {
     private final Map<String, Map<String, Integer>> teamWrongAttempts = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Integer>> teamHintUsage = new ConcurrentHashMap<>();
 
+    /** Auto-resync interval: keeps multi-instance deployments convergent. */
+    private static final long SYNC_INTERVAL_MS = 5_000L;
+    private volatile long lastSyncMillis = 0L;
+
     public ContestEngine(MongoRepository repository) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.leaderboard = new Leaderboard();
@@ -90,8 +94,21 @@ public final class ContestEngine {
         }
 
         refreshLeaderboard();
+        lastSyncMillis = System.currentTimeMillis();
         System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
                 + usersById.size() + " users, " + teamsById.size() + " teams, " + submissions.size() + " submissions.");
+    }
+
+    /**
+     * Reloads state from the database when the in-memory view is older than
+     * the sync interval. Keeps every instance (admin page, logged-in players,
+     * anonymous visitors) serving consistent challenge data in multi-instance
+     * deployments without hammering the database on every request.
+     */
+    public void syncIfStale() {
+        if (System.currentTimeMillis() - lastSyncMillis >= SYNC_INTERVAL_MS) {
+            load();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -488,7 +505,14 @@ public final class ContestEngine {
         return repository;
     }
 
+    /**
+     * Full state resynchronization from the persistent database.
+     * Reloads challenges, users, teams, contests and submissions so that
+     * every running instance serves a consistent view even when data was
+     * mutated by another instance (multi-instance deployments) or directly
+     * in the database.
+     */
     public synchronized void syncData() {
-        refreshLeaderboard();
+        load();
     }
 }
