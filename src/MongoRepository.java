@@ -97,6 +97,10 @@ public final class MongoRepository {
                 .append("createdAt", u.getCreatedAt().toString())
                 .append("personalScore", u.getPersonalScore())
                 .append("solvesCount", u.getSolvesCount())
+                .append("ctfScore", u.getCtfScore())
+                .append("ctfSolvesCount", u.getCtfSolvesCount())
+                .append("cpScore", u.getCpScore())
+                .append("cpSolvesCount", u.getCpSolvesCount())
                 .append("categoryBreakdown", new Document((Map<String, Object>) (Map<?, ?>) u.getCategoryBreakdown()))
                 .append("solvedChallengeIds", new ArrayList<>(u.getSolvedChallengeIds()));
     }
@@ -122,6 +126,10 @@ public final class MongoRepository {
                 createdAt,
                 doc.getInteger("personalScore", 0),
                 doc.getInteger("solvesCount", 0),
+                doc.getInteger("ctfScore", 0),
+                doc.getInteger("ctfSolvesCount", 0),
+                doc.getInteger("cpScore", 0),
+                doc.getInteger("cpSolvesCount", 0),
                 breakdown,
                 solves);
     }

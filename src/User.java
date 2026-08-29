@@ -33,6 +33,10 @@ public final class User implements Persistable {
     private final Instant createdAt;
     private int personalScore;
     private int solvesCount;
+    private int ctfScore;
+    private int ctfSolvesCount;
+    private int cpScore;
+    private int cpSolvesCount;
     private final Map<String, Integer> categoryBreakdown;
     private final Set<String> solvedChallengeIds;
 
@@ -46,6 +50,10 @@ public final class User implements Persistable {
             Instant createdAt,
             int personalScore,
             int solvesCount,
+            int ctfScore,
+            int ctfSolvesCount,
+            int cpScore,
+            int cpSolvesCount,
             Map<String, Integer> categoryBreakdown,
             Collection<String> solvedChallengeIds) {
         this.id = requireArgument(id, "id");
@@ -57,8 +65,28 @@ public final class User implements Persistable {
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.personalScore = Math.max(0, personalScore);
         this.solvesCount = Math.max(0, solvesCount);
+        this.ctfScore = Math.max(0, ctfScore);
+        this.ctfSolvesCount = Math.max(0, ctfSolvesCount);
+        this.cpScore = Math.max(0, cpScore);
+        this.cpSolvesCount = Math.max(0, cpSolvesCount);
         this.categoryBreakdown = new LinkedHashMap<>(categoryBreakdown != null ? categoryBreakdown : Map.of());
         this.solvedChallengeIds = new LinkedHashSet<>(solvedChallengeIds != null ? solvedChallengeIds : List.of());
+    }
+
+    public User(
+            String id,
+            String username,
+            String email,
+            String passwordHash,
+            Role role,
+            String teamId,
+            Instant createdAt,
+            int personalScore,
+            int solvesCount,
+            Map<String, Integer> categoryBreakdown,
+            Collection<String> solvedChallengeIds) {
+        this(id, username, email, passwordHash, role, teamId, createdAt,
+                personalScore, solvesCount, 0, 0, 0, 0, categoryBreakdown, solvedChallengeIds);
     }
 
     public User(String id, String username, String passwordHash, Role role, String teamId) {
@@ -70,12 +98,31 @@ public final class User implements Persistable {
     }
 
     public synchronized void recordSolve(String challengeId, String category, int points) {
+        String normalizedCategory = (category != null && !category.isBlank())
+                ? category.trim().toUpperCase(Locale.ROOT)
+                : "MISC";
+        recordSolve(challengeId, category, points, "CP".equals(normalizedCategory) ? "CP" : "CTF");
+    }
+
+    /**
+     * Records a solve with explicit track attribution ("CTF" or "CP") so individual
+     * profiles can track security challenges and algorithmic problems separately.
+     */
+    public synchronized void recordSolve(String challengeId, String category, int points, String trackType) {
         if (challengeId != null && !solvedChallengeIds.contains(challengeId)) {
             solvedChallengeIds.add(challengeId);
             solvesCount++;
-            personalScore += Math.max(0, points);
+            int awarded = Math.max(0, points);
+            personalScore += awarded;
             String cat = (category != null && !category.isBlank()) ? category.toUpperCase(Locale.ROOT) : "MISC";
             categoryBreakdown.put(cat, categoryBreakdown.getOrDefault(cat, 0) + 1);
+            if ("CP".equalsIgnoreCase(trackType)) {
+                cpScore += awarded;
+                cpSolvesCount++;
+            } else {
+                ctfScore += awarded;
+                ctfSolvesCount++;
+            }
         }
     }
 
@@ -159,6 +206,22 @@ public final class User implements Persistable {
 
     public int getSolvesCount() {
         return solvesCount;
+    }
+
+    public int getCtfScore() {
+        return ctfScore;
+    }
+
+    public int getCtfSolvesCount() {
+        return ctfSolvesCount;
+    }
+
+    public int getCpScore() {
+        return cpScore;
+    }
+
+    public int getCpSolvesCount() {
+        return cpSolvesCount;
     }
 
     public Map<String, Integer> getCategoryBreakdown() {

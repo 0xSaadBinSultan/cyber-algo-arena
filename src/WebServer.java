@@ -935,6 +935,10 @@ public final class WebServer {
         map.put("teamId", user.getTeamId());
         map.put("personalScore", user.getPersonalScore());
         map.put("solvesCount", user.getSolvesCount());
+        map.put("ctfScore", user.getCtfScore());
+        map.put("ctfSolvesCount", user.getCtfSolvesCount());
+        map.put("cpScore", user.getCpScore());
+        map.put("cpSolvesCount", user.getCpSolvesCount());
         map.put("categoryBreakdown", user.getCategoryBreakdown());
         map.put("solvedChallenges", user.getSolvedChallengeIds());
         map.put("createdAt", user.getCreatedAt().toString());
@@ -960,9 +964,12 @@ public final class WebServer {
                 try {
                     Challenge ch = engine.getChallenge(s.getChallengeId());
                     entry.put("title", ch.getTitle());
-                    entry.put("category", (ch instanceof CTFChallenge ctf) ? ctf.getCategoryName() : "CP");
+                    boolean isCp = ch instanceof CPProblem;
+                    entry.put("type", isCp ? "CP" : "CTF");
+                    entry.put("category", isCp ? "CP" : ((CTFChallenge) ch).getCategoryName());
                 } catch (Exception ex) {
                     entry.put("title", s.getChallengeId());
+                    entry.put("type", "CTF");
                     entry.put("category", "MISC");
                 }
                 entry.put("points", s.getPointsAwarded());
@@ -1060,7 +1067,12 @@ public final class WebServer {
     @SuppressWarnings("unchecked")
     private Map<String, String> parseBody(Context ctx) {
         try {
-            return mapper.readValue(ctx.body(), Map.class);
+            Map<String, Object> raw = mapper.readValue(ctx.body(), Map.class);
+            Map<String, String> normalized = new java.util.HashMap<>();
+            raw.forEach((k, v) -> {
+                if (v != null) normalized.put(k, String.valueOf(v));
+            });
+            return normalized;
         } catch (Exception ex) {
             return Map.of();
         }

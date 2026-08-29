@@ -416,9 +416,10 @@ public final class ContestEngine {
             team.applyScore(pointsAwarded, solveTime);
             teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
 
-            // Update user personal profile
-            String cat = (challenge instanceof CTFChallenge ctf) ? ctf.getCategoryName() : "CP";
-            user.recordSolve(challenge.getId(), cat, pointsAwarded);
+            // Update user personal profile with per-track (CTF vs CP) attribution
+            boolean isCpTrack = challenge instanceof CPProblem;
+            String cat = isCpTrack ? "CP" : ((CTFChallenge) challenge).getCategoryName();
+            user.recordSolve(challenge.getId(), cat, pointsAwarded, isCpTrack ? "CP" : "CTF");
 
             repository.saveTeam(team);
             repository.saveUser(user);

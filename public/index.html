@@ -455,16 +455,85 @@
 
       </div>
 
+      <!-- Dual-Track Performance: CTF vs CP -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- CTF Track Card -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-ctf-border">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-ctf-red"></i> CTF Track
+            </h4>
+            <span class="px-2 py-0.5 bg-ctf-red/10 text-ctf-red border border-ctf-red/30 rounded text-[10px] font-mono font-bold">SECURITY OPS</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-center font-mono">
+            <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block mb-1">CTF SOLVES</span>
+              <span id="prof-ctf-solves" class="text-xl font-bold text-ctf-red">0</span>
+            </div>
+            <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block mb-1">CTF SCORE</span>
+              <span id="prof-ctf-score" class="text-xl font-bold text-white">0</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] text-ctf-muted mb-1 font-mono">
+              <span>TRACK SHARE</span><span id="prof-ctf-share">0%</span>
+            </div>
+            <div class="w-full bg-[#0d1117] h-2 rounded-full overflow-hidden border border-ctf-border/40">
+              <div id="prof-ctf-bar" class="bg-ctf-red h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CP Track Card -->
+        <div class="bg-ctf-card border border-ctf-border rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-ctf-border">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-code text-ctf-green"></i> CP Track
+            </h4>
+            <span class="px-2 py-0.5 bg-ctf-green/10 text-ctf-green border border-ctf-green/30 rounded text-[10px] font-mono font-bold">ALGORITHMS</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-center font-mono">
+            <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block mb-1">CP SOLVES</span>
+              <span id="prof-cp-solves" class="text-xl font-bold text-ctf-green">0</span>
+            </div>
+            <div class="p-3 bg-[#0d1117] border border-ctf-border rounded-lg">
+              <span class="text-[10px] text-ctf-muted block mb-1">CP SCORE</span>
+              <span id="prof-cp-score" class="text-xl font-bold text-white">0</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[10px] text-ctf-muted mb-1 font-mono">
+              <span>TRACK SHARE</span><span id="prof-cp-share">0%</span>
+            </div>
+            <div class="w-full bg-[#0d1117] h-2 rounded-full overflow-hidden border border-ctf-border/40">
+              <div id="prof-cp-bar" class="bg-ctf-green h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- Solved Challenges Log -->
       <div class="bg-ctf-card border border-ctf-border rounded-xl p-5 space-y-3">
-        <h4 class="font-bold text-white text-sm flex items-center gap-2">
-          <i class="fa-solid fa-list-check text-ctf-blue"></i> Verified Solved Operations Log
-        </h4>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-ctf-blue"></i> Verified Solved Operations Log
+          </h4>
+          <div id="prof-log-filter" class="flex gap-1">
+            <button data-track="ALL" onclick="filterSolvedLog('ALL')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold border border-ctf-blue/50 bg-ctf-blue/20 text-white transition-colors">ALL</button>
+            <button data-track="CTF" onclick="filterSolvedLog('CTF')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold border border-ctf-border text-ctf-red hover:border-ctf-red/50 transition-colors">CTF</button>
+            <button data-track="CP" onclick="filterSolvedLog('CP')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold border border-ctf-border text-ctf-green hover:border-ctf-green/50 transition-colors">CP</button>
+          </div>
+        </div>
         <div class="overflow-x-auto border border-ctf-border/60 rounded-lg">
           <table class="w-full text-left text-xs font-mono">
             <thead class="bg-[#1c2128] text-ctf-muted border-b border-ctf-border">
               <tr>
                 <th class="p-2.5">Challenge Title</th>
+                <th class="p-2.5 text-center">Track</th>
                 <th class="p-2.5 text-center">Category</th>
                 <th class="p-2.5 text-right">Points Earned</th>
                 <th class="p-2.5 text-right">Solve Timestamp</th>
@@ -1688,6 +1757,22 @@
         $('#prof-score').textContent = p.personalScore || 0;
         $('#prof-role').textContent = p.role || 'PLAYER';
 
+        // Dual-Track Performance (CTF vs CP individual tracking)
+        const ctfSolves = p.ctfSolvesCount || 0;
+        const cpSolves = p.cpSolvesCount || 0;
+        $('#prof-ctf-solves').textContent = ctfSolves;
+        $('#prof-ctf-score').textContent = p.ctfScore || 0;
+        $('#prof-cp-solves').textContent = cpSolves;
+        $('#prof-cp-score').textContent = p.cpScore || 0;
+
+        const totalTrackSolves = ctfSolves + cpSolves;
+        const ctfPct = totalTrackSolves > 0 ? Math.round((ctfSolves / totalTrackSolves) * 100) : 0;
+        const cpPct = totalTrackSolves > 0 ? Math.round((cpSolves / totalTrackSolves) * 100) : 0;
+        $('#prof-ctf-share').textContent = ctfPct + '%';
+        $('#prof-cp-share').textContent = cpPct + '%';
+        document.getElementById('prof-ctf-bar').style.width = ctfPct + '%';
+        document.getElementById('prof-cp-bar').style.width = cpPct + '%';
+
         // Syndicate/Team
         if (p.teamName) {
           $('#prof-team-name').textContent = p.teamName;
@@ -1743,20 +1828,9 @@
           `;
         }).join('');
 
-        // Solved Challenges Table
-        const solvedTbody = $('#prof-solved-tbody');
-        if (p.solvedLog && p.solvedLog.length > 0) {
-          solvedTbody.innerHTML = p.solvedLog.map(s => `
-            <tr>
-              <td class="p-2.5 font-bold text-white">${escapeHtml(s.title || s.challengeId)}</td>
-              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold badge-${(s.category||'misc').toLowerCase()}">${escapeHtml(s.category || 'MISC')}</span></td>
-              <td class="p-2.5 text-right font-bold text-ctf-blue">+${escapeHtml(s.points)}</td>
-              <td class="p-2.5 text-right text-ctf-muted text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleString() : '-'}</td>
-            </tr>
-          `).join('');
-        } else {
-          solvedTbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-ctf-muted italic">No solved challenges recorded in operative dossier.</td></tr>`;
-        }
+        // Solved Challenges Table (with per-track caching & filtering)
+        profileSolvedLog = Array.isArray(p.solvedLog) ? p.solvedLog : [];
+        renderSolvedLog(profileTrackFilter);
 
       } catch (err) {
         showToast('Failed to load operative dossier', 'error');
@@ -1765,6 +1839,52 @@
 
 
 
+
+    // Cached solved log + active track filter for individual profile tracking
+    let profileSolvedLog = [];
+    let profileTrackFilter = 'ALL';
+
+    function renderSolvedLog(track) {
+      const solvedTbody = $('#prof-solved-tbody');
+      if (!solvedTbody) return;
+      const rows = profileSolvedLog.filter(s => track === 'ALL' || (s.type || 'CTF') === track);
+      if (rows.length > 0) {
+        solvedTbody.innerHTML = rows.map(s => {
+          const t = s.type || 'CTF';
+          const trackBadge = t === 'CP'
+            ? '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-ctf-green/10 text-ctf-green border border-ctf-green/30">CP</span>'
+            : '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-ctf-red/10 text-ctf-red border border-ctf-red/30">CTF</span>';
+          return `
+            <tr>
+              <td class="p-2.5 font-bold text-white">${escapeHtml(s.title || s.challengeId)}</td>
+              <td class="p-2.5 text-center">${trackBadge}</td>
+              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold badge-${(s.category||'misc').toLowerCase()}">${escapeHtml(s.category || 'MISC')}</span></td>
+              <td class="p-2.5 text-right font-bold text-ctf-blue">+${escapeHtml(s.points)}</td>
+              <td class="p-2.5 text-right text-ctf-muted text-[11px]">${s.timestamp ? new Date(s.timestamp).toLocaleString() : '-'}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        solvedTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-ctf-muted italic">No ${track === 'ALL' ? '' : track + ' track '}solves recorded in operative dossier.</td></tr>`;
+      }
+
+      // Highlight active filter button
+      document.querySelectorAll('#prof-log-filter button').forEach(btn => {
+        const active = btn.dataset.track === track;
+        if (active) {
+          btn.classList.add('border-ctf-blue/50', 'bg-ctf-blue/20', 'text-white');
+          btn.classList.remove('border-ctf-border');
+        } else {
+          btn.classList.remove('border-ctf-blue/50', 'bg-ctf-blue/20', 'text-white');
+          btn.classList.add('border-ctf-border');
+        }
+      });
+    }
+
+    function filterSolvedLog(track) {
+      profileTrackFilter = track;
+      renderSolvedLog(track);
+    }
 
     async function runCode(e) { e.preventDefault(); console.log('Run code executed'); }
     function filterArena(track) { switchChallengeTrack(track); }
@@ -1796,6 +1916,7 @@
     window.switchChallengeTrack = switchChallengeTrack;
     window.switchModalTab = switchModalTab;
     window.toggleChalType = toggleChalType;
+    window.filterSolvedLog = filterSolvedLog;
     window.requestHint = requestHint;
     window.fetchChallenges = fetchChallenges;
     window.fetchLeaderboard = fetchLeaderboard;
