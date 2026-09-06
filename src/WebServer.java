@@ -118,6 +118,11 @@ public final class WebServer {
         });
 
         app.get("/api/ping", ctx -> ctx.json(Map.of("status", "ok", "time", Instant.now().toString())));
+        app.get("/api/health", ctx -> ctx.status(200).json(Map.of(
+                "status", "UP",
+                "engine", "Cyber-Algo Arena",
+                "timestamp", System.currentTimeMillis()
+        )));
         // ── Auth ──
         app.post("/api/auth/login", this::handleLogin);
         app.post("/api/auth/admin-login", this::handleAdminLogin);
