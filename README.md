@@ -125,6 +125,10 @@ Administrative routes require an authenticated user with the `ADMIN` role.
 - Mongo-aware readiness checks
 - Local secret files excluded from version control
 
+## Gemini AI Tutor
+
+The challenge modal includes a server-side Gemini tutor with progressive Hint 1/2/3 and Explain modes. The browser never receives the Gemini API key, CTF flag hashes, or hidden testcase data. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the server.
+
 ## Configuration
 
 | Variable | Purpose | Default |
