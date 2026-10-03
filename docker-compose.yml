@@ -1,17 +1,17 @@
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:8.0
     container_name: arena-mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 2s
-      timeout: 2s
-      retries: 10
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     networks:
       - arena_net
 
@@ -22,13 +22,23 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017
-      - MONGODB_DATABASE_NAME=cyber_algo_arena
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE_NAME: cyber_algo_arena
+      ARENA_ADMIN_USERNAME: ${ARENA_ADMIN_USERNAME:-admin}
+      ARENA_ADMIN_PASSWORD: ${ARENA_ADMIN_PASSWORD:-}
     depends_on:
       mongodb:
         condition: service_healthy
     volumes:
       - ./contest_data:/app/contest_data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/api/health/ready >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
     networks:
       - arena_net
 

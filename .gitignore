@@ -32,5 +32,10 @@ __pycache__/
 venv/
 ENV/
 
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+
 # Docker Local Overrides
 docker-compose.override.yml
