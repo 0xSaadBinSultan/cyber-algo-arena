@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Thrown when a submission references a challenge ID absent from the contest registry.
  */
