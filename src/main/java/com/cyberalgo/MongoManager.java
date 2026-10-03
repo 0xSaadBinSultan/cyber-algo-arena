@@ -64,7 +64,7 @@ public final class MongoManager implements AutoCloseable {
                     selectedDb = testDb;
                     isConnected = true;
                     establishedUri = candidate;
-                    System.out.println("[MongoManager] Connected to persistent MongoDB: " + candidate + " (DB: " + effectiveDbName + ")");
+                    System.out.println("[MongoManager] Connected to persistent MongoDB (DB: " + effectiveDbName + ")");
                     break;
                 } catch (Exception ignored) {
                     // Try next candidate
@@ -85,7 +85,7 @@ public final class MongoManager implements AutoCloseable {
             this.activeUri = establishedUri;
             initIndexes();
         } else {
-            System.err.println("[MongoManager] Warning: No active MongoDB server reached on candidate endpoints: " + candidateUris);
+            System.err.println("[MongoManager] Warning: No active MongoDB server reached across " + candidateUris.size() + " configured/discovered endpoint(s).");
             System.err.println("[MongoManager] Operating in resilient in-memory fallback mode.");
             this.client = null;
             this.database = null;
@@ -99,9 +99,12 @@ public final class MongoManager implements AutoCloseable {
         if (explicitUri != null && !explicitUri.isBlank()) {
             list.add(explicitUri.trim());
         }
-        String envUri = System.getenv("MONGODB_URI");
-        if (envUri != null && !envUri.isBlank() && !list.contains(envUri.trim())) {
-            list.add(envUri.trim());
+        String[] envNames = {"MONGODB_URI", "MONGO_URI", "MONGO_URL", "MONGODB_URL"};
+        for (String envName : envNames) {
+            String envUri = System.getenv(envName);
+            if (envUri != null && !envUri.isBlank() && !list.contains(envUri.trim())) {
+                list.add(envUri.trim());
+            }
         }
 
         String[] defaults = {

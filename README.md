@@ -134,7 +134,7 @@ The challenge modal includes a server-side Gemini tutor with progressive Hint 1/
 | Variable | Purpose | Default |
 |---|---|---|
 | `PORT` | HTTP port | `8080` |
-| `MONGODB_URI` | MongoDB connection URI | local discovery fallback |
+| `MONGODB_URI` | MongoDB connection URI | local discovery fallback |\n| `MONGO_URI`, `MONGO_URL`, `MONGODB_URL` | Accepted MongoDB URI aliases | optional |
 | `MONGODB_DATABASE_NAME` | MongoDB database name | `cyber_algo_arena` |
 | `ARENA_ADMIN_USERNAME` | Bootstrap admin username | `admin` |
 | `ARENA_ADMIN_PASSWORD` | Bootstrap admin password | none |
