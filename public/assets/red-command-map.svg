@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 720">
+  <defs>
+    <linearGradient id="fade" x1="0" x2="1">
+      <stop offset="0" stop-color="#2b0709" stop-opacity=".18"/>
+      <stop offset=".55" stop-color="#7d1114" stop-opacity=".46"/>
+      <stop offset="1" stop-color="#ff3b30" stop-opacity=".18"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#ff3b30" stroke-opacity=".07" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="720" fill="#080304"/>
+  <rect width="1600" height="720" fill="url(#grid)"/>
+  <g fill="url(#fade)" stroke="#ff4239" stroke-opacity=".55" stroke-width="2">
+    <path d="M500 183l62-43 86 2 55 31 42 8 44 55-18 49-46 19-22 48-54 27-46-17-55 21-30-35-49-11-19-43 17-41-25-32z"/>
+    <path d="M630 383l58 16 39 54 2 65-34 83-31 48-32-33-10-65-27-61 10-55z"/>
+    <path d="M829 188l51-38 66 4 42 28 44 4 48 29 83-2 55 35 51 12 51 50-41 23-55-3-31 30-48-6-36 22-50-20-43 12-39-31-47 0-35-32-39 3-27-36 13-42z"/>
+    <path d="M1110 380l64 20 38 45-5 50-41 34-57-9-34-42 8-62z"/>
+    <path d="M1230 528l44 14 31 32-18 32-45 8-29-27z"/>
+    <path d="M398 254l37 14 15 36-18 29-42-5-24-31 8-29z"/>
+  </g>
+  <g fill="none" stroke="#ff3b30" stroke-opacity=".24">
+    <path d="M421 296Q650 70 913 253"/>
+    <path d="M655 430Q920 175 1183 452"/>
+    <path d="M784 257Q1037 75 1308 312"/>
+    <path d="M540 232Q799 525 1110 399"/>
+  </g>
+  <g fill="#ff4d43" filter="url(#glow)">
+    <circle cx="435" cy="294" r="4"/><circle cx="550" cy="232" r="4"/><circle cx="690" cy="407" r="4"/>
+    <circle cx="785" cy="256" r="4"/><circle cx="915" cy="250" r="4"/><circle cx="1044" cy="297" r="4"/>
+    <circle cx="1120" cy="398" r="4"/><circle cx="1197" cy="455" r="4"/><circle cx="1310" cy="310" r="4"/>
+  </g>
+  <g transform="translate(1315 205)" fill="none" stroke="#ff3b30">
+    <circle r="108" stroke-opacity=".22"/><circle r="78" stroke-opacity=".25"/><circle r="49" stroke-opacity=".30"/><circle r="18" stroke-opacity=".55"/>
+    <path d="M-130 0H130M0-130V130" stroke-opacity=".22"/>
+    <path d="M0 0L86-53" stroke-opacity=".75"/>
+    <circle cx="86" cy="-53" r="5" fill="#ff3b30" filter="url(#glow)"/>
+  </g>
+  <g fill="#ff4b42" font-family="monospace" font-size="12" opacity=".48">
+    <text x="1040" y="615">51.5074° N</text><text x="1040" y="633">0.1278° W</text><text x="1040" y="651">SCAN: LIVE</text>
+  </g>
+</svg>

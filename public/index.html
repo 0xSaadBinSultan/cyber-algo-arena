@@ -130,127 +130,742 @@
     .badge-forensics { background: rgba(210, 153, 34, 0.15); color: #f5a524; border: 1px solid rgba(210, 153, 34, 0.3); }
     .badge-misc { background: rgba(139, 148, 158, 0.15); color: #a58b8e; border: 1px solid rgba(139, 148, 158, 0.3); }
     .badge-cp { background: rgba(35, 134, 54, 0.15); color: #51cf66; border: 1px solid rgba(35, 134, 54, 0.3); }
+
+    /* ── Red Team Command Center dashboard ───────────────────── */
+    :root {
+      --command-red: #ff3b30;
+      --command-red-bright: #ff5148;
+      --command-red-dark: #8d1515;
+      --command-bg: #050203;
+      --command-panel: rgba(12, 7, 8, 0.94);
+      --command-panel-2: rgba(19, 9, 11, 0.92);
+      --command-line: rgba(255, 74, 67, 0.24);
+      --command-muted: #9c898c;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 68% -8%, rgba(255, 59, 48, .11), transparent 27%),
+        radial-gradient(circle at 92% 45%, rgba(255, 59, 48, .06), transparent 25%),
+        #050203;
+    }
+
+    .command-sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 238px;
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      border-right: 1px solid rgba(255, 71, 64, .26);
+      background:
+        linear-gradient(180deg, rgba(18, 5, 7, .98), rgba(4, 2, 3, .99)),
+        #050203;
+      box-shadow: 18px 0 45px rgba(0,0,0,.28);
+      overflow: hidden;
+    }
+
+    .command-sidebar::before,
+    .command-sidebar::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .command-sidebar::before {
+      inset: 0;
+      background:
+        linear-gradient(rgba(255,55,48,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,55,48,.035) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: .8;
+    }
+
+    .command-sidebar::after {
+      width: 190px;
+      height: 190px;
+      right: -82px;
+      bottom: 38px;
+      border: 1px solid rgba(255, 59, 48, .18);
+      border-radius: 50%;
+      box-shadow: 0 0 0 28px rgba(255,59,48,.025), 0 0 0 58px rgba(255,59,48,.016);
+    }
+
+    .command-brand {
+      position: relative;
+      z-index: 1;
+      padding: 21px 18px 18px;
+      border-bottom: 1px solid rgba(255, 71, 64, .20);
+    }
+
+    .command-logo-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(145deg, #ff5148, #8b1014);
+      border: 1px solid rgba(255, 119, 111, .55);
+      box-shadow: 0 0 28px rgba(255,59,48,.20);
+      clip-path: polygon(50% 0, 100% 100%, 72% 100%, 50% 58%, 28% 100%, 0 100%);
+    }
+
+    .command-sidebar-nav {
+      position: relative;
+      z-index: 1;
+      padding: 18px 12px;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .command-sidebar .nav-tab,
+    .command-sidebar .command-side-action {
+      width: 100%;
+      justify-content: flex-start;
+      gap: 11px !important;
+      padding: 10px 12px !important;
+      border-radius: 7px !important;
+      border: 1px solid transparent !important;
+      background: transparent !important;
+      color: #a9979a !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      box-shadow: none !important;
+    }
+
+    .command-sidebar .nav-tab:hover,
+    .command-sidebar .command-side-action:hover {
+      color: #fff !important;
+      background: rgba(255, 59, 48, .08) !important;
+      border-color: rgba(255, 71, 64, .18) !important;
+    }
+
+    .command-sidebar #nav-challenges {
+      color: #fff !important;
+      background: linear-gradient(90deg, rgba(214,34,31,.86), rgba(104,13,17,.52)) !important;
+      border-color: rgba(255, 89, 82, .55) !important;
+      box-shadow: inset 0 0 16px rgba(255,59,48,.10), 0 0 18px rgba(255,59,48,.08) !important;
+    }
+
+    .command-sidebar-auth {
+      position: relative;
+      z-index: 2;
+      margin: 0 12px 14px;
+      padding: 12px;
+      border: 1px solid rgba(255, 71, 64, .20);
+      border-radius: 9px;
+      background: rgba(14, 6, 7, .92);
+    }
+
+    .command-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 45;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(255, 71, 64, .22);
+      background: rgba(5, 2, 3, .92);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 14px 32px rgba(0,0,0,.22);
+    }
+
+    .command-search {
+      position: relative;
+      flex: 1;
+      max-width: 760px;
+    }
+
+    .command-search input {
+      width: 100%;
+      height: 42px;
+      padding: 0 42px 0 42px;
+      color: #eee7e8;
+      background: linear-gradient(180deg, rgba(16,10,11,.96), rgba(8,5,6,.98));
+      border: 1px solid rgba(255, 71, 64, .19);
+      border-radius: 8px;
+      outline: none;
+      font-size: 12px;
+    }
+
+    .command-search input:focus {
+      border-color: rgba(255, 77, 69, .55);
+      box-shadow: 0 0 0 1px rgba(255, 77, 69, .18), 0 0 22px rgba(255,59,48,.06);
+    }
+
+    .command-main {
+      width: 100%;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 18px !important;
+    }
+
+    .command-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 72, 65, .27);
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(18,9,11,.96), rgba(8,5,6,.97));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.018),
+        0 14px 38px rgba(0,0,0,.18);
+    }
+
+    .command-panel::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,71,64,.55), transparent);
+      opacity: .45;
+      pointer-events: none;
+    }
+
+    .command-hero {
+      min-height: 292px;
+      padding: 34px 36px;
+      display: flex;
+      align-items: center;
+      background-image:
+        linear-gradient(90deg, rgba(7,3,4,.97) 0%, rgba(7,3,4,.89) 36%, rgba(7,3,4,.30) 72%, rgba(7,3,4,.38) 100%),
+        url('/assets/red-command-map.svg');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .command-eyebrow {
+      color: #e84a45;
+      font: 600 10px/1.2 'JetBrains Mono', monospace;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .command-title {
+      margin-top: 12px;
+      font-size: clamp(34px, 4.2vw, 64px);
+      line-height: .94;
+      font-weight: 800;
+      letter-spacing: -.045em;
+      color: #f5f1f2;
+      text-shadow: 0 0 32px rgba(255,59,48,.08);
+    }
+
+    .command-title span {
+      display: block;
+      margin-top: 7px;
+      color: #ff5148;
+      text-shadow: 0 0 24px rgba(255,59,48,.20);
+    }
+
+    .command-btn-primary,
+    .command-btn-ghost {
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: .2s ease;
+    }
+
+    .command-btn-primary {
+      color: white;
+      border: 1px solid rgba(255,111,104,.80);
+      background: linear-gradient(180deg, #ed4038, #ad171b);
+      box-shadow: inset 0 0 16px rgba(255,255,255,.04), 0 0 20px rgba(255,59,48,.16);
+    }
+
+    .command-btn-primary:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.12);
+      box-shadow: 0 0 26px rgba(255,59,48,.24);
+    }
+
+    .command-btn-ghost {
+      color: #c5b9bb;
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(10,7,8,.75);
+    }
+
+    .command-btn-ghost:hover {
+      color: white;
+      border-color: rgba(255, 75, 68, .34);
+      background: rgba(255, 59, 48, .06);
+    }
+
+    .command-stat {
+      min-height: 82px;
+      padding: 15px 16px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      border: 1px solid rgba(255, 72, 65, .20);
+      border-radius: 8px;
+      background: linear-gradient(160deg, rgba(20,10,12,.97), rgba(9,6,7,.98));
+    }
+
+    .command-stat-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 74, 67, .28);
+      background: rgba(255, 59, 48, .09);
+      color: #ff5148;
+    }
+
+    .command-stat:nth-child(2) .command-stat-icon { color:#ff9b54; border-color:rgba(255,155,84,.28); background:rgba(255,155,84,.08); }
+    .command-stat:nth-child(3) .command-stat-icon { color:#5e9cff; border-color:rgba(94,156,255,.28); background:rgba(94,156,255,.08); }
+    .command-stat:nth-child(4) .command-stat-icon { color:#a970ff; border-color:rgba(169,112,255,.28); background:rgba(169,112,255,.08); }
+
+    .command-stat-number {
+      font: 700 22px/1 'JetBrains Mono', monospace;
+      color: #ff5148;
+    }
+
+    .command-stat:nth-child(2) .command-stat-number { color:#ff9b54; }
+    .command-stat:nth-child(3) .command-stat-number { color:#6cabff; }
+    .command-stat:nth-child(4) .command-stat-number { color:#b27cff; }
+
+    .command-section-head {
+      min-height: 48px;
+      padding: 10px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid rgba(255,72,65,.18);
+      background: linear-gradient(180deg, rgba(21,10,12,.84), rgba(12,7,8,.70));
+    }
+
+    .command-table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:11px;
+    }
+
+    .command-table thead {
+      color:#877477;
+      background:rgba(255,255,255,.018);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:9px;
+    }
+
+    .command-table th,
+    .command-table td {
+      padding:11px 12px;
+      border-bottom:1px solid rgba(255,72,65,.12);
+      vertical-align:middle;
+    }
+
+    .command-table tbody tr {
+      transition:.18s ease;
+    }
+
+    .command-table tbody tr:hover {
+      background:rgba(255,59,48,.045);
+    }
+
+    .command-difficulty {
+      display:inline-flex;
+      align-items:center;
+      gap:2px;
+      margin-right:6px;
+    }
+
+    .command-difficulty i {
+      width:4px;
+      height:12px;
+      border-radius:2px;
+      background:#332326;
+      display:block;
+    }
+
+    .command-difficulty.easy i:nth-child(-n+1),
+    .command-difficulty.medium i:nth-child(-n+2),
+    .command-difficulty.hard i:nth-child(-n+4),
+    .command-difficulty.expert i:nth-child(-n+5) {
+      background:#ff5148;
+      box-shadow:0 0 6px rgba(255,59,48,.25);
+    }
+
+    .command-ai-input {
+      width:100%;
+      min-height:72px;
+      padding:10px 11px;
+      resize:vertical;
+      color:#ddd2d4;
+      background:rgba(7,5,6,.86);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:7px;
+      font-size:11px;
+      outline:none;
+    }
+
+    .command-ai-chip {
+      padding:6px 9px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background:rgba(255,255,255,.025);
+      color:#9f8e91;
+      font-size:9px;
+      transition:.18s ease;
+    }
+
+    .command-ai-chip:hover {
+      color:white;
+      border-color:rgba(255,72,65,.35);
+      background:rgba(255,59,48,.06);
+    }
+
+    .command-statusbar {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      border:1px solid rgba(255,72,65,.20);
+      border-radius:8px;
+      overflow:hidden;
+      background:rgba(8,5,6,.95);
+    }
+
+    .command-status-item {
+      min-height:54px;
+      padding:10px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      border-right:1px solid rgba(255,72,65,.14);
+      color:#cfc3c5;
+      font-size:10px;
+    }
+
+    .command-status-item:last-child { border-right:0; }
+
+    .command-mobile-nav {
+      position:fixed;
+      left:10px;
+      right:10px;
+      bottom:10px;
+      z-index:70;
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      height:58px;
+      border:1px solid rgba(255,72,65,.28);
+      border-radius:12px;
+      background:rgba(8,4,5,.94);
+      backdrop-filter:blur(16px);
+      box-shadow:0 14px 38px rgba(0,0,0,.42);
+    }
+
+    .command-mobile-nav button {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:3px;
+      color:#9d8c8f;
+      font-size:9px;
+    }
+
+    @media (min-width: 1024px) {
+      .command-sidebar { display:flex; }
+      .command-topbar { margin-left:238px; }
+      .command-main { margin-left:238px !important; width:calc(100% - 238px); }
+      .command-mobile-nav { display:none; }
+    }
+
+    @media (max-width: 1023px) {
+      .command-topbar { padding:9px 12px; }
+      .command-main { padding:12px 12px 82px !important; }
+      .command-hero { padding:26px 20px; min-height:250px; background-position:58% center; }
+      .command-statusbar { grid-template-columns:repeat(2,1fr); }
+      .command-status-item:nth-child(2) { border-right:0; }
+      .command-status-item:nth-child(-n+2) { border-bottom:1px solid rgba(255,72,65,.14); }
+    }
+
+    @media (max-width: 640px) {
+      .command-title { font-size:34px; }
+      .command-hero { background-position:65% center; }
+      .command-table th:nth-child(4),
+      .command-table td:nth-child(4) { display:none; }
+    }
+
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">
 
-  <!-- TOP NAVBAR (CTFd Standard) -->
-  <nav class="sticky top-0 z-40 backdrop-blur-md bg-[#120708]/90 border-b border-ctf-border">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        
-        <!-- Brand / Logo -->
-        <div class="flex items-center gap-3">
-          <a href="#" onclick="showView('challenges'); return false;" class="flex items-center gap-2.5 text-white font-bold text-lg tracking-tight group">
-            <div class="w-8 h-8 rounded bg-gradient-to-br from-ctf-blue to-ctf-purple flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-              <i class="fa-solid fa-flag text-sm"></i>
-            </div>
-            <span class="font-extrabold tracking-wide">CYBER-ALGO <span class="text-ctf-blue">ARENA</span></span>
-          </a>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-ctf-blue/10 text-ctf-blue border border-ctf-blue/30 hidden sm:inline-block">v2.0 CTFd-Hybrid</span>
+  <!-- RED TEAM COMMAND CENTER SIDEBAR -->
+  <aside class="command-sidebar" id="command-sidebar">
+    <div class="command-brand">
+      <a href="#" onclick="showView('challenges'); window.scrollTo({top:0,behavior:'smooth'}); return false;" class="flex items-center gap-3 relative z-10">
+        <div class="command-logo-mark"><span class="text-[10px] font-black">A</span></div>
+        <div>
+          <div class="text-sm font-extrabold text-white tracking-wide">Cyber <span class="text-ctf-blue">Algo</span> Arena</div>
+          <div class="text-[8px] font-mono tracking-[0.23em] uppercase text-red-500/70 mt-1">Red Team Command Center</div>
         </div>
+      </a>
+    </div>
 
-        <!-- Navigation Tabs -->
-        <div class="hidden md:flex items-center space-x-1">
-          <button onclick="showView('challenges')" id="nav-challenges" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-white bg-ctf-card border border-ctf-border hover:text-ctf-blue transition-colors flex items-center gap-2">
-            <i class="fa-solid fa-bullseye text-ctf-blue"></i> Challenges
-          </button>
-          <button onclick="showView('scoreboard')" id="nav-scoreboard" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
-            <i class="fa-solid fa-chart-simple text-ctf-purple"></i> Scoreboard
-          </button>
-          <button onclick="showView('radar')" id="nav-radar" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
-            <i class="fa-solid fa-satellite-dish text-ctf-yellow"></i> Radar
-          </button>
-          <button onclick="showView('team')" id="nav-team" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2">
-            <i class="fa-solid fa-users text-ctf-green"></i> Team
-          </button>
-          <button onclick="showView('profile')" id="nav-profile" class="nav-tab px-3.5 py-2 rounded-md text-sm font-medium text-ctf-muted hover:text-white hover:bg-ctf-card/50 transition-colors flex items-center gap-2 hidden">
-            <i class="fa-solid fa-user text-ctf-blue"></i> Profile
-          </button>
-          
-        </div>
+    <div class="command-sidebar-nav">
+      <button onclick="showView('challenges'); window.scrollTo({top:0,behavior:'smooth'})" id="nav-challenges" class="nav-tab">
+        <i class="fa-solid fa-house w-4 text-center"></i><span>Dashboard</span>
+      </button>
+      <button onclick="scrollToCommandChallenges()" class="command-side-action">
+        <i class="fa-solid fa-trophy w-4 text-center"></i><span>Challenges</span>
+      </button>
+      <button onclick="showView('scoreboard')" id="nav-scoreboard" class="nav-tab">
+        <i class="fa-solid fa-crosshairs w-4 text-center"></i><span>Compete</span>
+      </button>
+      <button onclick="showView('radar')" id="nav-radar" class="nav-tab">
+        <i class="fa-solid fa-book-open w-4 text-center"></i><span>Learning Lab</span>
+      </button>
+      <button onclick="scrollToCommandAi()" class="command-side-action">
+        <i class="fa-solid fa-wand-magic-sparkles w-4 text-center"></i><span>AI Tutor</span>
+      </button>
+      <button onclick="showView('scoreboard')" class="command-side-action">
+        <i class="fa-solid fa-chart-column w-4 text-center"></i><span>Rankings</span>
+      </button>
+      <button onclick="showView('team')" id="nav-team" class="nav-tab">
+        <i class="fa-solid fa-people-group w-4 text-center"></i><span>Teams</span>
+      </button>
+      <button onclick="showView('profile')" id="nav-profile" class="nav-tab hidden">
+        <i class="fa-solid fa-user-shield w-4 text-center"></i><span>Profile</span>
+      </button>
 
-        <!-- Right: Auth State -->
-        <div class="flex items-center gap-3">
-          <!-- Unauthenticated State -->
-          <div id="auth-unauthed" class="flex items-center gap-2">
-            <button onclick="openAuthModal('login')" class="px-3.5 py-1.5 text-sm font-medium text-ctf-text hover:text-white hover:bg-ctf-border/40 rounded-md transition-colors flex items-center gap-1.5">
-              <i class="fa-solid fa-key text-ctf-blue"></i> Login
-            </button>
-            <button onclick="openAuthModal('register')" class="px-3.5 py-1.5 text-sm font-medium text-white bg-ctf-green hover:bg-ctf-greenHover rounded-md transition-colors shadow-sm flex items-center gap-1.5">
-              <i class="fa-solid fa-user-plus"></i> Register
-            </button>
-          </div>
-
-          <!-- Authenticated User Control Hub -->
-          <div id="auth-authed" class="flex items-center gap-2.5 hidden">
-            <div onclick="showView('profile')" class="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-ctf-card hover:bg-ctf-cardHover border border-ctf-border hover:border-ctf-blue/60 rounded-full text-xs font-medium transition-all group">
-              <span id="user-avatar" class="w-5 h-5 rounded-full bg-ctf-blue/20 text-ctf-blue flex items-center justify-center font-bold text-[10px] group-hover:scale-105 transition-transform">U</span>
-              <span id="user-display" class="font-semibold text-white">player</span>
-              <span id="user-role-badge" class="px-1.5 py-0.2 bg-ctf-blue/20 text-ctf-blue border border-ctf-blue/30 rounded text-[9px] font-mono font-bold uppercase">PLAYER</span>
-              <span id="user-team-badge" class="px-1.5 py-0.2 bg-ctf-purple/20 text-ctf-purple border border-ctf-purple/30 rounded text-[9px] font-mono hidden">Team</span>
-            </div>
-            
-            <button onclick="logout()" title="Logout" class="px-2.5 py-1.5 text-xs text-ctf-muted hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 rounded-md transition-colors flex items-center gap-1.5">
-              <i class="fa-solid fa-arrow-right-from-bracket"></i>
-              <span class="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        </div>
-
+      <div class="mt-auto pt-4 border-t border-red-500/15">
+        <button onclick="showView('radar')" class="command-side-action">
+          <i class="fa-regular fa-calendar w-4 text-center"></i><span>Events</span>
+        </button>
+        <button onclick="showView('challenges')" class="command-side-action">
+          <i class="fa-regular fa-file-lines w-4 text-center"></i><span>Resources</span>
+        </button>
       </div>
     </div>
-    
-    <!-- Mobile Navigation bar -->
-    <div class="md:hidden flex items-center justify-around border-t border-ctf-border/60 py-2 px-4 text-xs">
-      <button onclick="showView('challenges')" class="text-ctf-blue flex flex-col items-center gap-1"><i class="fa-solid fa-bullseye"></i><span>Challenges</span></button>
-      <button onclick="showView('scoreboard')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-chart-simple"></i><span>Scores</span></button>
-      <button onclick="showView('radar')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-satellite-dish"></i><span>Radar</span></button>
-      <button onclick="showView('team')" class="text-ctf-muted flex flex-col items-center gap-1"><i class="fa-solid fa-users"></i><span>Team</span></button>
-      <button onclick="showView('profile')" id="nav-profile-mobile" class="text-ctf-muted flex flex-col items-center gap-1 hidden"><i class="fa-solid fa-user"></i><span>Profile</span></button>
-      
+
+    <div class="command-sidebar-auth">
+      <div id="auth-unauthed" class="space-y-2">
+        <button onclick="openAuthModal('login')" class="w-full command-btn-primary justify-center">
+          <i class="fa-solid fa-key"></i><span>Login</span>
+        </button>
+        <button onclick="openAuthModal('register')" class="w-full command-btn-ghost justify-center">
+          <i class="fa-solid fa-user-plus"></i><span>Register</span>
+        </button>
+      </div>
+
+      <div id="auth-authed" class="hidden">
+        <button onclick="showView('profile')" class="w-full flex items-center gap-2.5 text-left">
+          <span id="user-avatar" class="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center font-bold text-xs">U</span>
+          <span class="min-w-0 flex-1">
+            <span id="user-display" class="block text-[11px] font-semibold text-white truncate">player</span>
+            <span id="user-role-badge" class="text-[8px] font-mono uppercase text-red-400">PLAYER</span>
+            <span id="user-team-badge" class="hidden text-[8px] text-orange-400 ml-1">Team</span>
+          </span>
+          <i class="fa-solid fa-chevron-right text-[9px] text-red-500/60"></i>
+        </button>
+        <button onclick="logout()" class="w-full mt-2 text-[9px] text-gray-500 hover:text-red-400 text-left">
+          <i class="fa-solid fa-arrow-right-from-bracket mr-1.5"></i> Logout
+        </button>
+      </div>
     </div>
-  </nav>
+  </aside>
+
+  <!-- COMMAND TOP BAR -->
+  <header class="command-topbar">
+    <button onclick="showView('challenges')" class="lg:hidden w-9 h-9 rounded border border-red-500/25 bg-red-500/5 text-red-400">
+      <i class="fa-solid fa-shield-halved"></i>
+    </button>
+    <div class="command-search">
+      <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-[11px] text-gray-500"></i>
+      <input id="command-search-input" type="search" placeholder="Search challenges, categories, skills..." oninput="commandSearch(this.value)">
+      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-mono text-gray-600 border border-white/10 rounded px-1.5 py-0.5">⌘ K</span>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <button onclick="fetchChallenges(); fetchLeaderboard();" class="w-9 h-9 rounded border border-white/10 bg-white/[.02] hover:border-red-500/30 text-gray-500 hover:text-red-400 transition-colors" title="Refresh">
+        <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+      </button>
+      <button onclick="openAuthModal('login')" class="lg:hidden px-3 h-9 rounded border border-red-500/30 text-[10px] text-red-300 bg-red-500/5">Login</button>
+    </div>
+  </header>
+
+  <!-- MOBILE COMMAND NAV -->
+  <div class="command-mobile-nav lg:hidden">
+    <button onclick="showView('challenges')"><i class="fa-solid fa-house text-red-400"></i><span>Home</span></button>
+    <button onclick="scrollToCommandChallenges()"><i class="fa-solid fa-trophy"></i><span>Challenges</span></button>
+    <button onclick="showView('scoreboard')"><i class="fa-solid fa-chart-column"></i><span>Ranks</span></button>
+    <button onclick="scrollToCommandAi()"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI</span></button>
+    <button onclick="showView('profile')" id="nav-profile-mobile" class="hidden"><i class="fa-solid fa-user"></i><span>Profile</span></button>
+  </div>
 
   <!-- MAIN CONTAINER -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main id="arena-main" class="command-main flex-1">
 
     <!-- ═════════════════════════════════════════════════════════ -->
-    <!-- 1. CHALLENGES VIEW                                        -->
+    <!-- 1. RED TEAM COMMAND DASHBOARD                             -->
     <!-- ═════════════════════════════════════════════════════════ -->
-    <section id="view-challenges" class="view-panel space-y-6">
-      
-      <!-- Top Switcher & Filters -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-ctf-border">
-        
-        <!-- CTF vs CP Segment Switcher -->
-        <div class="inline-flex p-1 bg-ctf-card border border-ctf-border rounded-lg text-sm">
-          <button id="tab-btn-ctf" onclick="switchChallengeTrack('CTF')" class="px-4 py-1.5 rounded-md font-medium text-white bg-ctf-blue/20 border border-ctf-blue/40 flex items-center gap-2 transition-all">
-            <i class="fa-solid fa-shield-halved text-ctf-blue"></i>
-            <span>Security (CTF)</span>
-            <span id="ctf-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-ctf-card border border-ctf-border">0</span>
-          </button>
-          <button id="tab-btn-cp" onclick="switchChallengeTrack('CP')" class="px-4 py-1.5 rounded-md font-medium text-ctf-muted hover:text-white flex items-center gap-2 transition-all">
-            <i class="fa-solid fa-code text-ctf-yellow"></i>
-            <span>Algorithms (CP)</span>
-            <span id="cp-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-ctf-card border border-ctf-border">0</span>
-          </button>
+    <section id="view-challenges" class="view-panel space-y-3">
+
+      <!-- Hero command map -->
+      <div class="command-panel command-hero">
+        <div class="relative z-10 max-w-2xl">
+          <div class="command-eyebrow"><i class="fa-solid fa-crosshairs mr-2"></i> Global Cyber Range // <span class="text-red-400">Live</span></div>
+          <h1 class="command-title">Welcome to <span>Cyber Algo Arena</span></h1>
+          <p class="mt-4 text-sm text-gray-300 font-medium">Solve. Learn. Compete. Grow.</p>
+          <p class="mt-1.5 max-w-xl text-[11px] leading-relaxed text-gray-500">
+            A command-grade arena for algorithmic thinking, cybersecurity practice, CTF challenges and competitive problem solving.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-2">
+            <button onclick="scrollToCommandChallenges()" class="command-btn-primary">
+              <i class="fa-solid fa-play"></i><span>Explore Challenges</span>
+            </button>
+            <button onclick="showView('scoreboard')" class="command-btn-ghost">
+              <i class="fa-solid fa-ranking-star"></i><span>View Leaderboard</span>
+            </button>
+          </div>
         </div>
-
-        <!-- Category Pill Filters -->
-        <div id="category-filter-bar" class="flex flex-wrap items-center gap-1.5 text-xs">
-          <button onclick="filterCategory('ALL')" class="cat-pill active px-3 py-1.5 rounded-full font-medium bg-ctf-blue text-white transition-colors">All</button>
-          <button onclick="filterCategory('CRYPTO')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Crypto</button>
-          <button onclick="filterCategory('WEB')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Web</button>
-          <button onclick="filterCategory('PWN')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Systems / Pwn</button>
-          <button onclick="filterCategory('FORENSICS')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Forensics</button>
-          <button onclick="filterCategory('MISC')" class="cat-pill px-3 py-1.5 rounded-full font-medium bg-ctf-card border border-ctf-border text-ctf-muted hover:text-white transition-colors">Misc</button>
+        <div class="absolute right-5 top-5 hidden xl:block text-right font-mono text-[8px] leading-5 text-red-500/65 uppercase tracking-wider">
+          Threat Intel<br>Community<br>Challenges<br>Skills<br>Real World
         </div>
       </div>
 
-      <!-- Challenge Grid Grouped By Category -->
-      <div id="challenges-container" class="space-y-8">
-        <!-- Dynamic Category Sections Injected Here -->
+      <!-- Metrics -->
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <div class="command-stat">
+          <div class="command-stat-icon"><i class="fa-solid fa-flag"></i></div>
+          <div><div id="command-stat-total" class="command-stat-number">0</div><div class="text-[9px] text-gray-500 mt-1">Total Challenges</div></div>
+        </div>
+        <div class="command-stat">
+          <div class="command-stat-icon"><i class="fa-solid fa-user-group"></i></div>
+          <div><div id="command-stat-solved" class="command-stat-number">0</div><div class="text-[9px] text-gray-500 mt-1">Your Solves</div></div>
+        </div>
+        <div class="command-stat">
+          <div class="command-stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <div><div id="command-stat-ctf" class="command-stat-number">0</div><div class="text-[9px] text-gray-500 mt-1">Security Challenges</div></div>
+        </div>
+        <div class="command-stat">
+          <div class="command-stat-icon"><i class="fa-solid fa-code"></i></div>
+          <div><div id="command-stat-cp" class="command-stat-number">0</div><div class="text-[9px] text-gray-500 mt-1">Algorithm Problems</div></div>
+        </div>
+      </div>
+
+      <!-- Main operational grid -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-3">
+        <div class="xl:col-span-8 command-panel" id="command-challenges">
+          <div class="command-section-head">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-crosshairs text-red-400"></i>
+              <h2 class="text-xs font-bold text-white">Featured Challenges</h2>
+            </div>
+            <div class="inline-flex p-0.5 bg-black/30 border border-white/5 rounded text-[9px]">
+              <button id="tab-btn-ctf" onclick="switchChallengeTrack('CTF')" class="px-3 py-1.5 rounded font-semibold text-white bg-ctf-blue/20 border border-ctf-blue/40 flex items-center gap-1.5 transition-all">
+                Security <span id="ctf-count-badge" class="font-mono opacity-70">0</span>
+              </button>
+              <button id="tab-btn-cp" onclick="switchChallengeTrack('CP')" class="px-3 py-1.5 rounded font-semibold text-ctf-muted hover:text-white flex items-center gap-1.5 transition-all">
+                Algorithms <span id="cp-count-badge" class="font-mono opacity-70">0</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="category-filter-bar" class="flex flex-wrap gap-1.5 px-3 py-2.5 border-b border-red-500/10 bg-black/10 text-[9px]">
+            <button onclick="filterCategory('ALL')" class="cat-pill active px-3 py-1.5 rounded font-semibold bg-ctf-blue text-white transition-colors">All</button>
+            <button onclick="filterCategory('WEB')" class="cat-pill px-3 py-1.5 rounded font-semibold bg-white/[.025] border border-white/10 text-ctf-muted hover:text-white transition-colors">Web</button>
+            <button onclick="filterCategory('CRYPTO')" class="cat-pill px-3 py-1.5 rounded font-semibold bg-white/[.025] border border-white/10 text-ctf-muted hover:text-white transition-colors">Crypto</button>
+            <button onclick="filterCategory('PWN')" class="cat-pill px-3 py-1.5 rounded font-semibold bg-white/[.025] border border-white/10 text-ctf-muted hover:text-white transition-colors">Pwn</button>
+            <button onclick="filterCategory('FORENSICS')" class="cat-pill px-3 py-1.5 rounded font-semibold bg-white/[.025] border border-white/10 text-ctf-muted hover:text-white transition-colors">Forensics</button>
+            <button onclick="filterCategory('MISC')" class="cat-pill px-3 py-1.5 rounded font-semibold bg-white/[.025] border border-white/10 text-ctf-muted hover:text-white transition-colors">Misc</button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="command-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Challenge</th>
+                  <th class="text-left">Category</th>
+                  <th class="text-left">Difficulty</th>
+                  <th class="text-right">Solves</th>
+                  <th class="text-right">Points</th>
+                  <th class="w-7"></th>
+                </tr>
+              </thead>
+              <tbody id="challenges-container"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="xl:col-span-4 space-y-3">
+          <!-- Dashboard AI Tutor -->
+          <div class="command-panel" id="command-ai">
+            <div class="command-section-head">
+              <div>
+                <div class="flex items-center gap-2 text-xs font-bold text-white">
+                  <i class="fa-solid fa-brain text-red-400"></i> AI Tutor
+                  <span class="px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/25 text-[7px] text-red-300">GEMINI</span>
+                </div>
+                <div id="command-ai-status" class="text-[8px] text-gray-600 mt-1 font-mono">Checking server...</div>
+              </div>
+              <span class="text-[8px] text-gray-600">Your AI Cyber Mentor</span>
+            </div>
+            <div class="p-3 space-y-2.5">
+              <select id="dashboard-ai-challenge" class="w-full h-9 bg-black/40 border border-white/10 rounded px-2.5 text-[10px] text-gray-300 outline-none">
+                <option value="">Select a challenge</option>
+              </select>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button onclick="dashboardAskAi('EXPLAIN',1)" class="command-btn-primary justify-center !h-8 !px-2">Explain</button>
+                <button onclick="dashboardAskAi('HINT',1)" class="command-btn-ghost justify-center !h-8 !px-2">Hint 1</button>
+                <button onclick="dashboardAskAi('HINT',2)" class="command-btn-ghost justify-center !h-8 !px-2">Hint 2</button>
+                <button onclick="dashboardAskAi('HINT',3)" class="command-btn-ghost justify-center !h-8 !px-2">Hint 3</button>
+              </div>
+              <textarea id="dashboard-ai-question" class="command-ai-input" maxlength="1200" placeholder="Ask anything about the selected challenge, concept, or approach..."></textarea>
+              <div id="dashboard-ai-answer" class="hidden min-h-[62px] p-2.5 rounded border border-red-500/15 bg-black/30 text-[10px] leading-relaxed whitespace-pre-wrap text-gray-300"></div>
+              <div>
+                <div class="text-[8px] text-red-400 mb-1.5">Try asking:</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <button onclick="setDashboardAiQuestion('Explain the core concept')" class="command-ai-chip">Explain the concept</button>
+                  <button onclick="setDashboardAiQuestion('What should I inspect first?')" class="command-ai-chip">Where do I start?</button>
+                  <button onclick="setDashboardAiQuestion('Give me a debugging checklist')" class="command-ai-chip">Debug checklist</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Players -->
+          <div class="command-panel">
+            <div class="command-section-head">
+              <div class="flex items-center gap-2 text-xs font-bold text-white">
+                <i class="fa-solid fa-trophy text-orange-400"></i> Top Players
+              </div>
+              <button onclick="showView('scoreboard')" class="text-[8px] text-red-400 hover:text-red-300">View All →</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="command-table">
+                <thead><tr><th>#</th><th>Player / Team</th><th class="text-right">Score</th></tr></thead>
+                <tbody id="dashboard-top-players">
+                  <tr><td colspan="3" class="text-center text-gray-600 py-6">Awaiting leaderboard telemetry…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom command status -->
+      <div class="command-statusbar">
+        <div class="command-status-item"><i class="fa-solid fa-globe text-red-400"></i><span><b id="command-bottom-total" class="text-white font-mono">0</b> Challenges Online</span></div>
+        <div class="command-status-item"><i class="fa-solid fa-people-group text-red-400"></i><span><b id="command-bottom-players" class="text-white font-mono">0</b> Ranked Teams</span></div>
+        <div class="command-status-item"><i class="fa-solid fa-wave-square text-red-400"></i><span><b class="text-white">Gemini</b> Tutor Ready</span></div>
+        <div class="command-status-item"><i class="fa-solid fa-shield text-red-400"></i><span>Secure Command Mode</span></div>
       </div>
     </section>
 
@@ -829,6 +1444,8 @@
     let activeTrack = 'CTF'; // 'CTF' or 'CP'
     let activeCategory = 'ALL';
     let scoreboardChart = null;
+    let dashboardSearchTerm = '';
+
 
     // Helper Functions
     const $ = (sel) => document.querySelector(sel);
@@ -1089,6 +1706,9 @@
           $('#ctf-count-badge').textContent = ctfCount;
           $('#cp-count-badge').textContent = cpCount;
           renderChallenges();
+          updateCommandDashboard();
+          populateDashboardAiChallengeSelect();
+          refreshCommandAiStatus();
           if (typeof renderAdminChallengesTable === 'function') renderAdminChallengesTable();
         }
       } catch (err) {
@@ -1098,6 +1718,7 @@
 
     function renderChallenges() {
       const container = $('#challenges-container');
+      if (!container) return;
       container.innerHTML = '';
 
       let list = challengesData.filter(c => c.type === activeTrack);
@@ -1105,75 +1726,223 @@
         list = list.filter(c => (c.category || 'MISC').toUpperCase() === activeCategory);
       }
 
+      if (dashboardSearchTerm) {
+        const q = dashboardSearchTerm.toLowerCase();
+        list = list.filter(c => [
+          c.title,
+          c.description,
+          c.category,
+          c.difficulty,
+          c.type
+        ].some(v => String(v || '').toLowerCase().includes(q)));
+      }
+
       if (list.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-16 bg-ctf-card border border-ctf-border rounded-xl">
-            <i class="fa-regular fa-folder-open text-3xl text-ctf-muted mb-3"></i>
-            <p class="text-sm text-ctf-muted">No challenges deployed under this category.</p>
-          </div>
+          <tr>
+            <td colspan="6" class="py-10 text-center text-gray-600">
+              <i class="fa-regular fa-folder-open text-xl mb-2 block"></i>
+              No challenge telemetry matches this filter.
+            </td>
+          </tr>
         `;
         return;
       }
 
-      // Group challenges by category for clean CTFd presentation
-      const groups = {};
-      list.forEach(c => {
-        const cat = activeTrack === 'CP' ? 'Competitive Programming' : (c.category || 'MISC');
-        if (!groups[cat]) groups[cat] = [];
-        groups[cat].push(c);
-      });
+      list
+        .sort((a,b) => (b.currentPoints || b.basePoints || 0) - (a.currentPoints || a.basePoints || 0))
+        .forEach(c => {
+          const tr = document.createElement('tr');
+          tr.className = "cursor-pointer group";
+          tr.onclick = () => openChallengeModal(c.id);
 
-      for (const [catName, chals] of Object.entries(groups)) {
-        const section = document.createElement('div');
-        section.className = "space-y-3";
+          const cat = c.type === 'CP' ? 'CP' : (c.category || 'MISC').toUpperCase();
+          const difficulty = String(c.difficulty || 'MEDIUM').toUpperCase();
+          const diffClass = difficulty === 'EASY' ? 'easy' :
+                            difficulty === 'MEDIUM' ? 'medium' :
+                            difficulty === 'HARD' ? 'hard' : 'expert';
 
-        section.innerHTML = `
-          <div class="flex items-center gap-2 border-b border-ctf-border pb-2">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">${escapeHtml(catName)}</h3>
-            <span class="text-[11px] font-mono text-ctf-muted">(${chals.length})</span>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="cat-grid-${catName.replace(/\s+/g, '_')}"></div>
-        `;
-        container.appendChild(section);
+          let icon = 'fa-crosshairs';
+          let iconClass = 'text-red-400 bg-red-500/10 border-red-500/20';
+          let badgeClass = 'text-red-300 border-red-500/25 bg-red-500/10';
+          if (cat === 'CRYPTO') { icon='fa-key'; iconClass='text-amber-400 bg-amber-500/10 border-amber-500/20'; badgeClass='text-amber-300 border-amber-500/25 bg-amber-500/10'; }
+          if (cat === 'FORENSICS') { icon='fa-database'; iconClass='text-sky-400 bg-sky-500/10 border-sky-500/20'; badgeClass='text-sky-300 border-sky-500/25 bg-sky-500/10'; }
+          if (cat === 'PWN') { icon='fa-terminal'; iconClass='text-green-400 bg-green-500/10 border-green-500/20'; badgeClass='text-green-300 border-green-500/25 bg-green-500/10'; }
+          if (cat === 'CP') { icon='fa-code'; iconClass='text-violet-400 bg-violet-500/10 border-violet-500/20'; badgeClass='text-violet-300 border-violet-500/25 bg-violet-500/10'; }
 
-        const grid = section.querySelector(`#cat-grid-${catName.replace(/\s+/g, '_')}`);
-        chals.forEach(c => {
-          const card = document.createElement('div');
-          const isSolved = c.solved === true;
-          
-          let cardBorder = isSolved ? 'border-ctf-green/60 bg-[#072412]/30' : 'border-ctf-border bg-ctf-card hover:border-ctf-blue';
-          let ptsClass = isSolved ? 'text-ctf-green' : (activeTrack === 'CP' ? 'text-ctf-yellow' : 'text-ctf-blue');
-
-          // First Blood Badge
-          const fbBadge = c.firstBloodTeamId 
-            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-ctf-red/15 text-ctf-red border border-ctf-red/30" title="First Blood: ${escapeHtml(c.firstBloodTeamId)}">🩸 ${escapeHtml(c.firstBloodTeamId)}</span>` 
-            : '';
-
-          card.className = `p-4 rounded-xl border ${cardBorder} transition-all duration-200 cursor-pointer card-glow flex flex-col justify-between h-36 group select-none`;
-          card.onclick = () => openChallengeModal(c.id);
-
-          card.innerHTML = `
-            <div>
-              <div class="flex items-start justify-between gap-2">
-                <h4 class="font-bold text-sm text-white group-hover:text-ctf-blue transition-colors line-clamp-1">${escapeHtml(c.title)}</h4>
-                <span class="text-xs font-mono font-bold ${ptsClass} whitespace-nowrap">${escapeHtml(c.currentPoints || c.basePoints)} pts</span>
+          const solved = c.solved === true;
+          tr.innerHTML = `
+            <td>
+              <div class="flex items-center gap-2.5 min-w-[210px]">
+                <span class="w-8 h-8 rounded border flex items-center justify-center ${iconClass}">
+                  <i class="fa-solid ${icon} text-[11px]"></i>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-[11px] font-semibold text-gray-200 group-hover:text-white truncate">${escapeHtml(c.title)}</span>
+                  <span class="block text-[8px] text-gray-600 truncate max-w-[310px]">${escapeHtml(c.description || 'Operational brief available')}</span>
+                </span>
               </div>
-              <p class="text-[11px] text-ctf-muted mt-1.5 line-clamp-2">${escapeHtml(c.description || 'Target intelligence available inside operational brief.')}</p>
-            </div>
-
-            <div class="flex items-center justify-between pt-2 border-t border-ctf-border/40 text-[11px] font-mono">
-              <div class="flex items-center gap-1.5 text-ctf-muted">
-                <i class="fa-solid fa-users text-[10px]"></i>
-                <span>${escapeHtml(c.solveCount || 0)} solves</span>
+            </td>
+            <td><span class="px-2 py-1 rounded border text-[8px] font-semibold ${badgeClass}">${escapeHtml(cat)}</span></td>
+            <td>
+              <div class="flex items-center gap-1.5">
+                <span class="command-difficulty ${diffClass}"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="text-[9px] text-gray-500">${escapeHtml(difficulty)}</span>
               </div>
-              <div>
-                ${isSolved ? '<span class="text-ctf-green font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Solved</span>' : fbBadge}
-              </div>
-            </div>
+            </td>
+            <td class="text-right font-mono text-gray-400">${escapeHtml(c.solveCount || 0)}</td>
+            <td class="text-right font-mono font-semibold ${solved ? 'text-green-400' : 'text-gray-200'}">
+              ${escapeHtml(c.currentPoints || c.basePoints || 0)}
+              ${solved ? '<span class="ml-1 text-[7px] text-green-500">✓</span>' : ''}
+            </td>
+            <td class="text-right text-red-500/70 group-hover:text-red-400"><i class="fa-solid fa-chevron-right text-[9px]"></i></td>
           `;
-          grid.appendChild(card);
+          container.appendChild(tr);
         });
+    }
+
+    function updateCommandDashboard() {
+      const total = challengesData.length;
+      const solved = challengesData.filter(c => c.solved === true).length;
+      const ctf = challengesData.filter(c => c.type === 'CTF').length;
+      const cp = challengesData.filter(c => c.type === 'CP').length;
+
+      const values = {
+        '#command-stat-total': total,
+        '#command-stat-solved': solved,
+        '#command-stat-ctf': ctf,
+        '#command-stat-cp': cp,
+        '#command-bottom-total': total
+      };
+      Object.entries(values).forEach(([sel,val]) => {
+        const el = $(sel);
+        if (el) el.textContent = val;
+      });
+    }
+
+    function populateDashboardAiChallengeSelect() {
+      const select = $('#dashboard-ai-challenge');
+      if (!select) return;
+      const previous = select.value;
+      select.innerHTML = '<option value="">Select a challenge</option>' +
+        challengesData.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)} · ${escapeHtml(c.type === 'CP' ? 'CP' : (c.category || 'MISC'))}</option>`).join('');
+      if (previous && challengesData.some(c => c.id === previous)) select.value = previous;
+    }
+
+    async function refreshCommandAiStatus() {
+      const status = $('#command-ai-status');
+      if (!status) return;
+      status.textContent = 'Checking server...';
+      try {
+        const res = await fetch('/api/ai/status');
+        const data = await res.json();
+        if (res.ok && data.configured) {
+          status.textContent = 'ONLINE · ' + (data.model || 'Gemini');
+          status.className = 'text-[8px] text-green-400 mt-1 font-mono';
+        } else {
+          status.textContent = 'OFFLINE · API not configured';
+          status.className = 'text-[8px] text-gray-600 mt-1 font-mono';
+        }
+      } catch (e) {
+        status.textContent = 'OFFLINE · status unavailable';
       }
+    }
+
+    async function dashboardAskAi(mode, hintLevel) {
+      const challengeId = ($('#dashboard-ai-challenge') || {}).value || '';
+      const question = (($('#dashboard-ai-question') || {}).value || '').trim();
+      const answer = $('#dashboard-ai-answer');
+
+      if (!challengeId) {
+        showToast('Select a challenge for AI Tutor first', 'warning');
+        return;
+      }
+      if (!answer) return;
+
+      answer.classList.remove('hidden');
+      answer.textContent = 'Gemini Tutor is analyzing the challenge...';
+
+      try {
+        const res = await fetch('/api/ai/tutor', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ challengeId, mode, hintLevel, question })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          answer.textContent = data.message || 'No tutor response returned.';
+        } else {
+          answer.textContent = data.error || 'AI Tutor request failed.';
+          if (res.status === 401) showToast('Login is required to use AI Tutor', 'warning');
+        }
+      } catch (e) {
+        answer.textContent = 'AI Tutor network request failed.';
+      }
+    }
+
+    function setDashboardAiQuestion(text) {
+      const input = $('#dashboard-ai-question');
+      if (input) {
+        input.value = text;
+        input.focus();
+      }
+    }
+
+    function renderDashboardTopPlayers(teams) {
+      const tbody = $('#dashboard-top-players');
+      if (!tbody) return;
+      const list = Array.isArray(teams) ? teams.slice(0,5) : [];
+      const bottomPlayers = $('#command-bottom-players');
+      if (bottomPlayers) bottomPlayers.textContent = Array.isArray(teams) ? teams.length : 0;
+
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="py-6 text-center text-gray-600">No ranked teams yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map((t,idx) => {
+        const rank = idx + 1;
+        const rankIcon = rank === 1 ? '<i class="fa-solid fa-trophy text-amber-400"></i>' :
+                         rank === 2 ? '<i class="fa-solid fa-medal text-gray-400"></i>' :
+                         rank === 3 ? '<i class="fa-solid fa-medal text-orange-500"></i>' :
+                         '<span class="text-gray-600">'+rank+'</span>';
+        const initial = escapeHtml((t.teamName || t.id || '?').charAt(0).toUpperCase());
+        return `
+          <tr>
+            <td class="w-8 text-center">${rankIcon}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full border border-red-500/25 bg-red-500/8 text-red-300 flex items-center justify-center text-[9px] font-bold">${initial}</span>
+                <span class="text-[10px] font-semibold text-gray-300">${escapeHtml(t.teamName || t.id)}</span>
+              </div>
+            </td>
+            <td class="text-right font-mono text-[10px] text-gray-300">${escapeHtml(t.score || t.totalScore || 0)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function commandSearch(value) {
+      dashboardSearchTerm = String(value || '').trim();
+      showView('challenges');
+      renderChallenges();
+      if (dashboardSearchTerm) scrollToCommandChallenges();
+    }
+
+    function scrollToCommandChallenges() {
+      showView('challenges');
+      setTimeout(() => {
+        const el = document.getElementById('command-challenges');
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 20);
+    }
+
+    function scrollToCommandAi() {
+      showView('challenges');
+      setTimeout(() => {
+        const el = document.getElementById('command-ai');
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 20);
     }
 
     // --- CTFd CHALLENGE DETAIL MODAL CONTROLLER ---
@@ -1467,6 +2236,7 @@
           const data = await res.json();
           const standings = data.standings || [];
           renderLeaderboardTable(standings);
+          renderDashboardTopPlayers(standings);
           renderScoreboardChart(data);
         }
       } catch (e) {
@@ -2062,6 +2832,11 @@
     window.filterSolvedLog = filterSolvedLog;
     window.requestHint = requestHint;
     window.askAiTutor = askAiTutor;
+    window.dashboardAskAi = dashboardAskAi;
+    window.setDashboardAiQuestion = setDashboardAiQuestion;
+    window.commandSearch = commandSearch;
+    window.scrollToCommandChallenges = scrollToCommandChallenges;
+    window.scrollToCommandAi = scrollToCommandAi;
     window.fetchChallenges = fetchChallenges;
     window.fetchLeaderboard = fetchLeaderboard;
     window.fetchProfile = fetchProfile;
