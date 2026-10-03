@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /** Thrown when a team ID is absent from the contest registry. */
 public class TeamNotFoundException extends RuntimeException {
 

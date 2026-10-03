@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import java.util.*;
 
 public final class SecurityPuzzleSyncService {

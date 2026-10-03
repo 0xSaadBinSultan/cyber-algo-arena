@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Contract for objects that participate in contest scoring.
  */
