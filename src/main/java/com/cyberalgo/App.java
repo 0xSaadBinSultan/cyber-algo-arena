@@ -26,9 +26,9 @@ public final class App {
             }
 
             if (args.length > 0 && "--cli".equals(args[0])) {
-                String cliMongoUri = System.getenv("MONGODB_URI");
+                String cliMongoUri = firstEnv("MONGODB_URI", "MONGO_URI", "MONGO_URL", "MONGODB_URL");
                 if (cliMongoUri == null || cliMongoUri.isBlank()) cliMongoUri = MongoManager.DEFAULT_URI;
-                String cliMongoDb = System.getenv("MONGODB_DATABASE_NAME");
+                String cliMongoDb = firstEnv("MONGODB_DATABASE_NAME", "MONGO_DB", "MONGODB_DATABASE");
                 if (cliMongoDb == null || cliMongoDb.isBlank()) cliMongoDb = MongoManager.DEFAULT_DB_NAME;
 
                 MongoManager cliMongo = new MongoManager(cliMongoUri, cliMongoDb);
@@ -54,12 +54,12 @@ public final class App {
                 } catch (NumberFormatException ignored) {}
             }
 
-            String mongoUri = System.getenv("MONGODB_URI");
+            String mongoUri = firstEnv("MONGODB_URI", "MONGO_URI", "MONGO_URL", "MONGODB_URL");
             if (mongoUri == null || mongoUri.isBlank()) {
                 mongoUri = MongoManager.DEFAULT_URI;
             }
 
-            String mongoDb = System.getenv("MONGODB_DATABASE_NAME");
+            String mongoDb = firstEnv("MONGODB_DATABASE_NAME", "MONGO_DB", "MONGODB_DATABASE");
             if (mongoDb == null || mongoDb.isBlank()) {
                 mongoDb = MongoManager.DEFAULT_DB_NAME;
             }
@@ -101,4 +101,14 @@ public final class App {
             System.exit(1);
         }
     }
+    private static String firstEnv(String... names) {
+        for (String name : names) {
+            String value = System.getenv(name);
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
 }

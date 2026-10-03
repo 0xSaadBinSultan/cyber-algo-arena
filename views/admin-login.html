@@ -5,6 +5,41 @@
   <title>Admin Login - Cyber-Algo Arena</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #090303;
+      background-image:
+        radial-gradient(circle at 84% 12%, rgba(255, 59, 48, .16), transparent 28%),
+        linear-gradient(rgba(255, 77, 77, .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 77, 77, .045) 1px, transparent 1px);
+      background-size: auto, 42px 42px, 42px 42px;
+      background-attachment: fixed;
+      position: relative;
+      isolation: isolate;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      width: 560px;
+      height: 560px;
+      right: -210px;
+      top: -80px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: -1;
+      background: repeating-radial-gradient(circle, transparent 0 54px, rgba(255,77,77,.08) 55px 56px, transparent 57px 108px);
+    }
+    body::after {
+      content: "RESTRICTED // RED TEAM OPERATIONS";
+      position: fixed;
+      left: 24px;
+      bottom: 18px;
+      color: rgba(255, 90, 80, .25);
+      font: 700 10px/1 monospace;
+      letter-spacing: .16em;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body class="bg-[#0d0405] text-white flex items-center justify-center min-h-screen font-mono">
   <div class="bg-[#120708] border-2 border-red-500/60 max-w-md w-full rounded-xl shadow-[0_0_40px_rgba(248,81,73,0.3)] overflow-hidden">
