@@ -29,6 +29,7 @@ public final class WebServer {
     private final CodeforcesSyncService codeforcesSyncService;
     private final SecurityPuzzleSyncService securityPuzzleSyncService;
     private final ProblemSyncService problemSyncService;
+    private final AiTutorService aiTutorService;
 
     public WebServer(ContestEngine engine, int port) {
         this.engine = engine;
@@ -38,6 +39,7 @@ public final class WebServer {
         this.codeforcesSyncService = new CodeforcesSyncService();
         this.securityPuzzleSyncService = new SecurityPuzzleSyncService();
         this.problemSyncService = new ProblemSyncService();
+        this.aiTutorService = new AiTutorService(new GeminiService());
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -153,6 +155,10 @@ public final class WebServer {
 
         // ── Hints ──
         app.post("/api/hints/{challengeId}", this::handleRequestHint);
+
+        // ── AI Tutor ──
+        app.get("/api/ai/status", this::handleAiStatus);
+        app.post("/api/ai/tutor", this::handleAiTutor);
 
         // ── Submissions ──
         app.post("/api/submit", this::handleSubmit);
@@ -283,6 +289,72 @@ public final class WebServer {
             return;
         }
         ctx.json(userToMap(user));
+    }
+
+    private void handleAiStatus(Context ctx) {
+        ctx.json(Map.of(
+                "configured", aiTutorService.isConfigured(),
+                "model", aiTutorService.model()
+        ));
+    }
+
+    private void handleAiTutor(Context ctx) {
+        String ip = ctx.ip();
+        if (!rateLimiter.allow("ai_tutor:" + ip, 12, 60_000L)) {
+            ctx.status(429).json(errorMap("AI Tutor rate limit exceeded. Try again shortly."));
+            return;
+        }
+
+        User user = requireAuth(ctx);
+        if (user == null) return;
+
+        Map<String, String> body = parseBody(ctx);
+        String challengeId = body.getOrDefault("challengeId", "").trim();
+        String mode = body.getOrDefault("mode", "HINT");
+        String question = body.getOrDefault("question", "");
+        String code = body.getOrDefault("code", "");
+        String compilerError = body.getOrDefault("compilerError", "");
+
+        int hintLevel = 1;
+        try {
+            hintLevel = Integer.parseInt(body.getOrDefault("hintLevel", "1"));
+        } catch (NumberFormatException ignored) {
+            hintLevel = 1;
+        }
+
+        if (challengeId.isBlank()) {
+            ctx.status(400).json(errorMap("challengeId is required"));
+            return;
+        }
+
+        if (!aiTutorService.isConfigured()) {
+            ctx.status(503).json(errorMap("Gemini AI Tutor is not configured on the server."));
+            return;
+        }
+
+        try {
+            Challenge challenge = engine.getChallenge(challengeId);
+            String message = aiTutorService.tutor(
+                    challenge,
+                    mode,
+                    hintLevel,
+                    question,
+                    code,
+                    compilerError);
+
+            ctx.json(Map.of(
+                    "message", message,
+                    "mode", mode.toUpperCase(Locale.ROOT),
+                    "hintLevel", Math.max(1, Math.min(3, hintLevel)),
+                    "model", aiTutorService.model()
+            ));
+        } catch (ChallengeNotFoundException ex) {
+            ctx.status(404).json(errorMap(ex.getMessage()));
+        } catch (IllegalArgumentException ex) {
+            ctx.status(400).json(errorMap(ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            ctx.status(502).json(errorMap(ex.getMessage()));
+        }
     }
 
     // ═══════════════════════════════════════════
