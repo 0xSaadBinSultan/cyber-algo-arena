@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -118,11 +120,28 @@ public final class WebServer {
         });
 
         app.get("/api/ping", ctx -> ctx.json(Map.of("status", "ok", "time", Instant.now().toString())));
-        app.get("/api/health", ctx -> ctx.status(200).json(Map.of(
+        app.get("/api/health/live", ctx -> ctx.status(200).json(Map.of(
                 "status", "UP",
                 "engine", "Cyber-Algo Arena",
                 "timestamp", System.currentTimeMillis()
         )));
+        app.get("/api/health/ready", ctx -> {
+            boolean databaseReady = engine.isDatabaseReady();
+            ctx.status(databaseReady ? 200 : 503).json(Map.of(
+                    "status", databaseReady ? "READY" : "NOT_READY",
+                    "database", databaseReady ? "UP" : "DOWN",
+                    "timestamp", System.currentTimeMillis()
+            ));
+        });
+        app.get("/api/health", ctx -> {
+            boolean databaseReady = engine.isDatabaseReady();
+            ctx.status(200).json(Map.of(
+                    "status", "UP",
+                    "engine", "Cyber-Algo Arena",
+                    "database", databaseReady ? "UP" : "DEGRADED",
+                    "timestamp", System.currentTimeMillis()
+            ));
+        });
         // ── Auth ──
         app.post("/api/auth/login", this::handleLogin);
         app.post("/api/auth/admin-login", this::handleAdminLogin);

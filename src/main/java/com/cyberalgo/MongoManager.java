@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -146,6 +148,18 @@ public final class MongoManager implements AutoCloseable {
 
     public boolean isConnected() {
         return connected;
+    }
+
+    public boolean ping() {
+        if (!connected || database == null) {
+            return false;
+        }
+        try {
+            database.runCommand(new Document("ping", 1));
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     public String getActiveUri() {

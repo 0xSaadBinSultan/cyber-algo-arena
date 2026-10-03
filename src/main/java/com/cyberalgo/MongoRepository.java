@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
@@ -25,7 +27,7 @@ public final class MongoRepository {
 
     public MongoRepository(MongoManager mongoManager) {
         this.mongoManager = Objects.requireNonNull(mongoManager, "mongoManager must not be null");
-        seedDefaultAdminIfEmpty();
+        bootstrapAdminIfConfigured();
         seedDefaultChallengesIfEmpty();
     }
 
@@ -525,24 +527,48 @@ public final class MongoRepository {
         return new ArrayList<>(memSubmissions);
     }
 
+    public boolean isDatabaseReady() {
+        return mongoManager.ping();
+    }
+
     // ═══════════════════════════════════════════════════════════
     // SEEDING
     // ═══════════════════════════════════════════════════════════
 
-    private void seedDefaultAdminIfEmpty() {
-        Optional<User> existingAdmin = getUserByUsername("admin");
-        if (existingAdmin.isEmpty()) {
-            String adminHash = User.hashPassword("admin_password_123");
-            User admin = new User("USER-ADMIN", "admin", "admin@cyberarena.local", adminHash, User.Role.ADMIN, null);
-            saveUser(admin);
-            System.out.println("[MongoRepository] Initialized administrator: admin / admin_password_123 (BCrypt)");
-        } else if (!existingAdmin.get().verifyPassword("admin_password_123")) {
-            User current = existingAdmin.get();
-            String adminHash = User.hashPassword("admin_password_123");
-            User updated = new User(current.getId(), current.getUsername(), current.getEmail(), adminHash, User.Role.ADMIN, current.getTeamId());
-            saveUser(updated);
-            System.out.println("[MongoRepository] Synchronized administrator password to: admin_password_123 (BCrypt)");
+    private void bootstrapAdminIfConfigured() {
+        Optional<SecurityConfig.AdminBootstrap> bootstrap = SecurityConfig.adminBootstrap();
+
+        if (bootstrap.isEmpty()) {
+            boolean adminExists = getAllUsers().stream().anyMatch(User::isAdmin);
+            if (!adminExists) {
+                System.err.println("[MongoRepository] No administrator account exists. " +
+                        "Set ARENA_ADMIN_PASSWORD before first startup to bootstrap one.");
+            }
+            return;
         }
+
+        SecurityConfig.AdminBootstrap config = bootstrap.get();
+        Optional<User> existing = getUserByUsername(config.username());
+
+        if (existing.isPresent()) {
+            if (!existing.get().isAdmin()) {
+                throw new IllegalStateException(
+                        "Configured administrator username already belongs to a non-admin account: " + config.username());
+            }
+            System.out.println("[MongoRepository] Administrator already exists; bootstrap credentials were not reapplied.");
+            return;
+        }
+
+        String adminHash = User.hashPassword(config.password());
+        User admin = new User(
+                "USER-ADMIN",
+                config.username(),
+                config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
+                adminHash,
+                User.Role.ADMIN,
+                null);
+        saveUser(admin);
+        System.out.println("[MongoRepository] Bootstrapped administrator account: " + config.username());
     }
 
     private void seedDefaultChallengesIfEmpty() {

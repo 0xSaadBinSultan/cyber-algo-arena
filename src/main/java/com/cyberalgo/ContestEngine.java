@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,13 +88,6 @@ public final class ContestEngine {
             }
         }
 
-        if (!usersByUsername.containsKey("admin")) {
-            User admin = new User("U-ADMIN", "admin", "admin@cyberarena.local", User.hashPassword("admin_password_123"), User.Role.ADMIN, null);
-            usersById.put(admin.getId(), admin);
-            usersByUsername.put("admin", admin);
-            repository.saveUser(admin);
-        }
-
         refreshLeaderboard();
         lastSyncMillis = System.currentTimeMillis();
         System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
@@ -109,6 +104,10 @@ public final class ContestEngine {
         if (System.currentTimeMillis() - lastSyncMillis >= SYNC_INTERVAL_MS) {
             load();
         }
+    }
+
+    public boolean isDatabaseReady() {
+        return repository.isDatabaseReady();
     }
 
     // ═══════════════════════════════════════════════════════════

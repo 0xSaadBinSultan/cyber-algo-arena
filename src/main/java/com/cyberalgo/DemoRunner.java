@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,6 +14,7 @@ import java.util.List;
 public final class DemoRunner {
 
     private static final String TEST_DB = "cyber_algo_arena_test";
+    private static final String TEST_ADMIN_PASSWORD = "DemoAdminPassword!2026";
     private static final Path ATTACH_DIR = Path.of("contest_data", "attachments");
     private static final Path TESTCASE_DIR = Path.of("contest_data", "testcases", "DEMO-CP01");
 
@@ -23,6 +26,8 @@ public final class DemoRunner {
         System.out.println("║   Cyber-Algo Arena — Lifecycle & Security Suite  ║");
         System.out.println("║   MongoDB + BCrypt + RateLimiter + Path Guard    ║");
         System.out.println("╚══════════════════════════════════════════════════╝");
+
+        System.setProperty("arena.admin.password", TEST_ADMIN_PASSWORD);
 
         try (MongoManager mongo = new MongoManager(MongoManager.DEFAULT_URI, TEST_DB)) {
             if (mongo.isConnected()) {
@@ -38,7 +43,7 @@ public final class DemoRunner {
             section("Phase 1: BCrypt Password Hashing & Admin Seeding");
 
             // Verify seeded admin with BCrypt
-            assertTrue("Seeded admin authenticates with BCrypt", engine.authenticate("admin", "admin_password_123").isPresent());
+            assertTrue("Configured admin authenticates with BCrypt", engine.authenticate("admin", TEST_ADMIN_PASSWORD).isPresent());
 
             // Register standard player accounts with BCrypt
             User alice = engine.registerUser("alice", "alice@test.local", "pass_alice");
