@@ -1,21 +1,19 @@
-name: Render Always-On Keep Alive
+name: Render Liveness Check
 
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Live Render Server
+      - name: Ping live Render server
         run: |
-          echo "Pinging Cyber-Algo Arena on Render..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://cyber-algo-arena-3.onrender.com/api/health)
-          echo "HTTP Response Status: $RESPONSE"
-          if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 301 ] || [ "$RESPONSE" -eq 302 ]; then
-            echo "Server is awake and active!"
-          else
-            echo "Warning: Received HTTP $RESPONSE"
-          fi
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://cyber-algo-arena-3.onrender.com/api/health/live >/dev/null

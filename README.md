@@ -1,152 +1,156 @@
-# ⚡ Cyber-Algo Arena
+# Cyber-Algo Arena
 
-**Enterprise Multi-Contest Cyber & Competitive Programming Arena**  
-*Combining picoCTF, CTFtime, and VJudge into a single unified full-stack competitive ecosystem.*
+Cyber-Algo Arena is a Java 21 web platform that combines Capture The Flag (CTF) challenges and Competitive Programming (CP) problems in one competition system. It includes authentication, teams, contests, scoring, profiles, an admin portal, MongoDB persistence, cloud code execution through Piston, and live contest feeds.
 
----
+## Architecture
 
-## 🏗️ 1. Architecture Overview
-
-```mermaid
-graph TD
-    Client["Cyberpunk Web SPA / CLI (public/index.html)"] -->|REST / JSON + Cookies| WebServer["Javalin 6 WebServer (Port 8080)"]
-    WebServer --> RateLimiter["RateLimiter Middleware (Sliding Window)"]
-    RateLimiter --> PathGuard["Path Traversal Defense Guard"]
-    PathGuard --> ContestEngine["ContestEngine (Domain & Scoring Orchestration)"]
-    
-    ContestEngine --> AuthModule["BCrypt Auth & Identity (org.mindrot:jbcrypt)"]
-    ContestEngine --> PistonEngine["Piston Cloud Sandbox Judge (C++, Java, Python)"]
-    ContestEngine --> RadarService["ContestRadarService (CTFtime + Codeforces Feeds)"]
-    ContestEngine --> MongoRepo["MongoRepository (Data Access & Query Logic)"]
-    
-    MongoRepo --> MongoManager["MongoManager (Multi-Endpoint TCP Probe & Auto-Retry)"]
-    MongoManager --> MongoCluster[("MongoDB Persistent Database")]
+```text
+Browser / SPA
+     |
+     v
+Javalin REST API
+     |
+     +-- ContestEngine
+     |    +-- CTF challenge evaluation
+     |    +-- CP judging orchestration
+     |    +-- scoring / leaderboard / profiles
+     |
+     +-- MongoRepository --> MongoDB
+     +-- PistonJudgeEngine --> Piston API
+     +-- ContestRadarService --> external contest feeds
 ```
 
-### Core Architecture Highlights
-- **Persistent Storage**: Backed by MongoDB with synchronous official Java driver (`mongodb-driver-sync:5.3.1`) and multi-endpoint TCP auto-discovery (`mongodb:27017`, `localhost:27017`).
-- **Cloud Code Judge**: Free zero-cost execution sandbox via Piston API (`POST https://emkc.org/api/v2/piston/execute`) supporting C++, Java, and Python with automated compilation and testcase matching.
-- **Live Tournament Radar**: Automated aggregator for upcoming CTFtime and Codeforces events cached with 10-minute TTL and resilient offline fallbacks.
-- **Security Hardening**:
-  - **BCrypt Password Hashing**: Passwords stored as `$2a$12$` BCrypt digests.
-  - **Timing-Attack Defense**: Flag and passkey comparisons utilize `java.security.MessageDigest.isEqual()`.
-  - **Rate Limiting**: Sliding-window IP limiter (20 attempts/min on auth, 10/min on submit) with cooldown tracking.
-  - **Path Traversal Protection**: Enforced canonical containment on challenge attachments (`./contest_data/attachments`).
-  - **Headers**: Strict `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: DENY`.
+Java sources now use the standard Maven package layout:
 
----
+```text
+src/
+├── main/java/com/cyberalgo/
+└── test/java/com/cyberalgo/
+```
 
-## 🚀 2. One-Command Quickstart (Docker)
+## Requirements
+
+- Java JDK 21+
+- Docker + Docker Compose for containerized development
+- Maven is optional because the Maven Wrapper is included
+
+## Secure first startup
+
+There is **no built-in administrator password**.
+
+Before the first startup, set a unique administrator password of at least 12 characters:
 
 ```bash
-# Clone the repository
+export ARENA_ADMIN_USERNAME=admin
+export ARENA_ADMIN_PASSWORD='replace-with-a-unique-strong-password'
+```
+
+The bootstrap credential is used only if the configured administrator account does not already exist. Startup does **not** reset an existing administrator password.
+
+Never commit real credentials to the repository.
+
+## Docker quickstart
+
+```bash
 git clone https://github.com/0xSaadBinSultan/cyber-algo-arena.git
 cd cyber-algo-arena
 
-# Build and launch Arena & MongoDB in background
+export ARENA_ADMIN_PASSWORD='replace-with-a-unique-strong-password'
 docker compose up --build -d
 ```
 
-Open your browser at **`http://localhost:8080`**.
+Open `http://localhost:8080`.
 
-### Default Administrator Credentials
-- **Username**: `admin`
-- **Password**: `admin_password_123` *(also accepts `admin123` / `admin`)*
+The development Compose file binds MongoDB to localhost rather than all interfaces.
 
----
+## Local development
 
-## 💻 3. Local Development & Testing
-
-### Prerequisites
-- **Java JDK 21+**
-- **Maven** (or bundled `./mvnw`)
-- **Docker** & **Docker Compose**
-
-### Compile & Build
 ```bash
-./mvnw clean package -B -DskipTests
-```
-
-### Run Lifecycle & Security Test Suite (45/45 Assertions)
-```bash
-java -cp target/cyber-algo-arena-1.0.0.jar App --demo
-```
-
-### Run Web Server Locally
-```bash
-export PORT=8080
 export MONGODB_URI=mongodb://localhost:27017
 export MONGODB_DATABASE_NAME=cyber_algo_arena
+export ARENA_ADMIN_PASSWORD='replace-with-a-unique-strong-password'
+
+./mvnw clean verify
 java -jar target/cyber-algo-arena-1.0.0.jar
 ```
 
-### Automated Problem Importer
-Populate real Div.2 / Div.3 Codeforces problem sets and standard CTF suites:
+Run the lifecycle demo suite:
+
 ```bash
-python3 scripts/import_problems.py
+java -cp target/cyber-algo-arena-1.0.0.jar com.cyberalgo.App --demo
 ```
 
----
+## Health endpoints
 
-## 📡 4. REST API Documentation
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health/live` | Process liveness. Returns 200 while the application is running. |
+| `GET /api/health/ready` | MongoDB readiness. Returns 200 when MongoDB responds, otherwise 503. |
+| `GET /api/health` | Aggregate human-readable health status. |
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | Register a new operative account | No |
-| `POST` | `/api/auth/login` | Authenticate and create HTTP session cookie | No (Rate Limited) |
-| `POST` | `/api/auth/logout` | Invalidate active session cookie | Yes |
-| `GET` | `/api/auth/me` | Fetch active user identity & statistics | Yes |
-| `GET` | `/api/challenges` | List all active CTF & CP challenges | Yes |
-| `GET` | `/api/challenges/{id}` | Get detailed challenge metadata & attachments | Yes |
-| `POST` | `/api/hints/{challengeId}` | Unlock challenge hint (deducts points) | Yes |
-| `POST` | `/api/submit` | Submit CTF flag or CP solution code | Yes (Rate Limited) |
-| `GET` | `/api/teams/me` | Fetch active user's syndicate details | Yes |
-| `POST` | `/api/teams/create` | Establish a new syndicate with secret passkey | Yes |
-| `POST` | `/api/teams/join` | Join syndicate via name & secret passkey | Yes |
-| `GET` | `/api/contests` | List active & upcoming arenas | Yes |
-| `POST` | `/api/contests/register` | Register syndicate for specific contest | Yes |
-| `GET` | `/api/events/upcoming` | Live Contest Radar (CTFtime + Codeforces) | No |
-| `GET` | `/api/leaderboard` | Real-time contest standings & solve ranking | No |
-| `GET` | `/api/admin/submissions` | Audit log of all submission attempts | Admin |
-| `POST` | `/api/admin/challenges/ctf` | Deploy new CTF challenge | Admin |
-| `POST` | `/api/admin/challenges/cp` | Deploy new CP problem | Admin |
-| `DELETE` | `/api/admin/challenges/{id}` | Delete challenge and disk attachments | Admin |
-| `POST` | `/api/admin/sync` | Force synchronize memory state to MongoDB | Admin |
+## Main REST API
 
----
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Create a player account |
+| POST | `/api/auth/login` | Authenticate |
+| POST | `/api/auth/logout` | End the session |
+| GET | `/api/auth/me` | Current user |
+| GET | `/api/challenges` | List challenges |
+| GET | `/api/challenges/{id}` | Challenge details |
+| POST | `/api/hints/{challengeId}` | Unlock a hint |
+| POST | `/api/submit` | Submit a flag or CP solution |
+| GET | `/api/leaderboard` | Competition standings |
+| POST | `/api/teams/create` | Create a team |
+| POST | `/api/teams/join` | Join a team |
+| GET | `/api/contests` | List contests |
+| GET | `/api/events/upcoming` | Upcoming contest events |
+| GET | `/api/admin/submissions` | Admin submission audit |
+| POST | `/api/admin/challenges` | Create a challenge |
+| DELETE | `/api/admin/challenges/{id}` | Delete a challenge |
 
-## 📁 5. Repository Structure
+Administrative routes require an authenticated user with the `ADMIN` role.
 
-```
+## Security controls
+
+- BCrypt password hashing
+- No hard-coded administrator password or password aliases
+- Runtime-only administrator bootstrap
+- Existing admin credentials are never silently overwritten
+- Rate limiting for sensitive endpoints
+- Server-side admin RBAC
+- Timing-resistant comparisons where secret verification is required
+- Path traversal protection for attachment downloads
+- CSP and defensive response headers
+- Mongo-aware readiness checks
+- Local secret files excluded from version control
+
+## Configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PORT` | HTTP port | `8080` |
+| `MONGODB_URI` | MongoDB connection URI | local discovery fallback |
+| `MONGODB_DATABASE_NAME` | MongoDB database name | `cyber_algo_arena` |
+| `ARENA_ADMIN_USERNAME` | Bootstrap admin username | `admin` |
+| `ARENA_ADMIN_PASSWORD` | Bootstrap admin password | none |
+
+## Repository layout
+
+```text
 cyber-algo-arena/
-├── Dockerfile                  ← Multi-stage Alpine container build
-├── docker-compose.yml          ← Orchestration for arena-web + mongo:latest
-├── pom.xml                     ← Maven dependencies (Javalin, BCrypt, Mongo Sync Driver)
-├── public/
-│   └── index.html              ← Cyberpunk SPA with localStorage session persistence
-├── scripts/
-│   └── import_problems.py      ← Codeforces API problemset fetcher & CTF seeder
+├── .github/
 ├── contest_data/
-│   ├── attachments/            ← Downloadable challenge binaries & files
-│   └── testcases/              ← CP problem testcase input/output suites
+├── public/
+├── scripts/
 ├── src/
-│   ├── App.java                ← Entry point, dynamic PORT, shutdown hooks
-│   ├── WebServer.java          ← REST controller, security headers, rate limiting
-│   ├── ContestEngine.java      ← Core scoring, timing defense, submission evaluation
-│   ├── ContestRadarService.java← CTFtime + Codeforces live feed aggregator
-│   ├── PistonJudgeEngine.java  ← Cloud sandbox code judge engine
-│   ├── MongoManager.java       ← TCP probing & persistent MongoDB connection pool
-│   ├── MongoRepository.java    ← CRUD operations & schema mappings
-│   ├── RateLimiter.java        ← Sliding-window request limiter
-│   ├── User.java               ← Operative model with BCrypt verification
-│   ├── Team.java               ← Syndicate model with constant-time join
-│   ├── Challenge.java          ← Abstract challenge base
-│   ├── CTFChallenge.java       ← Flag verification & hint economy
-│   ├── CPProblem.java          ← Testcase diffing & resource limits
-│   └── DemoRunner.java         ← 45-point automated lifecycle test suite
+│   ├── main/java/com/cyberalgo/
+│   └── test/java/com/cyberalgo/
+├── Dockerfile
+├── docker-compose.yml
+├── pom.xml
+├── PRD.md
 └── README.md
 ```
 
----
-
-<p align="center"><strong>Cyber-Algo Arena</strong> — Elite hybrid battleground for hackers and algorithmic programmers.</p>
+Temporary root-level patch scripts from earlier development are no longer part of the active tree. Their history remains available through Git.
