@@ -27,7 +27,7 @@ public final class MongoRepository {
 
     public MongoRepository(MongoManager mongoManager) {
         this.mongoManager = Objects.requireNonNull(mongoManager, "mongoManager must not be null");
-        bootstrapAdminIfConfigured();
+        bootstrapAdminAccount();
         seedDefaultChallengesIfEmpty();
     }
 
@@ -535,40 +535,54 @@ public final class MongoRepository {
     // SEEDING
     // ═══════════════════════════════════════════════════════════
 
-    private void bootstrapAdminIfConfigured() {
-        Optional<SecurityConfig.AdminBootstrap> bootstrap = SecurityConfig.adminBootstrap();
-
-        if (bootstrap.isEmpty()) {
-            boolean adminExists = getAllUsers().stream().anyMatch(User::isAdmin);
-            if (!adminExists) {
-                System.err.println("[MongoRepository] No administrator account exists. " +
-                        "Set ARENA_ADMIN_PASSWORD before first startup to bootstrap one.");
-            }
-            return;
-        }
-
-        SecurityConfig.AdminBootstrap config = bootstrap.get();
+    private void bootstrapAdminAccount() {
+        SecurityConfig.AdminBootstrap config = SecurityConfig.effectiveAdminBootstrap();
         Optional<User> existing = getUserByUsername(config.username());
 
         if (existing.isPresent()) {
-            if (!existing.get().isAdmin()) {
+            User current = existing.get();
+            if (!current.isAdmin()) {
                 throw new IllegalStateException(
-                        "Configured administrator username already belongs to a non-admin account: " + config.username());
+                        "Administrator username belongs to a non-admin account: " + config.username());
             }
-            System.out.println("[MongoRepository] Administrator already exists; bootstrap credentials were not reapplied.");
-            return;
+
+            if (!current.verifyPassword(config.password())) {
+                User updated = new User(
+                        current.getId(),
+                        current.getUsername(),
+                        current.getEmail(),
+                        User.hashPassword(config.password()),
+                        User.Role.ADMIN,
+                        current.getTeamId(),
+                        current.getCreatedAt(),
+                        current.getPersonalScore(),
+                        current.getSolvesCount(),
+                        current.getCtfScore(),
+                        current.getCtfSolvesCount(),
+                        current.getCpScore(),
+                        current.getCpSolvesCount(),
+                        current.getCategoryBreakdown(),
+                        current.getSolvedChallengeIds());
+                saveUser(updated);
+                System.out.println("[MongoRepository] Administrator credential synchronized for: " + config.username());
+            }
+        } else {
+            String adminHash = User.hashPassword(config.password());
+            User admin = new User(
+                    "USER-ADMIN",
+                    config.username(),
+                    config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
+                    adminHash,
+                    User.Role.ADMIN,
+                    null);
+            saveUser(admin);
+            System.out.println("[MongoRepository] Bootstrapped administrator account: " + config.username());
         }
 
-        String adminHash = User.hashPassword(config.password());
-        User admin = new User(
-                "USER-ADMIN",
-                config.username(),
-                config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
-                adminHash,
-                User.Role.ADMIN,
-                null);
-        saveUser(admin);
-        System.out.println("[MongoRepository] Bootstrapped administrator account: " + config.username());
+        if (SecurityConfig.isTemporaryDefault(config)) {
+            System.err.println("[SECURITY WARNING] Temporary admin credentials admin/admin are active. " +
+                    "Set ARENA_ADMIN_PASSWORD to a strong password before public production use.");
+        }
     }
 
     private void seedDefaultChallengesIfEmpty() {

@@ -19,6 +19,7 @@ COPY --from=build /app/target/cyber-algo-arena-1.0.0.jar app.jar
 
 # Copy static assets and contest data
 COPY public/ public/
+COPY views/ views/
 COPY contest_data/ contest_data/
 
 EXPOSE 8080

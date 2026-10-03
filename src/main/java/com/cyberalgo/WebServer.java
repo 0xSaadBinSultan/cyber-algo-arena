@@ -99,25 +99,8 @@ public final class WebServer {
     }
 
     private void registerRoutes() {
-        app.get("/admin", ctx -> {
-            String userId = ctx.sessionAttribute("userId");
-            boolean authorized = false;
-            try {
-                if (userId != null && !userId.isBlank()) {
-                    User user = engine.getUser(userId);
-                    if (user != null && user.getRole() == User.Role.ADMIN) {
-                        authorized = true;
-                    }
-                }
-                if (authorized) {
-                    ctx.html(java.nio.file.Files.readString(java.nio.file.Path.of("public/admin.html")));
-                } else {
-                    ctx.html(java.nio.file.Files.readString(java.nio.file.Path.of("public/admin-login.html")));
-                }
-            } catch (Exception e) {
-                ctx.status(404).result("Admin UI not found");
-            }
-        });
+        app.get("/admin", this::handleAdminPage);
+        app.get("/admin/", this::handleAdminPage);
 
         app.get("/api/ping", ctx -> ctx.json(Map.of("status", "ok", "time", Instant.now().toString())));
         app.get("/api/health/live", ctx -> ctx.status(200).json(Map.of(
@@ -189,6 +172,28 @@ public final class WebServer {
         app.post("/api/admin/sync/atcoder", this::handleSyncAtCoder);
         app.post("/api/admin/sync/codechef", this::handleSyncCodeChef);
         app.post("/api/admin/sync/security-exercises", this::handleSyncSecurityExercises);
+    }
+
+    private void handleAdminPage(Context ctx) {
+        ctx.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        ctx.header("Pragma", "no-cache");
+        ctx.header("X-Robots-Tag", "noindex, nofollow, noarchive");
+
+        String userId = ctx.sessionAttribute("userId");
+        boolean authorized = false;
+        try {
+            if (userId != null && !userId.isBlank()) {
+                User user = engine.getUser(userId);
+                authorized = user != null && user.getRole() == User.Role.ADMIN;
+            }
+
+            Path view = authorized
+                    ? Path.of("views", "admin.html")
+                    : Path.of("views", "admin-login.html");
+            ctx.html(Files.readString(view));
+        } catch (Exception ex) {
+            ctx.status(404).result("Admin UI not found");
+        }
     }
 
     // ═══════════════════════════════════════════
