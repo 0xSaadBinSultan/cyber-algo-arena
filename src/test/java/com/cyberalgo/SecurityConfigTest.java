@@ -14,7 +14,15 @@ class SecurityConfigTest {
     }
 
     @Test
-    void rejectsFormerDefaultAdministratorPassword() {
+    void temporaryDefaultAdminIsAdminAdminWhenNoExplicitConfigExists() {
+        SecurityConfig.AdminBootstrap bootstrap = SecurityConfig.effectiveAdminBootstrap();
+
+        assertEquals("admin", bootstrap.username());
+        assertEquals("admin", bootstrap.password());
+    }
+
+    @Test
+    void rejectsFormerWeakConfiguredAdministratorPassword() {
         System.setProperty("arena.admin.username", "admin");
         System.setProperty("arena.admin.password", "admin_password_123");
 
