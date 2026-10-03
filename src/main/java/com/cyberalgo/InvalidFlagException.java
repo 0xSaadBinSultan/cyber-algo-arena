@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Thrown when a CTF flag payload is empty, malformed, or cannot be evaluated.
  */

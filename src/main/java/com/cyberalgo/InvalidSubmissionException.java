@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Base unchecked exception for malformed or unacceptable contest submissions.
  */

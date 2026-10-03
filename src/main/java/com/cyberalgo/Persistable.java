@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Contract for domain objects that can be persisted to a CSV row.
  */

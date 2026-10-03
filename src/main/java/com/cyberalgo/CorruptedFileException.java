@@ -1,3 +1,5 @@
+package com.cyberalgo;
+
 /**
  * Checked exception raised when a persisted CSV record violates the file contract.
  */
