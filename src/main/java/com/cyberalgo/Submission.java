@@ -43,7 +43,7 @@ public final class Submission implements Persistable {
         this.id = requireArgument(id, "id");
         this.contestId = contestId != null ? contestId : "GLOBAL";
         this.userId = requireArgument(userId, "userId");
-        this.teamId = requireArgument(teamId, "teamId");
+        this.teamId = teamId == null ? "" : teamId.trim();
         this.challengeId = requireArgument(challengeId, "challengeId");
         this.payload = payload != null ? payload : "";
         this.wrongAttempts = Math.max(0, wrongAttempts);

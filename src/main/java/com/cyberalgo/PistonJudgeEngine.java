@@ -3,190 +3,295 @@ package com.cyberalgo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
- * Cloud-based CP Judge execution engine using the free Piston API (https://emkc.org/api/v2/piston).
- * Executes source code against testcases in an isolated sandbox.
+ * Competitive-programming execution adapter for a Piston-compatible sandbox.
+ *
+ * Production deployments should point PISTON_URL at a self-hosted/authorized Piston
+ * service. Hidden testcase contents never leave the backend except as stdin sent to
+ * the isolated judge service.
  */
 public final class PistonJudgeEngine {
 
-    private static final String PISTON_ENDPOINT = "https://emkc.org/api/v2/piston/execute";
+    private static final String DEFAULT_PISTON_URL = "https://emkc.org/api/v2/piston/execute";
+    private static final long MB = 1024L * 1024L;
 
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
+    private final URI executeEndpoint;
 
     public PistonJudgeEngine() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(6))
                 .build();
         this.mapper = new ObjectMapper();
+        this.executeEndpoint = URI.create(resolveExecuteUrl(System.getenv("PISTON_URL")));
     }
 
     public record ExecutionResult(
             SubmissionResult.Status status,
             String message,
             int testcasesPassed,
-            int totalTestcases
+            int totalTestcases,
+            long maxTimeMillis,
+            long maxMemoryBytes,
+            String language
     ) {}
 
-    /**
-     * Judges source code or output payload against CP problem testcases.
-     */
-    public ExecutionResult judge(CPProblem problem, String payload) {
-        Path testDir = problem.getTestcaseDirectory();
-
-        // 1. Gather all input_*.txt files
-        List<Path> inputs = new ArrayList<>();
-        if (Files.exists(testDir) && Files.isDirectory(testDir)) {
-            try (var stream = Files.list(testDir)) {
-                inputs = stream.filter(p -> p.getFileName().toString().matches("input_\\d+\\.txt"))
-                        .sorted(Comparator.comparing(Path::getFileName))
-                        .toList();
-            } catch (IOException ignored) {}
-        }
-
-        // Fallback dummy testcase if directory is empty
-        if (inputs.isEmpty()) {
-            return new ExecutionResult(SubmissionResult.Status.ACCEPTED, "Solution evaluated (No external testcases configured)", 1, 1);
-        }
-
-        // 2. Determine if payload is Source Code or Directory Path
-        if (isSourceCode(payload)) {
-            return executeSourceCode(problem, payload, inputs);
-        } else {
-            // Local directory evaluation
-            try {
-                boolean passed = problem.evaluate(payload);
-                if (passed) {
-                    return new ExecutionResult(SubmissionResult.Status.ACCEPTED, "All " + inputs.size() + " testcases passed", inputs.size(), inputs.size());
-                } else {
-                    return new ExecutionResult(SubmissionResult.Status.WRONG_ANSWER, "Output mismatch against testcase suite", 0, inputs.size());
-                }
-            } catch (Exception ex) {
-                return new ExecutionResult(SubmissionResult.Status.INVALID, "Evaluation error: " + ex.getMessage(), 0, inputs.size());
-            }
-        }
+    public ExecutionResult judge(CPProblem problem, String sourceCode) {
+        return judge(problem, sourceCode, null);
     }
 
-    private ExecutionResult executeSourceCode(CPProblem problem, String sourceCode, List<Path> inputs) {
-        DetectedLanguage lang = detectLanguage(sourceCode);
-        int total = inputs.size();
+    public ExecutionResult judge(CPProblem problem, String sourceCode, String requestedLanguage) {
+        if (sourceCode == null || sourceCode.isBlank()) {
+            return result(SubmissionResult.Status.INVALID, "Source code is required", 0, 0, 0, 0, "");
+        }
+
+        List<CPTestCase> tests = problem.getJudgeTestCases();
+        if (tests.isEmpty()) {
+            return result(
+                    SubmissionResult.Status.INVALID,
+                    "Judge misconfigured: no server-side testcases are configured for this problem",
+                    0, 0, 0, 0, "");
+        }
+
+        DetectedLanguage lang;
+        try {
+            lang = detectLanguage(sourceCode, requestedLanguage);
+        } catch (IllegalArgumentException ex) {
+            return result(SubmissionResult.Status.INVALID, ex.getMessage(), 0, tests.size(), 0, 0, "");
+        }
+
         int passed = 0;
+        long maxTime = 0L;
+        long maxMemory = 0L;
+        long memoryLimitBytes = problem.getMemoryLimitMb() * MB;
+        int runLimitMs = Math.toIntExact(Math.max(50L, problem.getTimeLimitMillis()));
 
-        for (int i = 0; i < total; i++) {
-            Path inPath = inputs.get(i);
-            String outName = inPath.getFileName().toString().replace("input_", "output_");
-            Path outPath = inPath.getParent().resolve(outName);
+        for (int i = 0; i < tests.size(); i++) {
+            CPTestCase test = tests.get(i);
 
-            String stdin = "";
-            String expected = "";
-            try {
-                stdin = Files.readString(inPath, StandardCharsets.UTF_8);
-                if (Files.exists(outPath)) {
-                    expected = Files.readString(outPath, StandardCharsets.UTF_8).trim();
-                }
-            } catch (IOException e) {
-                return new ExecutionResult(SubmissionResult.Status.INVALID, "Failed reading testcase #" + (i + 1), passed, total);
-            }
-
-            // Call Piston API
             try {
                 Map<String, Object> reqBody = new LinkedHashMap<>();
-                reqBody.put("language", lang.language);
-                reqBody.put("version", lang.version);
-                reqBody.put("files", List.of(Map.of("name", lang.filename, "content", sourceCode)));
-                reqBody.put("stdin", stdin);
-                reqBody.put("run_timeout", (int) Math.max(1000, problem.getTimeLimitMillis()));
-
-                String jsonPayload = mapper.writeValueAsString(reqBody);
+                reqBody.put("language", lang.language());
+                reqBody.put("version", "*");
+                reqBody.put("files", List.of(Map.of(
+                        "name", lang.filename(),
+                        "content", sourceCode)));
+                reqBody.put("stdin", test.input());
+                reqBody.put("compile_timeout", 10_000);
+                reqBody.put("compile_cpu_time", 10_000);
+                reqBody.put("run_timeout", runLimitMs);
+                reqBody.put("run_cpu_time", runLimitMs);
+                reqBody.put("run_memory_limit", memoryLimitBytes);
 
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(PISTON_ENDPOINT))
-                        .timeout(Duration.ofSeconds(8))
+                        .uri(executeEndpoint)
+                        .timeout(Duration.ofMillis(Math.max(12_000L, runLimitMs + 11_000L)))
                         .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                mapper.writeValueAsString(reqBody),
+                                StandardCharsets.UTF_8))
                         .build();
 
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString());
+
                 if (response.statusCode() != 200) {
-                    return new ExecutionResult(SubmissionResult.Status.INVALID, "Judge API communication error: HTTP " + response.statusCode(), passed, total);
+                    String msg = response.statusCode() == 401 || response.statusCode() == 403
+                            ? "Judge service authorization failed. Configure an authorized/self-hosted Piston service."
+                            : "Judge service error: HTTP " + response.statusCode();
+                    return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
                 JsonNode root = mapper.readTree(response.body());
-
-                // Check compile error
                 JsonNode compile = root.path("compile");
-                if (!compile.isMissingNode() && compile.path("code").asInt(0) != 0) {
-                    String stderr = compile.path("stderr").asText(compile.path("output").asText("Compilation failed"));
-                    return new ExecutionResult(SubmissionResult.Status.COMPILATION_ERROR, "Compilation Error: " + truncate(stderr, 200), passed, total);
+                if (!compile.isMissingNode() && !compile.isNull()) {
+                    String compileStatus = compile.path("status").asText("");
+                    Integer compileCode = compile.path("code").isNull() ? null : compile.path("code").asInt();
+                    if ("TO".equalsIgnoreCase(compileStatus)) {
+                        return result(SubmissionResult.Status.COMPILATION_ERROR,
+                                "Compilation timed out", passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                    }
+                    if ((compileCode != null && compileCode != 0) || "RE".equalsIgnoreCase(compileStatus)) {
+                        String details = firstNonBlank(
+                                compile.path("stderr").asText(""),
+                                compile.path("output").asText(""),
+                                "Compilation failed");
+                        return result(SubmissionResult.Status.COMPILATION_ERROR,
+                                "Compilation Error: " + truncate(details, 700),
+                                passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                    }
                 }
 
-                // Check run results
                 JsonNode run = root.path("run");
-                int exitCode = run.path("code").asInt(0);
+                String runStatus = run.path("status").asText("");
                 String signal = run.path("signal").asText("");
-                String stdout = run.path("stdout").asText("").trim();
-                String stderr = run.path("stderr").asText("");
+                Integer exitCode = run.path("code").isNull() ? null : run.path("code").asInt();
+                long wallTime = Math.max(0L, run.path("wall_time").asLong(0L));
+                long cpuTime = Math.max(0L, run.path("cpu_time").asLong(0L));
+                long memory = Math.max(0L, run.path("memory").asLong(0L));
+                maxTime = Math.max(maxTime, Math.max(wallTime, cpuTime));
+                maxMemory = Math.max(maxMemory, memory);
 
-                if ("SIGKILL".equalsIgnoreCase(signal) || run.path("output").asText("").contains("Timed Out")) {
-                    return new ExecutionResult(SubmissionResult.Status.TIME_LIMIT_EXCEEDED, "Time Limit Exceeded on testcase #" + (i + 1), passed, total);
+                if ("TO".equalsIgnoreCase(runStatus)
+                        || wallTime > problem.getTimeLimitMillis()
+                        || cpuTime > problem.getTimeLimitMillis()) {
+                    return result(SubmissionResult.Status.TIME_LIMIT_EXCEEDED,
+                            verdictMessage("Time Limit Exceeded", test, i),
+                            passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
-                if (exitCode != 0 && !stderr.isBlank()) {
-                    return new ExecutionResult(SubmissionResult.Status.RUNTIME_ERROR, "Runtime Error (exit code " + exitCode + "): " + truncate(stderr, 150), passed, total);
+                if (memory > memoryLimitBytes) {
+                    return result(SubmissionResult.Status.MEMORY_LIMIT_EXCEEDED,
+                            verdictMessage("Memory Limit Exceeded", test, i),
+                            passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
-                // Compare stdout with expected
-                if (!normalize(stdout).equals(normalize(expected))) {
-                    return new ExecutionResult(SubmissionResult.Status.WRONG_ANSWER, "Wrong Answer on testcase #" + (i + 1), passed, total);
+                if ("OL".equalsIgnoreCase(runStatus) || "EL".equalsIgnoreCase(runStatus)) {
+                    return result(SubmissionResult.Status.RUNTIME_ERROR,
+                            verdictMessage("Output limit exceeded", test, i),
+                            passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                }
+
+                if (!signal.isBlank() || (exitCode != null && exitCode != 0)
+                        || "RE".equalsIgnoreCase(runStatus) || "SG".equalsIgnoreCase(runStatus)) {
+                    String details = firstNonBlank(
+                            run.path("stderr").asText(""),
+                            run.path("message").asText(""),
+                            signal.isBlank() ? "Runtime Error" : "Terminated by " + signal);
+                    return result(SubmissionResult.Status.RUNTIME_ERROR,
+                            verdictMessage("Runtime Error", test, i) + ": " + truncate(details, 350),
+                            passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                }
+
+                String stdout = run.path("stdout").asText("");
+                if (!outputsMatch(test.expectedOutput(), stdout)) {
+                    return result(SubmissionResult.Status.WRONG_ANSWER,
+                            verdictMessage("Wrong Answer", test, i),
+                            passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
                 passed++;
+            } catch (java.net.http.HttpTimeoutException ex) {
+                return result(SubmissionResult.Status.TIME_LIMIT_EXCEEDED,
+                        verdictMessage("Time Limit Exceeded", test, i),
+                        passed, tests.size(), maxTime, maxMemory, lang.displayName());
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return result(SubmissionResult.Status.INVALID,
+                        "Judge request interrupted", passed, tests.size(), maxTime, maxMemory, lang.displayName());
             } catch (Exception ex) {
-                // If cloud API is unreachable, fall back gracefully
-                return new ExecutionResult(SubmissionResult.Status.INVALID, "Cloud Judge Error: " + ex.getMessage(), passed, total);
+                return result(SubmissionResult.Status.INVALID,
+                        "Judge service unavailable: " + sanitizeError(ex.getMessage()),
+                        passed, tests.size(), maxTime, maxMemory, lang.displayName());
             }
         }
 
-        return new ExecutionResult(SubmissionResult.Status.ACCEPTED, "All " + total + " testcases accepted", passed, total);
+        String msg = "Accepted · " + passed + "/" + tests.size()
+                + " tests · " + maxTime + " ms · "
+                + String.format(Locale.ROOT, "%.1f MB", maxMemory / (double) MB);
+        return result(SubmissionResult.Status.ACCEPTED, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
     }
 
-    private static boolean isSourceCode(String text) {
-        if (text == null) return false;
-        String t = text.trim();
-        return t.contains("#include") || t.contains("int main(") || t.contains("public class")
-                || t.contains("def ") || t.contains("import ") || t.contains("print(") || t.contains("System.out");
+    public String getExecuteEndpointHost() {
+        return executeEndpoint.getHost() == null ? "configured judge" : executeEndpoint.getHost();
     }
 
-    private static String normalize(String s) {
-        if (s == null) return "";
-        return s.replace("\r\n", "\n").replace("\r", "\n").trim();
+    private static ExecutionResult result(
+            SubmissionResult.Status status,
+            String message,
+            int passed,
+            int total,
+            long time,
+            long memory,
+            String language) {
+        return new ExecutionResult(status, message, passed, total, time, memory, language);
     }
 
-    private static String truncate(String s, int maxLen) {
-        if (s == null) return "";
-        return s.length() > maxLen ? s.substring(0, maxLen) + "..." : s;
-    }
-
-    private record DetectedLanguage(String language, String version, String filename) {}
-
-    private static DetectedLanguage detectLanguage(String code) {
-        if (code.contains("#include") || code.contains("std::") || code.contains("cout <<")) {
-            return new DetectedLanguage("cpp", "10.2.0", "solution.cpp");
-        } else if (code.contains("public class") || code.contains("class Main")) {
-            return new DetectedLanguage("java", "15.0.2", "Main.java");
-        } else {
-            return new DetectedLanguage("python", "3.10.0", "solution.py");
+    private static String verdictMessage(String verdict, CPTestCase test, int zeroBasedIndex) {
+        if (test.hidden()) {
+            return verdict + " on hidden test #" + (zeroBasedIndex + 1);
         }
+        return verdict + " on sample test #" + (zeroBasedIndex + 1);
     }
+
+    private static boolean outputsMatch(String expected, String actual) {
+        String[] a = tokenize(expected);
+        String[] b = tokenize(actual);
+        if (a.length != b.length) return false;
+        for (int i = 0; i < a.length; i++) {
+            if (!a[i].equals(b[i])) return false;
+        }
+        return true;
+    }
+
+    private static String[] tokenize(String value) {
+        String normalized = value == null ? "" : value.trim();
+        return normalized.isEmpty() ? new String[0] : normalized.split("\\s+");
+    }
+
+    private static DetectedLanguage detectLanguage(String code, String requested) {
+        if (requested != null && !requested.isBlank()) {
+            String normalized = requested.trim().toLowerCase(Locale.ROOT);
+            return switch (normalized) {
+                case "cpp", "c++", "cpp17", "cpp20" -> new DetectedLanguage("c++", "Main.cpp", "GNU C++");
+                case "java", "java21", "java17" -> new DetectedLanguage("java", "Main.java", "Java");
+                case "python", "python3", "py" -> new DetectedLanguage("python", "main.py", "Python 3");
+                default -> throw new IllegalArgumentException("Unsupported language: " + requested);
+            };
+        }
+
+        if (code.contains("#include") || code.contains("std::") || code.contains("cout <<")) {
+            return new DetectedLanguage("c++", "Main.cpp", "GNU C++");
+        }
+        if (code.contains("public class") || code.contains("class Main")) {
+            return new DetectedLanguage("java", "Main.java", "Java");
+        }
+        if (code.contains("def ") || code.contains("print(") || code.contains("input(")) {
+            return new DetectedLanguage("python", "main.py", "Python 3");
+        }
+        throw new IllegalArgumentException("Unable to detect language. Choose C++, Java, or Python.");
+    }
+
+    private static String resolveExecuteUrl(String configured) {
+        String raw = configured == null ? "" : configured.trim();
+        if (raw.isBlank()) return DEFAULT_PISTON_URL;
+        if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+            throw new IllegalArgumentException("PISTON_URL must start with http:// or https://");
+        }
+        raw = raw.replaceAll("/+$", "");
+        if (raw.endsWith("/api/v2/execute")) return raw;
+        return raw + "/api/v2/execute";
+    }
+
+    private static String sanitizeError(String value) {
+        if (value == null || value.isBlank()) return "unknown error";
+        return truncate(value.replaceAll("[\\r\\n]+", " "), 240);
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) return "";
+        return value.length() <= max ? value : value.substring(0, max) + "...";
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value.trim();
+        }
+        return "";
+    }
+
+    private record DetectedLanguage(String language, String filename, String displayName) {}
 }
