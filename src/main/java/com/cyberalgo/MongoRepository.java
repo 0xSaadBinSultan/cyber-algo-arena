@@ -1,34 +1,90 @@
 package com.cyberalgo;
 
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.ClientSession;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.TransactionOptions;
+import com.mongodb.ReadConcern;
+import com.mongodb.WriteConcern;
+import org.bson.conversions.Bson;
+import java.util.function.Supplier;
+import java.util.concurrent.TimeUnit;
 import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
 
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Direct MongoDB Data Access Layer with resilient in-memory fallback.
- * Maps domain models to BSON Documents when connected, or operates cleanly in memory when offline.
- */
+
+/** MongoDB is the sole source of truth. Failed writes are never acknowledged as saved. */
 public final class MongoRepository {
-
     private final MongoManager mongoManager;
+    private final ThreadLocal<ClientSession> session = new ThreadLocal<>();
+    private boolean initialized;
 
-    // In-memory cache & offline fallback stores
-    private final Map<String, User> memUsers = new ConcurrentHashMap<>();
-    private final Map<String, Team> memTeams = new ConcurrentHashMap<>();
-    private final Map<String, Challenge> memChallenges = new ConcurrentHashMap<>();
-    private final Map<String, Contest> memContests = new ConcurrentHashMap<>();
-    private final Map<String, ContestParticipation> memParticipations = new ConcurrentHashMap<>();
-    private final List<Submission> memSubmissions = Collections.synchronizedList(new ArrayList<>());
+    /** Atomically persist a solve and all affected scores on replica sets (required in production). */
+    <T> T atomic(Supplier<T> operation) {
+        requireDatabase();
+        if (!mongoManager.supportsTransactions()) return operation.get(); // standalone local development only
+        try (ClientSession active = mongoManager.startSession()) {
+            session.set(active);
+            // Bounded explicit retry; never replay remote judging or retry for minutes.
+            for (int attempt = 0; attempt < 3; attempt++) {
+                active.startTransaction(TransactionOptions.builder().readConcern(ReadConcern.SNAPSHOT)
+                        .writeConcern(WriteConcern.MAJORITY).maxCommitTime(3L, TimeUnit.SECONDS).build());
+                try {
+                    T result = operation.get();
+                    active.commitTransaction();
+                    return result;
+                } catch (RuntimeException failure) {
+                    if (active.hasActiveTransaction()) {
+                        try { active.abortTransaction(); } catch (Exception ignored) { }
+                    }
+                    // A competing solve is retried against fresh persisted state. Errors remain sanitized.
+                    if (!(failure instanceof DatabaseUnavailableException) || attempt == 2) throw failure;
+                }
+            }
+            throw new DatabaseUnavailableException();
+        } catch (DuplicateSubmissionException failure) {
+            throw failure;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
+        } finally {
+            session.remove();
+        }
+    }
+
+    private void replace(MongoCollection<Document> collection, Bson filter, Document doc, ReplaceOptions options) {
+        if (session.get() == null) collection.replaceOne(filter, doc, options);
+        else collection.replaceOne(session.get(), filter, doc, options);
+    }
+
+    private FindIterable<Document> find(MongoCollection<Document> collection, Bson filter) {
+        return session.get() == null ? collection.find(filter) : collection.find(session.get(), filter);
+    }
+
+    private FindIterable<Document> find(MongoCollection<Document> collection) {
+        return find(collection, new Document());
+    }
 
     public MongoRepository(MongoManager mongoManager) {
+        this(mongoManager, true);
+    }
+
+    MongoRepository(MongoManager mongoManager, boolean initialize) {
         this.mongoManager = Objects.requireNonNull(mongoManager, "mongoManager must not be null");
+        if (initialize) initialize();
+    }
+
+    public synchronized void initialize() {
+        if (initialized) return;
+        requireDatabase();
         bootstrapAdminAccount();
         seedDefaultChallengesIfEmpty();
+        migrateLegacyTestCases();
+        initialized = true;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -36,56 +92,51 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     public void saveUser(User user) {
-        memUsers.put(user.getId(), user);
-        if (mongoManager.isConnected() && mongoManager.getUsersCollection() != null) {
-            try {
-                Document doc = userToDoc(user);
-                mongoManager.getUsersCollection().replaceOne(
-                        Filters.eq("id", user.getId()),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ex) {
-                System.err.println("[MongoRepository] Write error for user " + user.getId() + ": " + ex.getMessage());
-            }
+        try {
+            requireDatabase();
+            Document doc = userToDoc(user);
+            replace(mongoManager.getUsersCollection(),
+                    Filters.eq("id", user.getId()),
+                    doc,
+                    new ReplaceOptions().upsert(true));
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public Optional<User> getUserById(String id) {
-        if (mongoManager.isConnected() && mongoManager.getUsersCollection() != null) {
-            try {
-                Document doc = mongoManager.getUsersCollection().find(Filters.eq("id", id)).first();
-                if (doc != null) return Optional.of(docToUser(doc));
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getUsersCollection(), Filters.eq("id", id)).first();
+            if (doc != null) return Optional.of(docToUser(doc));
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return Optional.ofNullable(memUsers.get(id));
     }
 
     public Optional<User> getUserByUsername(String username) {
-        if (mongoManager.isConnected() && mongoManager.getUsersCollection() != null) {
-            try {
-                Document doc = mongoManager.getUsersCollection().find(Filters.eq("username", username)).first();
-                if (doc != null) return Optional.of(docToUser(doc));
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getUsersCollection(), Filters.eq("username", username)).first();
+            if (doc != null) return Optional.of(docToUser(doc));
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        for (User u : memUsers.values()) {
-            if (u.getUsername().equalsIgnoreCase(username)) {
-                return Optional.of(u);
-            }
-        }
-        return Optional.empty();
     }
 
     public List<User> getAllUsers() {
-        if (mongoManager.isConnected() && mongoManager.getUsersCollection() != null) {
-            try {
-                List<User> list = new ArrayList<>();
-                for (Document doc : mongoManager.getUsersCollection().find()) {
-                    list.add(docToUser(doc));
-                }
-                return list;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            List<User> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getUsersCollection())) {
+                list.add(docToUser(doc));
+            }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return new ArrayList<>(memUsers.values());
     }
 
     @SuppressWarnings("unchecked")
@@ -141,56 +192,51 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     public void saveTeam(Team team) {
-        memTeams.put(team.getId(), team);
-        if (mongoManager.isConnected() && mongoManager.getTeamsCollection() != null) {
-            try {
-                Document doc = teamToDoc(team);
-                mongoManager.getTeamsCollection().replaceOne(
-                        Filters.eq("id", team.getId()),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ex) {
-                System.err.println("[MongoRepository] Write error for team " + team.getId() + ": " + ex.getMessage());
-            }
+        try {
+            requireDatabase();
+            Document doc = teamToDoc(team);
+            replace(mongoManager.getTeamsCollection(),
+                    Filters.eq("id", team.getId()),
+                    doc,
+                    new ReplaceOptions().upsert(true));
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public Optional<Team> getTeamById(String id) {
-        if (mongoManager.isConnected() && mongoManager.getTeamsCollection() != null) {
-            try {
-                Document doc = mongoManager.getTeamsCollection().find(Filters.eq("id", id)).first();
-                if (doc != null) return Optional.of(docToTeam(doc));
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getTeamsCollection(), Filters.eq("id", id)).first();
+            if (doc != null) return Optional.of(docToTeam(doc));
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return Optional.ofNullable(memTeams.get(id));
     }
 
     public Optional<Team> getTeamByName(String name) {
-        if (mongoManager.isConnected() && mongoManager.getTeamsCollection() != null) {
-            try {
-                Document doc = mongoManager.getTeamsCollection().find(Filters.eq("teamName", name)).first();
-                if (doc != null) return Optional.of(docToTeam(doc));
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getTeamsCollection(), Filters.eq("teamName", name)).first();
+            if (doc != null) return Optional.of(docToTeam(doc));
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        for (Team t : memTeams.values()) {
-            if (t.getTeamName().equalsIgnoreCase(name)) {
-                return Optional.of(t);
-            }
-        }
-        return Optional.empty();
     }
 
     public List<Team> getAllTeams() {
-        if (mongoManager.isConnected() && mongoManager.getTeamsCollection() != null) {
-            try {
-                List<Team> list = new ArrayList<>();
-                for (Document doc : mongoManager.getTeamsCollection().find()) {
-                    list.add(docToTeam(doc));
-                }
-                return list;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            List<Team> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getTeamsCollection())) {
+                list.add(docToTeam(doc));
+            }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return new ArrayList<>(memTeams.values());
     }
 
     private Document teamToDoc(Team t) {
@@ -225,51 +271,49 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     public void saveChallenge(Challenge challenge) {
-        memChallenges.put(challenge.getId(), challenge);
-        if (mongoManager.isConnected() && mongoManager.getChallengesCollection() != null) {
-            try {
-                Document doc = challengeToDoc(challenge);
-                mongoManager.getChallengesCollection().replaceOne(
-                        Filters.eq("id", challenge.getId()),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ex) {
-                System.err.println("[MongoRepository] Write error for challenge " + challenge.getId() + ": " + ex.getMessage());
-            }
+        try {
+            requireDatabase();
+            Document doc = challengeToDoc(challenge);
+            replace(mongoManager.getChallengesCollection(),
+                    Filters.eq("id", challenge.getId()),
+                    doc,
+                    new ReplaceOptions().upsert(true));
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public Optional<Challenge> getChallengeById(String id) {
-        if (mongoManager.isConnected() && mongoManager.getChallengesCollection() != null) {
-            try {
-                Document doc = mongoManager.getChallengesCollection().find(Filters.eq("id", id)).first();
-                if (doc != null) return Optional.of(docToChallenge(doc));
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getChallengesCollection(), Filters.eq("id", id)).first();
+            if (doc != null) return Optional.of(docToChallenge(doc));
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return Optional.ofNullable(memChallenges.get(id));
     }
 
     public List<Challenge> getAllChallenges() {
-        if (mongoManager.isConnected() && mongoManager.getChallengesCollection() != null) {
-            try {
-                List<Challenge> list = new ArrayList<>();
-                for (Document doc : mongoManager.getChallengesCollection().find()) {
-                    list.add(docToChallenge(doc));
-                }
-                return list;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            List<Challenge> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getChallengesCollection())) {
+                list.add(docToChallenge(doc));
+            }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return new ArrayList<>(memChallenges.values());
     }
 
     public boolean deleteChallenge(String id) {
-        memChallenges.remove(id);
-        if (mongoManager.isConnected() && mongoManager.getChallengesCollection() != null) {
-            try {
-                return mongoManager.getChallengesCollection().deleteOne(Filters.eq("id", id)).getDeletedCount() > 0;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            return mongoManager.getChallengesCollection().deleteOne(Filters.eq("id", id)).getDeletedCount() > 0;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return true;
     }
 
     private Document challengeToDoc(Challenge c) {
@@ -292,7 +336,7 @@ public final class MongoRepository {
                .append("attachmentFileName", ctf.getAttachmentFileName());
         } else if (c instanceof CPProblem cp) {
             List<Document> cases = new ArrayList<>();
-            for (CPTestCase tc : cp.getConfiguredTestCases()) {
+            for (CPTestCase tc : cp.getJudgeTestCases()) {
                 cases.add(new Document("input", tc.input())
                         .append("expectedOutput", tc.expectedOutput())
                         .append("hidden", tc.hidden()));
@@ -342,7 +386,7 @@ public final class MongoRepository {
                     title,
                     basePoints,
                     difficulty,
-                    doc.getLong("timeLimitMs") != null ? doc.getLong("timeLimitMs") : 1000L,
+                    doc.get("timeLimitMs") instanceof Number n ? n.longValue() : 1000L,
                     doc.getInteger("memoryLimitMb", 256),
                     Path.of(doc.getString("testcaseDir") != null ? doc.getString("testcaseDir") : "contest_data/testcases/" + id),
                     testCases);
@@ -360,131 +404,125 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     public void saveContest(Contest contest) {
-        memContests.put(contest.getId(), contest);
-        if (mongoManager.isConnected() && mongoManager.getContestsCollection() != null) {
-            try {
-                Document doc = new Document("id", contest.getId())
-                        .append("title", contest.getTitle())
-                        .append("description", contest.getDescription())
-                        .append("startTime", contest.getStartTime().toString())
-                        .append("endTime", contest.getEndTime().toString())
-                        .append("isRunning", contest.isRunning())
-                        .append("scoreboardFrozen", contest.isScoreboardFrozen())
-                        .append("freezeTimestamp", contest.getFreezeTimestamp())
-                        .append("registeredTeamIds", new ArrayList<>(contest.getRegisteredTeamIds()));
+        try {
+            requireDatabase();
+            Document doc = new Document("id", contest.getId())
+                    .append("title", contest.getTitle())
+                    .append("description", contest.getDescription())
+                    .append("startTime", contest.getStartTime().toString())
+                    .append("endTime", contest.getEndTime().toString())
+                    .append("isRunning", contest.isRunning())
+                    .append("scoreboardFrozen", contest.isScoreboardFrozen())
+                    .append("freezeTimestamp", contest.getFreezeTimestamp())
+                    .append("registeredTeamIds", new ArrayList<>(contest.getRegisteredTeamIds()));
 
-                mongoManager.getContestsCollection().replaceOne(
-                        Filters.eq("id", contest.getId()),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ignored) {}
+            replace(mongoManager.getContestsCollection(),
+                    Filters.eq("id", contest.getId()),
+                    doc,
+                    new ReplaceOptions().upsert(true));
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public Optional<Contest> getContestById(String id) {
-        if (mongoManager.isConnected() && mongoManager.getContestsCollection() != null) {
-            try {
-                Document doc = mongoManager.getContestsCollection().find(Filters.eq("id", id)).first();
-                if (doc != null) {
-                    Contest c = new Contest(
-                            doc.getString("id"),
-                            doc.getString("title"),
-                            doc.getString("description"),
-                            parseInstant(doc.getString("startTime")),
-                            parseInstant(doc.getString("endTime")),
-                            doc.getBoolean("isRunning", true),
-                            doc.getList("registeredTeamIds", String.class, List.of()));
-                    c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
-                    c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
-                    return Optional.of(c);
-                }
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getContestsCollection(), Filters.eq("id", id)).first();
+            if (doc != null) {
+                Contest c = new Contest(
+                        doc.getString("id"),
+                        doc.getString("title"),
+                        doc.getString("description"),
+                        parseInstant(doc.getString("startTime")),
+                        parseInstant(doc.getString("endTime")),
+                        doc.getBoolean("isRunning", true),
+                        doc.getList("registeredTeamIds", String.class, List.of()));
+                c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
+                c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
+                return Optional.of(c);
+            }
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return Optional.ofNullable(memContests.get(id));
     }
 
     public List<Contest> getAllContests() {
-        if (mongoManager.isConnected() && mongoManager.getContestsCollection() != null) {
-            try {
-                List<Contest> list = new ArrayList<>();
-                for (Document doc : mongoManager.getContestsCollection().find()) {
-                    Contest c = new Contest(
-                            doc.getString("id"),
-                            doc.getString("title"),
-                            doc.getString("description"),
-                            parseInstant(doc.getString("startTime")),
-                            parseInstant(doc.getString("endTime")),
-                            doc.getBoolean("isRunning", true),
-                            doc.getList("registeredTeamIds", String.class, List.of()));
-                    c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
-                    c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
-                    list.add(c);
-                }
-                return list;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            List<Contest> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getContestsCollection())) {
+                Contest c = new Contest(
+                        doc.getString("id"),
+                        doc.getString("title"),
+                        doc.getString("description"),
+                        parseInstant(doc.getString("startTime")),
+                        parseInstant(doc.getString("endTime")),
+                        doc.getBoolean("isRunning", true),
+                        doc.getList("registeredTeamIds", String.class, List.of()));
+                c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
+                c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
+                list.add(c);
+            }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return new ArrayList<>(memContests.values());
     }
 
     public void recordParticipation(ContestParticipation participation) {
-        String key = participation.getContestId() + ":" + participation.getUserId();
-        memParticipations.put(key, participation);
+        try {
+            requireDatabase();
+            Document doc = new Document("contestId", participation.getContestId())
+                    .append("teamId", participation.getTeamId())
+                    .append("userId", participation.getUserId())
+                    .append("joinedAt", participation.getJoinedAt().toString());
 
-        if (mongoManager.isConnected() && mongoManager.getParticipationsCollection() != null) {
-            try {
-                Document doc = new Document("contestId", participation.getContestId())
-                        .append("teamId", participation.getTeamId())
-                        .append("userId", participation.getUserId())
-                        .append("joinedAt", participation.getJoinedAt().toString());
-
-                mongoManager.getParticipationsCollection().replaceOne(
-                        Filters.and(
-                                Filters.eq("contestId", participation.getContestId()),
-                                Filters.eq("userId", participation.getUserId())),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ignored) {}
+            replace(mongoManager.getParticipationsCollection(),
+                    Filters.and(
+                            Filters.eq("contestId", participation.getContestId()),
+                            Filters.eq("userId", participation.getUserId())),
+                    doc,
+                    new ReplaceOptions().upsert(true));
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public Optional<ContestParticipation> getParticipation(String contestId, String userId) {
-        if (mongoManager.isConnected() && mongoManager.getParticipationsCollection() != null) {
-            try {
-                Document doc = mongoManager.getParticipationsCollection().find(
-                        Filters.and(Filters.eq("contestId", contestId), Filters.eq("userId", userId))).first();
-                if (doc != null) {
-                    return Optional.of(new ContestParticipation(
-                            doc.getString("contestId"),
-                            doc.getString("teamId"),
-                            doc.getString("userId"),
-                            parseInstant(doc.getString("joinedAt"))));
-                }
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            Document doc = find(mongoManager.getParticipationsCollection(),
+                    Filters.and(Filters.eq("contestId", contestId), Filters.eq("userId", userId))).first();
+            if (doc != null) {
+                return Optional.of(new ContestParticipation(
+                        doc.getString("contestId"),
+                        doc.getString("teamId"),
+                        doc.getString("userId"),
+                        parseInstant(doc.getString("joinedAt"))));
+            }
+            return Optional.empty();
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        String key = contestId + ":" + userId;
-        return Optional.ofNullable(memParticipations.get(key));
     }
 
     public List<ContestParticipation> getParticipationsByUser(String userId) {
-        List<ContestParticipation> list = new ArrayList<>();
-        if (mongoManager.isConnected() && mongoManager.getParticipationsCollection() != null) {
-            try {
-                for (Document doc : mongoManager.getParticipationsCollection().find(Filters.eq("userId", userId))) {
-                    list.add(new ContestParticipation(
-                            doc.getString("contestId"),
-                            doc.getString("teamId"),
-                            doc.getString("userId"),
-                            parseInstant(doc.getString("joinedAt"))));
-                }
-                return list;
-            } catch (Exception ignored) {}
-        }
-        for (ContestParticipation cp : memParticipations.values()) {
-            if (cp.getUserId().equals(userId)) {
-                list.add(cp);
+        try {
+            requireDatabase();
+            List<ContestParticipation> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getParticipationsCollection(), Filters.eq("userId", userId))) {
+                list.add(new ContestParticipation(
+                        doc.getString("contestId"),
+                        doc.getString("teamId"),
+                        doc.getString("userId"),
+                        parseInstant(doc.getString("joinedAt"))));
             }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return list;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -492,55 +530,53 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     public void saveSubmission(Submission submission) {
-        memSubmissions.add(submission);
-        if (mongoManager.isConnected() && mongoManager.getSubmissionsCollection() != null) {
-            try {
-                Document doc = new Document("id", submission.getId())
-                        .append("contestId", submission.getContestId())
-                        .append("userId", submission.getUserId())
-                        .append("teamId", submission.getTeamId())
-                        .append("challengeId", submission.getChallengeId())
-                        .append("payload", submission.getPayload())
-                        .append("wrongAttempts", submission.getWrongAttempts())
-                        .append("hintsUsed", submission.getHintsUsed())
-                        .append("timestamp", submission.getTimestamp().toString())
-                        .append("status", submission.getStatus().name())
-                        .append("pointsAwarded", submission.getPointsAwarded())
-                        .append("resultMessage", submission.getResultMessage())
-                        .append("evaluatedAt", submission.getEvaluatedAt().toString());
+        try {
+            requireDatabase();
+            Document doc = new Document("id", submission.getId())
+                    .append("contestId", submission.getContestId())
+                    .append("userId", submission.getUserId())
+                    .append("teamId", submission.getTeamId())
+                    .append("challengeId", submission.getChallengeId())
+                    .append("payload", submission.getPayload())
+                    .append("wrongAttempts", submission.getWrongAttempts())
+                    .append("hintsUsed", submission.getHintsUsed())
+                    .append("timestamp", submission.getTimestamp().toString())
+                    .append("status", submission.getStatus().name())
+                    .append("pointsAwarded", submission.getPointsAwarded())
+                    .append("resultMessage", submission.getResultMessage())
+                    .append("evaluatedAt", submission.getEvaluatedAt().toString());
 
-                mongoManager.getSubmissionsCollection().replaceOne(
-                        Filters.eq("id", submission.getId()),
-                        doc,
-                        new ReplaceOptions().upsert(true));
-            } catch (Exception ignored) {}
+            if (session.get() == null) mongoManager.getSubmissionsCollection().insertOne(doc);
+            else mongoManager.getSubmissionsCollection().insertOne(session.get(), doc);
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
     }
 
     public List<Submission> getAllSubmissions() {
-        if (mongoManager.isConnected() && mongoManager.getSubmissionsCollection() != null) {
-            try {
-                List<Submission> list = new ArrayList<>();
-                for (Document doc : mongoManager.getSubmissionsCollection().find()) {
-                    list.add(new Submission(
-                            doc.getString("id"),
-                            doc.getString("contestId"),
-                            doc.getString("userId"),
-                            doc.getString("teamId"),
-                            doc.getString("challengeId"),
-                            doc.getString("payload"),
-                            doc.getInteger("wrongAttempts", 0),
-                            doc.getInteger("hintsUsed", 0),
-                            parseInstant(doc.getString("timestamp")),
-                            SubmissionResult.Status.valueOf(doc.getString("status")),
-                            doc.getInteger("pointsAwarded", 0),
-                            doc.getString("resultMessage"),
-                            parseInstant(doc.getString("evaluatedAt"))));
-                }
-                return list;
-            } catch (Exception ignored) {}
+        try {
+            requireDatabase();
+            List<Submission> list = new ArrayList<>();
+            for (Document doc : find(mongoManager.getSubmissionsCollection())) {
+                list.add(new Submission(
+                        doc.getString("id"),
+                        doc.getString("contestId"),
+                        doc.getString("userId"),
+                        doc.getString("teamId"),
+                        doc.getString("challengeId"),
+                        doc.getString("payload"),
+                        doc.getInteger("wrongAttempts", 0),
+                        doc.getInteger("hintsUsed", 0),
+                        parseInstant(doc.getString("timestamp")),
+                        SubmissionResult.Status.valueOf(doc.getString("status")),
+                        doc.getInteger("pointsAwarded", 0),
+                        doc.getString("resultMessage"),
+                        parseInstant(doc.getString("evaluatedAt"))));
+            }
+            return list;
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
-        return new ArrayList<>(memSubmissions);
     }
 
     public boolean isDatabaseReady() {
@@ -552,52 +588,28 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     private void bootstrapAdminAccount() {
-        SecurityConfig.AdminBootstrap config = SecurityConfig.effectiveAdminBootstrap();
+        Optional<SecurityConfig.AdminBootstrap> configured = SecurityConfig.adminBootstrap();
+        if (configured.isEmpty()) return;
+        SecurityConfig.AdminBootstrap config = configured.get();
         Optional<User> existing = getUserByUsername(config.username());
-
         if (existing.isPresent()) {
-            User current = existing.get();
-            if (!current.isAdmin()) {
-                throw new IllegalStateException(
-                        "Administrator username belongs to a non-admin account: " + config.username());
-            }
-
-            if (!current.verifyPassword(config.password())) {
-                User updated = new User(
-                        current.getId(),
-                        current.getUsername(),
-                        current.getEmail(),
-                        User.hashPassword(config.password()),
-                        User.Role.ADMIN,
-                        current.getTeamId(),
-                        current.getCreatedAt(),
-                        current.getPersonalScore(),
-                        current.getSolvesCount(),
-                        current.getCtfScore(),
-                        current.getCtfSolvesCount(),
-                        current.getCpScore(),
-                        current.getCpSolvesCount(),
-                        current.getCategoryBreakdown(),
-                        current.getSolvedChallengeIds());
-                saveUser(updated);
-                System.out.println("[MongoRepository] Administrator credential synchronized for: " + config.username());
-            }
-        } else {
-            String adminHash = User.hashPassword(config.password());
-            User admin = new User(
-                    "USER-ADMIN",
-                    config.username(),
-                    config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
-                    adminHash,
-                    User.Role.ADMIN,
-                    null);
-            saveUser(admin);
-            System.out.println("[MongoRepository] Bootstrapped administrator account: " + config.username());
+            if (!existing.get().isAdmin()) throw new IllegalStateException("Administrator username is already registered.");
+            return;
         }
+        saveUser(new User("USER-ADMIN", config.username(), null,
+                User.hashPassword(config.password()), User.Role.ADMIN, null));
+        System.out.println("[MongoRepository] Bootstrapped administrator account.");
+    }
 
-        if (SecurityConfig.isTemporaryDefault(config)) {
-            System.err.println("[SECURITY WARNING] Temporary admin credentials admin/admin are active. " +
-                    "Set ARENA_ADMIN_PASSWORD to a strong password before public production use.");
+    private void requireDatabase() {
+        if (!mongoManager.isConnected() && !mongoManager.ping()) throw new DatabaseUnavailableException();
+    }
+
+    /** Persist legacy disk cases once, so subsequent containers do not need those files. */
+    public void migrateLegacyTestCases() {
+        for (Challenge challenge : getAllChallenges()) {
+            if (challenge instanceof CPProblem cp && cp.getConfiguredTestCases().isEmpty()
+                    && cp.hasJudgeTestCases()) saveChallenge(cp);
         }
     }
 

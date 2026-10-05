@@ -8,13 +8,12 @@ import java.util.Optional;
  */
 public final class SecurityConfig {
     static final int MIN_ADMIN_PASSWORD_LENGTH = 12;
-    public static final String TEMP_DEFAULT_ADMIN_USERNAME = "admin";
-    public static final String TEMP_DEFAULT_ADMIN_PASSWORD = "admin";
 
     private SecurityConfig() {
     }
 
     public record AdminBootstrap(String username, String password) {
+        @Override public String toString() { return "AdminBootstrap[redacted]"; }
     }
 
     public static Optional<AdminBootstrap> adminBootstrap() {
@@ -50,21 +49,6 @@ public final class SecurityConfig {
                 || normalized.equalsIgnoreCase(username == null ? "" : username.trim())) {
             throw new IllegalStateException("ARENA_ADMIN_PASSWORD is too weak; choose a unique administrator password.");
         }
-    }
-
-    /**
-     * Temporary development fallback requested for the hidden admin portal.
-     * Explicit environment/JVM credentials still take precedence.
-     */
-    public static AdminBootstrap effectiveAdminBootstrap() {
-        return adminBootstrap().orElseGet(() ->
-                new AdminBootstrap(TEMP_DEFAULT_ADMIN_USERNAME, TEMP_DEFAULT_ADMIN_PASSWORD));
-    }
-
-    public static boolean isTemporaryDefault(AdminBootstrap bootstrap) {
-        return TEMP_DEFAULT_ADMIN_USERNAME.equals(bootstrap.username())
-                && TEMP_DEFAULT_ADMIN_PASSWORD.equals(bootstrap.password())
-                && adminBootstrap().isEmpty();
     }
 
     private static String firstNonBlank(String first, String second) {

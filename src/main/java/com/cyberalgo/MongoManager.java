@@ -2,6 +2,8 @@ package com.cyberalgo;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.WriteConcern;
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -10,206 +12,165 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * MongoDB connection and lifecycle manager for Cyber-Algo Arena.
- * Features persistent startup retries, automatic container/host discovery,
- * and reliable schema index initialization.
- */
+/** One authoritative MongoDB connection; never substitutes another storage backend. */
 public final class MongoManager implements AutoCloseable {
-
     public static final String DEFAULT_URI = "mongodb://localhost:27017";
     public static final String DEFAULT_DB_NAME = "cyber_algo_arena";
-
     private final MongoClient client;
     private final MongoDatabase database;
-    private final boolean connected;
-    private final String activeUri;
+    private final boolean production;
+    private boolean transactionsSupported;
+    private volatile boolean initialized;
+    private volatile boolean closed;
+
+    public MongoManager() {
+        this(null, null);
+    }
 
     public MongoManager(String uri, String dbName) {
-        String effectiveDbName = (dbName != null && !dbName.isBlank()) ? dbName : DEFAULT_DB_NAME;
-        List<String> candidateUris = buildCandidateUris(uri);
+        this(uri, dbName, System.getenv());
+    }
 
-        MongoClient selectedClient = null;
-        MongoDatabase selectedDb = null;
-        boolean isConnected = false;
-        String establishedUri = null;
-
-        // Keep startup bounded. Explicit remote configuration gets a few retries;
-        // local discovery gets only a short window so cloud cold starts are not delayed.
-        int maxRetries = candidateUris.size() == 1 ? 3 : 2;
-        for (int attempt = 1; attempt <= maxRetries && !isConnected; attempt++) {
-            for (String candidate : candidateUris) {
-                try {
-                    MongoClientSettings settings = MongoClientSettings.builder()
-                            .applyConnectionString(new ConnectionString(candidate))
-                            .applyToClusterSettings(builder ->
-                                    builder.serverSelectionTimeout(2500, TimeUnit.MILLISECONDS))
-                            .applyToSocketSettings(builder ->
-                                    builder.connectTimeout(2500, TimeUnit.MILLISECONDS)
-                                           .readTimeout(5000, TimeUnit.MILLISECONDS))
-                            .build();
-
-                    MongoClient testClient = MongoClients.create(settings);
-                    MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
-                    testDb.runCommand(new Document("ping", 1));
-
-                    // Ping successful!
-                    selectedClient = testClient;
-                    selectedDb = testDb;
-                    isConnected = true;
-                    establishedUri = candidate;
-                    System.out.println("[MongoManager] Connected to persistent MongoDB (DB: " + effectiveDbName + ")");
-                    break;
-                } catch (Exception ignored) {
-                    // Try next candidate
-                }
-            }
-
-            if (!isConnected && attempt < maxRetries) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ignored) {}
-            }
+    MongoManager(String uri, String dbName, Map<String, String> environment) {
+        // Driver diagnostics include connection settings and server exception text.
+        // Disable them before any driver logger is created, including DEBUG deployments.
+        System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "off");
+        this.production = isProduction(environment);
+        MongoClient candidate = null;
+        try {
+            String selectedUri = resolveUri(uri, environment);
+            String selectedDatabase = resolveDatabase(dbName, environment);
+            MongoClientSettings settings = MongoClientSettings.builder()
+                    .applyConnectionString(new ConnectionString(selectedUri))
+                    .timeout(5, TimeUnit.SECONDS)
+                    .applyToClusterSettings(b -> b.serverSelectionTimeout(2, TimeUnit.SECONDS))
+                    .applyToSocketSettings(b -> b.connectTimeout(2, TimeUnit.SECONDS)
+                            .readTimeout(3, TimeUnit.SECONDS))
+                    .writeConcern(WriteConcern.MAJORITY.withWTimeout(3, TimeUnit.SECONDS))
+                    .retryReads(false).retryWrites(false)
+                    .build();
+            candidate = MongoClients.create(settings);
+            this.client = candidate;
+            this.database = client.getDatabase(selectedDatabase);
+        } catch (Exception ignored) {
+            if (candidate != null) candidate.close();
+            // Never retain the original exception: even malformed URI errors can contain secrets.
+            throw new DatabaseUnavailableException();
         }
-
-        if (isConnected) {
-            this.client = selectedClient;
-            this.database = selectedDb;
-            this.connected = true;
-            this.activeUri = establishedUri;
-            initIndexes();
-        } else {
-            System.err.println("[MongoManager] Warning: No active MongoDB server reached across " + candidateUris.size() + " configured/discovered endpoint(s).");
-            System.err.println("[MongoManager] Operating in resilient in-memory fallback mode.");
-            this.client = null;
-            this.database = null;
-            this.connected = false;
-            this.activeUri = null;
+        if (!ping()) {
+            System.err.println("[MongoManager] Persistent MongoDB unavailable; database operations are disabled.");
         }
     }
 
-    private static List<String> buildCandidateUris(String explicitUri) {
-        List<String> configured = new ArrayList<>();
-        String[] envNames = {"MONGODB_URI", "MONGO_URI", "MONGO_URL", "MONGODB_URL"};
-        for (String envName : envNames) {
-            String value = System.getenv(envName);
-            if (value != null && !value.isBlank() && !configured.contains(value.trim())) {
-                configured.add(value.trim());
+    static String resolveUri(String explicitUri, Map<String, String> env) {
+        String uri = env.containsKey("MONGODB_URI") ? env.get("MONGODB_URI") : explicitUri;
+        if (uri == null) {
+            if (isProduction(env)) throw new DatabaseUnavailableException();
+            return DEFAULT_URI;
+        }
+        if (uri.isBlank()) throw new DatabaseUnavailableException();
+        uri = uri.trim();
+        try {
+            ConnectionString parsed = new ConnectionString(uri);
+            if (isProduction(env) && parsed.getHosts().stream().anyMatch(MongoManager::isLoopback)) {
+                throw new DatabaseUnavailableException();
             }
+        } catch (Exception ignored) {
+            throw new DatabaseUnavailableException();
         }
+        return uri;
+    }
 
-        // In cloud hosting, an environment variable is authoritative. Never waste
-        // startup time probing Docker/localhost endpoints after it fails.
-        if (!configured.isEmpty()) {
-            return configured;
-        }
+    static boolean isProduction(Map<String, String> env) {
+        return "production".equalsIgnoreCase(env.get("APP_ENV"))
+                || "production".equalsIgnoreCase(env.get("ENVIRONMENT"))
+                || "true".equalsIgnoreCase(env.get("RENDER"))
+                || env.containsKey("RENDER_SERVICE_ID");
+    }
 
-        if (explicitUri != null && !explicitUri.isBlank()
-                && !DEFAULT_URI.equals(explicitUri.trim())) {
-            return List.of(explicitUri.trim());
-        }
+    private static boolean isLoopback(String host) {
+        String h = host.toLowerCase(java.util.Locale.ROOT);
+        return h.equals("localhost") || h.startsWith("localhost:") || h.startsWith("127.")
+                || h.startsWith("[::1]") || h.startsWith("0.0.0.0") || h.startsWith("[::]")
+                || h.startsWith("localhost.");
+    }
 
-        // Local/container development discovery only.
-        List<String> local = new ArrayList<>();
-        local.add(DEFAULT_URI);
-        local.add("mongodb://mongodb:27017");
-        return local;
+    static String resolveDatabase(String explicitName, Map<String, String> env) {
+        String name = env.containsKey("MONGODB_DATABASE_NAME") ? env.get("MONGODB_DATABASE_NAME") : explicitName;
+        if (name == null) return DEFAULT_DB_NAME;
+        if (name.isBlank()) throw new DatabaseUnavailableException();
+        return name.trim();
     }
 
     private void initIndexes() {
-        if (!connected || database == null) return;
-        try {
-            getUsersCollection().createIndex(Indexes.ascending("username"), new IndexOptions().unique(true));
-            getUsersCollection().createIndex(Indexes.ascending("email"));
+        getUsersCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
+        getUsersCollection().createIndex(Indexes.ascending("username"), new IndexOptions().unique(true));
+        getUsersCollection().createIndex(Indexes.ascending("email"));
+        getTeamsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
+        getTeamsCollection().createIndex(Indexes.ascending("teamName"), new IndexOptions().unique(true));
+        getChallengesCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
+        getContestsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
+        getParticipationsCollection().createIndex(
+                Indexes.compoundIndex(Indexes.ascending("contestId"), Indexes.ascending("userId")),
+                new IndexOptions().unique(true));
 
-            getTeamsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
-            getTeamsCollection().createIndex(Indexes.ascending("teamName"), new IndexOptions().unique(true));
+        getSubmissionsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
 
-            getChallengesCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
-            getContestsCollection().createIndex(Indexes.ascending("id"), new IndexOptions().unique(true));
-
-            getParticipationsCollection().createIndex(
-                    Indexes.compoundIndex(Indexes.ascending("contestId"), Indexes.ascending("userId")),
-                    new IndexOptions().unique(true));
-
-            try {
-                getSubmissionsCollection().dropIndex("contestId_1_challengeId_1_teamId_1");
-            } catch (Exception ignored) {
-                // Index did not exist or was already migrated.
+        // Older releases prevented retries with unique user/team + problem indexes.
+        // Discover by key, rather than assuming a particular index name.
+        for (Document index : getSubmissionsCollection().listIndexes()) {
+            Document keys = index.get("key", Document.class);
+            if (Boolean.TRUE.equals(index.getBoolean("unique")) && keys.containsKey("challengeId")
+                    && (keys.containsKey("userId") || keys.containsKey("teamId"))) {
+                getSubmissionsCollection().dropIndex(index.getString("name"));
             }
-            getSubmissionsCollection().createIndex(
-                    Indexes.ascending("id"), new IndexOptions().unique(true));
-            getSubmissionsCollection().createIndex(
-                    Indexes.compoundIndex(
-                            Indexes.ascending("contestId"),
-                            Indexes.ascending("challengeId"),
-                            Indexes.ascending("userId")));
-            getSubmissionsCollection().createIndex(Indexes.ascending("teamId"));
-        } catch (Exception ex) {
-            System.err.println("[MongoManager] Index initialization warning: " + ex.getMessage());
         }
+        getSubmissionsCollection().createIndex(Indexes.compoundIndex(
+                Indexes.ascending("contestId"), Indexes.ascending("challengeId"), Indexes.ascending("userId")));
+        getSubmissionsCollection().createIndex(Indexes.ascending("teamId"));
     }
 
-    public boolean isConnected() {
-        return connected;
-    }
+    public boolean isConnected() { return initialized && !closed; }
 
-    public boolean ping() {
-        if (!connected || database == null) {
-            return false;
-        }
+    public synchronized boolean ping() {
+        if (closed) return false;
         try {
             database.runCommand(new Document("ping", 1));
+            if (!initialized) {
+                Document hello = database.runCommand(new Document("hello", 1));
+                transactionsSupported = hello.containsKey("setName") || "isdbgrid".equals(hello.getString("msg"));
+                if (production && !transactionsSupported) return false;
+                initIndexes();
+                initialized = true;
+                System.out.println("[MongoManager] Connected to persistent MongoDB");
+            }
             return true;
-        } catch (Exception ex) {
+        } catch (Exception ignored) {
             return false;
         }
     }
 
-    public String getActiveUri() {
-        return activeUri;
-    }
+    boolean supportsTransactions() { return transactionsSupported; }
+    ClientSession startSession() { return client.startSession(); }
 
     public MongoDatabase getDatabase() {
+        if (closed) throw new DatabaseUnavailableException();
         return database;
     }
 
-    public MongoCollection<Document> getUsersCollection() {
-        return database != null ? database.getCollection("users") : null;
-    }
-
-    public MongoCollection<Document> getTeamsCollection() {
-        return database != null ? database.getCollection("teams") : null;
-    }
-
-    public MongoCollection<Document> getChallengesCollection() {
-        return database != null ? database.getCollection("challenges") : null;
-    }
-
-    public MongoCollection<Document> getContestsCollection() {
-        return database != null ? database.getCollection("contests") : null;
-    }
-
-    public MongoCollection<Document> getParticipationsCollection() {
-        return database != null ? database.getCollection("contest_participations") : null;
-    }
-
-    public MongoCollection<Document> getSubmissionsCollection() {
-        return database != null ? database.getCollection("submissions") : null;
-    }
+    public MongoCollection<Document> getUsersCollection() { return getDatabase().getCollection("users"); }
+    public MongoCollection<Document> getTeamsCollection() { return getDatabase().getCollection("teams"); }
+    public MongoCollection<Document> getChallengesCollection() { return getDatabase().getCollection("challenges"); }
+    public MongoCollection<Document> getContestsCollection() { return getDatabase().getCollection("contests"); }
+    public MongoCollection<Document> getParticipationsCollection() { return getDatabase().getCollection("contest_participations"); }
+    public MongoCollection<Document> getSubmissionsCollection() { return getDatabase().getCollection("submissions"); }
 
     @Override
-    public void close() {
-        if (client != null) {
-            client.close();
-            System.out.println("[MongoManager] MongoDB client closed.");
-        }
+    public synchronized void close() {
+        closed = true;
+        client.close();
     }
 }

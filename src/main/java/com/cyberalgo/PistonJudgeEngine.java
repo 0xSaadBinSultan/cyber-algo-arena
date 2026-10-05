@@ -31,11 +31,15 @@ public final class PistonJudgeEngine {
     private final URI executeEndpoint;
 
     public PistonJudgeEngine() {
+        this(System.getenv("PISTON_URL"));
+    }
+
+    PistonJudgeEngine(String executeUrl) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(6))
                 .build();
         this.mapper = new ObjectMapper();
-        this.executeEndpoint = URI.create(resolveExecuteUrl(System.getenv("PISTON_URL")));
+        this.executeEndpoint = URI.create(resolveExecuteUrl(executeUrl));
     }
 
     public record ExecutionResult(
@@ -130,7 +134,7 @@ public final class PistonJudgeEngine {
                                 compile.path("output").asText(""),
                                 "Compilation failed");
                         return result(SubmissionResult.Status.COMPILATION_ERROR,
-                                "Compilation Error: " + truncate(details, 700),
+                                test.hidden() ? "Compilation Error on hidden testcase" : "Compilation Error: " + truncate(details, 700),
                                 passed, tests.size(), maxTime, maxMemory, lang.displayName());
                     }
                 }
@@ -172,7 +176,8 @@ public final class PistonJudgeEngine {
                             run.path("message").asText(""),
                             signal.isBlank() ? "Runtime Error" : "Terminated by " + signal);
                     return result(SubmissionResult.Status.RUNTIME_ERROR,
-                            verdictMessage("Runtime Error", test, i) + ": " + truncate(details, 350),
+                            test.hidden() ? verdictMessage("Runtime Error", test, i)
+                                    : verdictMessage("Runtime Error", test, i) + ": " + truncate(details, 350),
                             passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
@@ -194,7 +199,7 @@ public final class PistonJudgeEngine {
                         "Judge request interrupted", passed, tests.size(), maxTime, maxMemory, lang.displayName());
             } catch (Exception ex) {
                 return result(SubmissionResult.Status.INVALID,
-                        "Judge service unavailable: " + sanitizeError(ex.getMessage()),
+                        "Judge service unavailable",
                         passed, tests.size(), maxTime, maxMemory, lang.displayName());
             }
         }

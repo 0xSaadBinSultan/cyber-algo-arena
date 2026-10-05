@@ -36,6 +36,7 @@ public final class AutoSyncScheduler {
 
     private void runSync() {
         try {
+            if (!engine.isDatabaseReady()) return;
             System.out.println("[AutoSyncScheduler] Running scheduled sync...");
             CodeforcesSyncService.SyncResult cfResult = codeforcesSyncService.sync(engine, 10, 800, 1400);
             System.out.println("[AutoSyncScheduler] Codeforces: " + cfResult.syncedCount() + " problems synced.");

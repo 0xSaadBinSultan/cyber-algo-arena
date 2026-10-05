@@ -60,7 +60,7 @@ public final class GeminiService {
 
         ObjectNode system = mapper.createObjectNode();
         ArrayNode systemParts = mapper.createArrayNode();
-        systemParts.add(mapper.createObjectNode().put("text", systemInstruction));
+        systemParts.add(mapper.createObjectNode().put("text", MongoSecrets.redact(systemInstruction, System.getenv())));
         system.set("parts", systemParts);
         payload.set("system_instruction", system);
 
@@ -68,7 +68,7 @@ public final class GeminiService {
         ObjectNode userContent = mapper.createObjectNode();
         userContent.put("role", "user");
         ArrayNode userParts = mapper.createArrayNode();
-        userParts.add(mapper.createObjectNode().put("text", prompt));
+        userParts.add(mapper.createObjectNode().put("text", MongoSecrets.redact(prompt, System.getenv())));
         userContent.set("parts", userParts);
         contents.add(userContent);
         payload.set("contents", contents);

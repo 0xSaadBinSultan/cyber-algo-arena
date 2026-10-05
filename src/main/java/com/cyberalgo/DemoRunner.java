@@ -27,6 +27,12 @@ public final class DemoRunner {
         System.out.println("║   MongoDB + BCrypt + RateLimiter + Path Guard    ║");
         System.out.println("╚══════════════════════════════════════════════════╝");
 
+        // The demo drops its test database. Never allow environment precedence to target application data.
+        String configuredDatabase = System.getenv("MONGODB_DATABASE_NAME");
+        if (MongoManager.isProduction(System.getenv())
+                || (configuredDatabase != null && !TEST_DB.equals(configuredDatabase))) {
+            throw new IllegalStateException("Demo requires an explicitly isolated development test database.");
+        }
         System.setProperty("arena.admin.password", TEST_ADMIN_PASSWORD);
 
         try (MongoManager mongo = new MongoManager(MongoManager.DEFAULT_URI, TEST_DB)) {
