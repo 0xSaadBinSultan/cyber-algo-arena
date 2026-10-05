@@ -603,6 +603,107 @@
       .command-table td:nth-child(4) { display:none; }
     }
 
+
+    /* Club practice readability + Codeforces-inspired CP workspace */
+    body { font-size: 15px; }
+    .command-sidebar .nav-tab,
+    .command-sidebar .command-side-action { font-size: 13px !important; }
+    .command-search input { font-size: 14px; }
+    .command-table { font-size: 13px; }
+    .command-table thead { font-size: 11px; }
+    .command-table th, .command-table td { padding: 13px 14px; }
+    .command-section-head { min-height: 54px; }
+    .command-status-item { font-size: 12px; }
+    .command-ai-input { font-size: 13px; }
+    .command-ai-chip { font-size: 11px; }
+    .command-btn-primary, .command-btn-ghost { font-size: 12px; }
+    .command-eyebrow { font-size: 11px; }
+    [class~="text-[8px]"] { font-size: 11px !important; }
+    [class~="text-[9px]"] { font-size: 11.5px !important; }
+    [class~="text-[10px]"] { font-size: 12px !important; }
+    [class~="text-[11px]"] { font-size: 13px !important; }
+
+    #modal-challenge.cp-mode > div {
+      max-width: 1180px !important;
+    }
+
+    .cf-problem-shell {
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(5,4,5,.66);
+    }
+
+    .cf-problem-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 13px;
+      background: rgba(255,255,255,.025);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .cf-code-editor {
+      width: 100%;
+      min-height: 330px;
+      resize: vertical;
+      padding: 15px 16px;
+      border: 0;
+      outline: none;
+      background: #070809;
+      color: #e6edf3;
+      font: 500 14px/1.65 'JetBrains Mono', monospace;
+      tab-size: 4;
+      white-space: pre;
+    }
+
+    .cf-sample-card {
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(0,0,0,.26);
+    }
+
+    .cf-sample-label {
+      padding: 7px 10px;
+      font: 700 11px/1 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #aaa0a2;
+      background: rgba(255,255,255,.025);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .cf-sample-pre {
+      padding: 11px 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      color: #ddd6d7;
+      font: 500 13px/1.55 'JetBrains Mono', monospace;
+    }
+
+    .cf-verdict {
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.30);
+      font: 600 12px/1.5 'JetBrains Mono', monospace;
+    }
+
+    .cf-verdict.ac { border-color: rgba(81,207,102,.4); color:#69db7c; background:rgba(81,207,102,.07); }
+    .cf-verdict.wa { border-color: rgba(255,81,72,.45); color:#ff7b72; background:rgba(255,59,48,.07); }
+    .cf-verdict.tle, .cf-verdict.mle { border-color: rgba(245,165,36,.45); color:#ffc078; background:rgba(245,165,36,.07); }
+    .cf-verdict.ce, .cf-verdict.re, .cf-verdict.invalid { border-color: rgba(255,122,69,.4); color:#ffa94d; background:rgba(255,122,69,.07); }
+
+    @media (min-width: 900px) {
+      .cp-work-grid {
+        display: grid;
+        grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr);
+        gap: 14px;
+        align-items: start;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">
@@ -1288,6 +1389,55 @@
             </a>
           </div>
 
+          <!-- Codeforces-inspired CP practice workspace -->
+          <div id="mod-cp-workspace" class="hidden space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border border-sky-500/20 bg-sky-500/5 rounded-lg p-3">
+              <div>
+                <div class="text-sm font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-code text-sky-400"></i> Competitive Programming Workspace
+                </div>
+                <div class="text-xs text-ctf-muted mt-1">Write source code, submit once, and the judge runs public + hidden tests server-side.</div>
+              </div>
+              <div class="flex items-center gap-2 text-xs font-mono text-ctf-muted">
+                <span id="mod-cp-hidden-count" class="px-2 py-1 border border-white/10 rounded">0 hidden tests</span>
+              </div>
+            </div>
+
+            <div class="cp-work-grid">
+              <div class="space-y-3">
+                <div>
+                  <div class="text-sm font-bold text-white mb-2">Examples</div>
+                  <div id="mod-cp-samples" class="space-y-3"></div>
+                </div>
+                <div class="p-3 rounded-lg border border-white/10 bg-black/20 text-xs leading-relaxed text-ctf-muted">
+                  <div class="font-bold text-white mb-1">Judge verdicts</div>
+                  <div><span class="text-green-400">AC</span> · <span class="text-red-400">WA</span> · <span class="text-amber-400">TLE</span> · <span class="text-amber-300">MLE</span> · <span class="text-orange-400">RE</span> · <span class="text-orange-300">CE</span></div>
+                </div>
+              </div>
+
+              <form id="form-submit-cp" class="cf-problem-shell">
+                <div class="cf-problem-toolbar">
+                  <label for="cp-language" class="text-xs font-semibold text-ctf-muted">Language</label>
+                  <select id="cp-language" class="bg-[#090303] border border-ctf-border rounded px-3 py-2 text-sm text-white font-mono outline-none" onchange="applyCpTemplate(false)">
+                    <option value="cpp">GNU C++</option>
+                    <option value="java">Java</option>
+                    <option value="python">Python 3</option>
+                  </select>
+                  <button type="button" onclick="applyCpTemplate(true)" class="ml-auto px-3 py-2 text-xs border border-white/10 hover:border-sky-500/40 rounded text-ctf-muted hover:text-white">
+                    Reset template
+                  </button>
+                </div>
+                <textarea id="cp-source-code" class="cf-code-editor" spellcheck="false" aria-label="Source code editor"></textarea>
+                <div class="p-3 border-t border-white/10 space-y-2">
+                  <div id="cp-verdict" class="cf-verdict">Ready to judge.</div>
+                  <button id="btn-cp-submit" type="submit" class="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded text-sm transition-colors">
+                    <i class="fa-solid fa-paper-plane mr-2"></i>Submit Code
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
           <!-- Hint Section -->
           <div id="mod-hint-box" class="border border-ctf-border/80 rounded-lg p-3.5 bg-[#100607] space-y-2">
             <div class="flex items-center justify-between">
@@ -1342,7 +1492,7 @@
       </div>
 
       <!-- Modal Bottom Submission Action Bar -->
-      <div class="p-4 bg-[#120708] border-t border-ctf-border">
+      <div id="ctf-submit-bar" class="p-4 bg-[#120708] border-t border-ctf-border">
         <form id="form-submit-flag" class="flex items-center gap-2">
           <input type="hidden" id="mod-submit-id">
           
@@ -1350,7 +1500,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ctf-muted">
               <i class="fa-solid fa-terminal text-xs"></i>
             </div>
-            <input type="text" id="inp-flag-payload" required placeholder="flag{...} or output testcase directory" class="w-full bg-[#090303] border border-ctf-border focus:border-ctf-blue focus:ring-1 focus:ring-ctf-blue rounded-lg pl-9 pr-3 py-2 text-xs text-white outline-none font-mono">
+            <input type="text" id="inp-flag-payload" required placeholder="flag{...}" class="w-full bg-[#090303] border border-ctf-border focus:border-ctf-blue focus:ring-1 focus:ring-ctf-blue rounded-lg pl-9 pr-3 py-2 text-xs text-white outline-none font-mono">
           </div>
 
           <button type="submit" id="btn-flag-submit" class="px-5 py-2 bg-ctf-green hover:bg-ctf-greenHover text-white font-semibold rounded-lg text-xs flex items-center gap-2 transition-colors shadow-sm">
@@ -1982,10 +2132,179 @@
       return html;
     }
 
+    const CP_TEMPLATES = {
+      cpp: `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    return 0;
+}
+`,
+      java: `import java.io.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        Scanner sc = new Scanner(System.in);
+
+    }
+}
+`,
+      python: `import sys
+
+def solve():
+    pass
+
+if __name__ == "__main__":
+    solve()
+`
+    };
+
+    let lastCpTemplateLanguage = 'cpp';
+
+    function applyCpTemplate(force) {
+      const lang = $('#cp-language');
+      const editor = $('#cp-source-code');
+      if (!lang || !editor) return;
+      const next = lang.value || 'cpp';
+      const previousTemplate = CP_TEMPLATES[lastCpTemplateLanguage] || '';
+      const canReplace = force || editor.value.trim() === '' || editor.value === previousTemplate;
+      if (canReplace) editor.value = CP_TEMPLATES[next] || '';
+      lastCpTemplateLanguage = next;
+    }
+
+    function renderCpSamples(challenge) {
+      const box = $('#mod-cp-samples');
+      if (!box) return;
+      const samples = Array.isArray(challenge.sampleCases) ? challenge.sampleCases : [];
+      if (!samples.length) {
+        box.innerHTML = '<div class="text-xs text-ctf-muted italic">No public sample available.</div>';
+        return;
+      }
+      box.innerHTML = samples.map((sample, idx) => `
+        <div class="cf-sample-card">
+          <div class="cf-sample-label">Sample ${idx + 1} · Input</div>
+          <pre class="cf-sample-pre">${escapeHtml(sample.input || '')}</pre>
+          <div class="cf-sample-label border-t border-white/10">Expected output</div>
+          <pre class="cf-sample-pre">${escapeHtml(sample.output || '')}</pre>
+        </div>
+      `).join('');
+    }
+
+    function configureSubmissionMode(challenge) {
+      const isCp = challenge.type === 'CP';
+      const modal = $('#modal-challenge');
+      const cpWorkspace = $('#mod-cp-workspace');
+      const ctfBar = $('#ctf-submit-bar');
+      const hintBox = $('#mod-hint-box');
+
+      if (modal) modal.classList.toggle('cp-mode', isCp);
+      if (cpWorkspace) cpWorkspace.classList.toggle('hidden', !isCp);
+      if (ctfBar) ctfBar.classList.toggle('hidden', isCp);
+      if (hintBox) hintBox.classList.toggle('hidden', isCp);
+
+      if (isCp) {
+        renderCpSamples(challenge);
+        const hidden = $('#mod-cp-hidden-count');
+        if (hidden) hidden.textContent = `${challenge.hiddenTestCount || 0} hidden test${(challenge.hiddenTestCount || 0) === 1 ? '' : 's'}`;
+        const verdict = $('#cp-verdict');
+        if (verdict) {
+          verdict.className = 'cf-verdict';
+          verdict.textContent = challenge.solved ? 'Already solved on this profile.' : 'Ready to judge.';
+        }
+        applyCpTemplate(true);
+      }
+    }
+
+    function setCpVerdict(status, message) {
+      const verdict = $('#cp-verdict');
+      if (!verdict) return;
+      const cls = {
+        ACCEPTED: 'ac',
+        WRONG_ANSWER: 'wa',
+        TIME_LIMIT_EXCEEDED: 'tle',
+        MEMORY_LIMIT_EXCEEDED: 'mle',
+        COMPILATION_ERROR: 'ce',
+        RUNTIME_ERROR: 're',
+        INVALID: 'invalid'
+      }[status] || 'invalid';
+      const short = {
+        ACCEPTED: 'AC',
+        WRONG_ANSWER: 'WA',
+        TIME_LIMIT_EXCEEDED: 'TLE',
+        MEMORY_LIMIT_EXCEEDED: 'MLE',
+        COMPILATION_ERROR: 'CE',
+        RUNTIME_ERROR: 'RE',
+        INVALID: 'INVALID'
+      }[status] || status;
+      verdict.className = 'cf-verdict ' + cls;
+      verdict.textContent = short + ' · ' + (message || 'Judge completed.');
+    }
+
+    async function submitCp(e) {
+      e.preventDefault();
+      if (!currentModalChallenge || currentModalChallenge.type !== 'CP') return;
+
+      const code = ($('#cp-source-code') || {}).value || '';
+      const language = ($('#cp-language') || {}).value || '';
+      if (!code.trim()) {
+        showToast('Source code cannot be empty', 'warning');
+        return;
+      }
+
+      const btn = $('#btn-cp-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Judging...';
+      }
+      const verdict = $('#cp-verdict');
+      if (verdict) {
+        verdict.className = 'cf-verdict';
+        verdict.textContent = 'Running public and hidden tests...';
+      }
+
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challengeId: currentModalChallenge.id,
+            payload: code,
+            language
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setCpVerdict('INVALID', data.error || 'Submission failed');
+          return;
+        }
+
+        setCpVerdict(data.status, data.message);
+        if (data.status === 'ACCEPTED') {
+          showToast(`Accepted! +${data.pointsAwarded} profile points`, 'success');
+          fetchChallenges();
+        }
+      } catch (err) {
+        setCpVerdict('INVALID', 'Judge request failed');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Submit Code';
+        }
+      }
+    }
+
     async function openChallengeModal(challengeId) {
       $('#modal-challenge').classList.remove('hidden');
       $('#inp-flag-payload').value = '';
       $('#mod-submit-id').value = challengeId;
+      $('#modal-challenge').classList.remove('cp-mode');
+      $('#mod-cp-workspace').classList.add('hidden');
+      $('#ctf-submit-bar').classList.remove('hidden');
+      $('#mod-hint-box').classList.remove('hidden');
       $('#mod-hint-text').classList.add('hidden');
       $('#btn-request-hint').classList.remove('hidden');
       $('#mod-ai-question').value = '';
@@ -2000,6 +2319,7 @@
         
         const c = await res.json();
         currentModalChallenge = c;
+        configureSubmissionMode(c);
 
         $('#mod-title').textContent = c.title;
         $('#mod-diff-badge').textContent = c.difficulty || 'MEDIUM';
@@ -2033,7 +2353,8 @@
           specsGrid.innerHTML = `
             <div class="p-2.5 bg-[#100607] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">TIME LIMIT</span><span class="text-ctf-yellow font-semibold">${c.timeLimitMs || 1000} ms</span></div>
             <div class="p-2.5 bg-[#100607] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">MEMORY LIMIT</span><span class="text-ctf-yellow font-semibold">${c.memoryLimitMb || 256} MB</span></div>
-            <div class="p-2.5 bg-[#100607] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">SANDBOX</span><span class="text-white font-semibold">Piston Judge Engine</span></div>
+            <div class="p-2.5 bg-[#100607] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">JUDGE</span><span class="text-white font-semibold">Isolated Piston Sandbox</span></div>
+            <div class="p-2.5 bg-[#100607] border border-ctf-border rounded"><span class="text-ctf-muted block text-[10px]">HIDDEN TESTS</span><span class="text-sky-400 font-semibold">${c.hiddenTestCount || 0}</span></div>
           `;
         }
 
@@ -2814,6 +3135,8 @@
     window.openChallengeModal = openChallengeModal;
     window.closeModal = closeModal;
     window.submitFlag = submitFlag;
+    window.submitCp = submitCp;
+    window.applyCpTemplate = applyCpTemplate;
     window.runCode = runCode;
     window.filterCategory = filterCategory;
     window.filterArena = filterArena;
@@ -2863,6 +3186,7 @@
             bindEvent('form-auth-login', 'submit', login);
             bindEvent('form-auth-register', 'submit', register);
             bindEvent('form-submit-flag', 'submit', submitFlag);
+            bindEvent('form-submit-cp', 'submit', submitCp);
             bindEvent('form-join-team', 'submit', joinTeam);
             bindEvent('form-create-team', 'submit', createTeam);
             

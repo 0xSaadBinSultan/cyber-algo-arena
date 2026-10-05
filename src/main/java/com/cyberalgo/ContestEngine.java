@@ -28,6 +28,8 @@ public final class ContestEngine {
     private final Map<String, Set<String>> teamSolvedChallenges = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Integer>> teamWrongAttempts = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Integer>> teamHintUsage = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Integer>> userWrongAttempts = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Integer>> userHintUsage = new ConcurrentHashMap<>();
 
     /** Auto-resync interval: keeps multi-instance deployments convergent. */
     private static final long SYNC_INTERVAL_MS = 5_000L;
@@ -51,6 +53,8 @@ public final class ContestEngine {
         teamSolvedChallenges.clear();
         teamWrongAttempts.clear();
         teamHintUsage.clear();
+        userWrongAttempts.clear();
+        userHintUsage.clear();
 
         DatabaseSeeder.seedIfEmpty(repository);
 
@@ -74,17 +78,33 @@ public final class ContestEngine {
         for (Submission s : allSubs) {
             submissions.add(s);
             String teamId = s.getTeamId();
+            String userId = s.getUserId();
             String challengeId = s.getChallengeId();
 
             if (s.getStatus() == SubmissionResult.Status.ACCEPTED) {
-                teamSolvedChallenges.computeIfAbsent(teamId, k -> ConcurrentHashMap.newKeySet()).add(challengeId);
-            } else if (s.getStatus() == SubmissionResult.Status.WRONG_ANSWER) {
-                teamWrongAttempts.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
-                        .merge(challengeId, 1, Integer::sum);
+                if (teamId != null && !teamId.isBlank()) {
+                    teamSolvedChallenges.computeIfAbsent(teamId, k -> ConcurrentHashMap.newKeySet()).add(challengeId);
+                }
+            } else if (s.getStatus() != SubmissionResult.Status.PENDING
+                    && s.getStatus() != SubmissionResult.Status.INVALID) {
+                if (teamId != null && !teamId.isBlank()) {
+                    teamWrongAttempts.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                            .merge(challengeId, 1, Integer::sum);
+                }
+                if (userId != null && !userId.isBlank()) {
+                    userWrongAttempts.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
+                            .merge(challengeId, 1, Integer::sum);
+                }
             }
             if (s.getHintsUsed() > 0) {
-                teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
-                        .put(challengeId, s.getHintsUsed());
+                if (teamId != null && !teamId.isBlank()) {
+                    teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                            .put(challengeId, s.getHintsUsed());
+                }
+                if (userId != null && !userId.isBlank()) {
+                    userHintUsage.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
+                            .put(challengeId, s.getHintsUsed());
+                }
             }
         }
 
@@ -326,6 +346,28 @@ public final class ContestEngine {
         return problem;
     }
 
+    public synchronized CPProblem addCpChallenge(
+            String id,
+            String title,
+            int basePoints,
+            Challenge.Difficulty difficulty,
+            long timeLimitMillis,
+            int memoryLimitMb,
+            Path testcaseDirectory,
+            List<CPTestCase> testCases) {
+        CPProblem problem = new CPProblem(
+                id,
+                title,
+                basePoints,
+                difficulty,
+                timeLimitMillis,
+                memoryLimitMb,
+                testcaseDirectory,
+                testCases);
+        addChallenge(problem);
+        return problem;
+    }
+
     public synchronized void removeChallenge(String challengeId) {
         Challenge c = challengesById.remove(challengeId);
         if (c == null) throw new ChallengeNotFoundException(challengeId);
@@ -350,7 +392,7 @@ public final class ContestEngine {
         } else if (existing instanceof CPProblem cp) {
             updated = new CPProblem(
                     cp.getId(), cp.getTitle(), newBasePoints, cp.getDifficulty(),
-                    cp.getTimeLimitMillis(), cp.getMemoryLimitMb(), cp.getTestcaseDirectory());
+                    cp.getTimeLimitMillis(), cp.getMemoryLimitMb(), cp.getTestcaseDirectory(), cp.getConfiguredTestCases());
         } else {
             throw new IllegalArgumentException("Unsupported challenge type: " + existing.getClass().getName());
         }
@@ -373,21 +415,30 @@ public final class ContestEngine {
     // ═══════════════════════════════════════════
 
     public synchronized SubmissionResult submit(Submission submission) {
+        return submit(submission, null);
+    }
+
+    public synchronized SubmissionResult submit(Submission submission, String language) {
         Objects.requireNonNull(submission, "submission must not be null");
 
         Challenge challenge = getChallenge(submission.getChallengeId());
-        Team team = getTeam(submission.getTeamId());
         User user = getUser(submission.getUserId());
+        Team team = null;
+        if (submission.getTeamId() != null && !submission.getTeamId().isBlank()) {
+            team = getTeam(submission.getTeamId());
+        }
 
-        if (isSolvedByTeam(team.getId(), challenge.getId())) {
-            throw new DuplicateSubmissionException("Challenge already solved by team " + team.getId());
+        // Club practice is individual-first: every member can solve a problem once,
+        // even if another member of the same team already solved it.
+        if (user.isSolved(challenge.getId())) {
+            throw new DuplicateSubmissionException("Challenge already solved by user " + user.getUsername());
         }
 
         SubmissionResult.Status status = SubmissionResult.Status.WRONG_ANSWER;
         String outcomeMessage = "Wrong answer";
 
         if (challenge instanceof CPProblem cp) {
-            PistonJudgeEngine.ExecutionResult execRes = pistonJudge.judge(cp, submission.getPayload());
+            PistonJudgeEngine.ExecutionResult execRes = pistonJudge.judge(cp, submission.getPayload(), language);
             status = execRes.status();
             outcomeMessage = execRes.message();
         } else {
@@ -405,65 +456,83 @@ public final class ContestEngine {
         }
 
         if (status == SubmissionResult.Status.ACCEPTED) {
-            // Track first blood 🩸
+            String firstBloodOwner = team != null ? team.getId() : "USER:" + user.getId();
             if (!challenge.hasFirstBlood()) {
-                challenge.setFirstBlood(team.getId(), user.getId());
+                challenge.setFirstBlood(firstBloodOwner, user.getId());
             }
-            boolean isFirstBlood = challenge.getFirstBloodTeamId() != null 
-                && challenge.getFirstBloodTeamId().equals(team.getId());
+            boolean isFirstBlood = user.getId().equals(challenge.getFirstBloodUserId());
 
-            // Increment solve count for dynamic scoring decay
             challenge.incrementSolveCount();
 
-            int wrongCount = getWrongAttempts(team.getId(), challenge.getId());
-            int hintsCount = getHintUsageCount(team.getId(), challenge.getId());
+            int wrongCount = getUserWrongAttempts(user.getId(), challenge.getId());
+            int hintsCount = getUserHintUsageCount(user.getId(), challenge.getId());
             int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
 
-            // First blood bonus: +10% of awarded points
             int firstBloodBonus = 0;
             if (isFirstBlood) {
                 firstBloodBonus = Math.max(1, pointsAwarded / 10);
                 pointsAwarded += firstBloodBonus;
             }
 
-            String fbTag = isFirstBlood ? " 🩸 FIRST BLOOD! (+" + firstBloodBonus + " bonus)" : "";
-
+            String fbTag = isFirstBlood ? " FIRST BLOOD (+" + firstBloodBonus + " bonus)" : "";
             Instant solveTime = submission.getTimestamp();
-            team.applyScore(pointsAwarded, solveTime);
-            teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
 
-            // Update user personal profile with per-track (CTF vs CP) attribution
+            // Personal profile always receives the solve/points.
             boolean isCpTrack = challenge instanceof CPProblem;
             String cat = isCpTrack ? "CP" : ((CTFChallenge) challenge).getCategoryName();
             user.recordSolve(challenge.getId(), cat, pointsAwarded, isCpTrack ? "CP" : "CTF");
-
-            repository.saveTeam(team);
             repository.saveUser(user);
-            repository.saveChallenge(challenge); // persist updated solveCount + firstBlood
 
-            SubmissionResult acceptResult = new SubmissionResult(SubmissionResult.Status.ACCEPTED, pointsAwarded, outcomeMessage + fbTag);
+            // A team receives points for a challenge only once, while every member can
+            // still solve it individually for practice/profile tracking.
+            if (team != null && !isSolvedByTeam(team.getId(), challenge.getId())) {
+                team.applyScore(pointsAwarded, solveTime);
+                teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
+                repository.saveTeam(team);
+            }
+
+            repository.saveChallenge(challenge);
+
+            SubmissionResult acceptResult = new SubmissionResult(
+                    SubmissionResult.Status.ACCEPTED,
+                    pointsAwarded,
+                    outcomeMessage + fbTag);
             submission.applyResult(acceptResult);
             submissions.add(submission);
             repository.saveSubmission(submission);
 
             refreshLeaderboard();
             return acceptResult;
-        } else {
-            teamWrongAttempts.computeIfAbsent(team.getId(), k -> new ConcurrentHashMap<>())
-                    .merge(challenge.getId(), 1, Integer::sum);
-
-            SubmissionResult failResult = new SubmissionResult(status, 0, outcomeMessage);
-            submission.applyResult(failResult);
-            submissions.add(submission);
-            repository.saveSubmission(submission);
-            return failResult;
         }
+
+        if (status != SubmissionResult.Status.INVALID && status != SubmissionResult.Status.PENDING) {
+            userWrongAttempts.computeIfAbsent(user.getId(), k -> new ConcurrentHashMap<>())
+                    .merge(challenge.getId(), 1, Integer::sum);
+            if (team != null) {
+                teamWrongAttempts.computeIfAbsent(team.getId(), k -> new ConcurrentHashMap<>())
+                        .merge(challenge.getId(), 1, Integer::sum);
+            }
+        }
+
+        SubmissionResult failResult = new SubmissionResult(status, 0, outcomeMessage);
+        submission.applyResult(failResult);
+        submissions.add(submission);
+        repository.saveSubmission(submission);
+        return failResult;
     }
 
     public synchronized String requestHint(String teamId, String challengeId) {
         getTeam(teamId);
         Challenge challenge = getChallenge(challengeId);
         teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
+                .merge(challengeId, 1, Integer::sum);
+        return challenge.getHintText();
+    }
+
+    public synchronized String requestHintForUser(String userId, String challengeId) {
+        getUser(userId);
+        Challenge challenge = getChallenge(challengeId);
+        userHintUsage.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
                 .merge(challengeId, 1, Integer::sum);
         return challenge.getHintText();
     }
@@ -485,6 +554,16 @@ public final class ContestEngine {
 
     public int getHintUsageCount(String teamId, String challengeId) {
         Map<String, Integer> map = teamHintUsage.get(teamId);
+        return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
+    }
+
+    public int getUserWrongAttempts(String userId, String challengeId) {
+        Map<String, Integer> map = userWrongAttempts.get(userId);
+        return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
+    }
+
+    public int getUserHintUsageCount(String userId, String challengeId) {
+        Map<String, Integer> map = userHintUsage.get(userId);
         return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
     }
 

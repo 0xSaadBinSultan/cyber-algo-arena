@@ -130,6 +130,11 @@
     .badge-forensics { background: rgba(210, 153, 34, 0.15); color: #f5a524; border: 1px solid rgba(210, 153, 34, 0.3); }
     .badge-misc { background: rgba(139, 148, 158, 0.15); color: #a58b8e; border: 1px solid rgba(139, 148, 158, 0.3); }
     .badge-cp { background: rgba(35, 134, 54, 0.15); color: #51cf66; border: 1px solid rgba(35, 134, 54, 0.3); }
+
+    body { font-size: 15px; }
+    label { font-size: 13px !important; }
+    input, textarea, select, button { font-size: 14px; }
+    .hidden-test-row { border:1px solid rgba(255,77,77,.20); border-radius:8px; padding:12px; background:rgba(0,0,0,.20); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">
@@ -1054,6 +1059,19 @@
               <div>
                 <label class="text-[11px] font-medium text-ctf-muted block mb-1">Sample Expected Output (Testcase 1)</label>
                 <textarea id="create-chal-sampleout" rows="2" class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
+              </div>
+
+              <div class="border-t border-ctf-border pt-4 space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="font-bold text-white text-sm">Hidden Testcases</div>
+                    <div class="text-xs text-ctf-muted mt-1">Required for live CP judging. Hidden inputs/outputs are stored server-side in MongoDB and never returned by public challenge APIs.</div>
+                  </div>
+                  <button type="button" onclick="addHiddenTestCase()" class="px-3 py-2 border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 rounded font-semibold">
+                    <i class="fa-solid fa-plus mr-1"></i>Add Test
+                  </button>
+                </div>
+                <div id="hidden-testcases-list" class="space-y-3"></div>
               </div>
             </div>
             
@@ -2250,6 +2268,55 @@
       }
     }
     
+    let hiddenTestSequence = 0;
+
+    function addHiddenTestCase(input = '', output = '') {
+      const list = document.getElementById('hidden-testcases-list');
+      if (!list) return;
+      hiddenTestSequence += 1;
+      const row = document.createElement('div');
+      row.className = 'hidden-test-row';
+      row.dataset.testId = String(hiddenTestSequence);
+      row.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-sky-300">Hidden Test #${list.children.length + 1}</span>
+          <button type="button" class="text-xs text-red-400 hover:text-red-300" onclick="this.closest('.hidden-test-row').remove(); renumberHiddenTests()">
+            <i class="fa-solid fa-trash-can mr-1"></i>Remove
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-ctf-muted mb-1">Input</label>
+            <textarea class="hidden-test-input w-full bg-[#090303] border border-ctf-border rounded p-2 text-white font-mono" rows="4"></textarea>
+          </div>
+          <div>
+            <label class="block text-ctf-muted mb-1">Expected Output</label>
+            <textarea class="hidden-test-output w-full bg-[#090303] border border-ctf-border rounded p-2 text-white font-mono" rows="4"></textarea>
+          </div>
+        </div>
+      `;
+      row.querySelector('.hidden-test-input').value = input;
+      row.querySelector('.hidden-test-output').value = output;
+      list.appendChild(row);
+      renumberHiddenTests();
+    }
+
+    function renumberHiddenTests() {
+      document.querySelectorAll('#hidden-testcases-list .hidden-test-row').forEach((row, idx) => {
+        const title = row.querySelector('span');
+        if (title) title.textContent = 'Hidden Test #' + (idx + 1);
+      });
+    }
+
+    function collectHiddenTests() {
+      return Array.from(document.querySelectorAll('#hidden-testcases-list .hidden-test-row'))
+        .map(row => ({
+          input: row.querySelector('.hidden-test-input')?.value || '',
+          output: row.querySelector('.hidden-test-output')?.value || ''
+        }))
+        .filter(tc => tc.input.trim() !== '' || tc.output.trim() !== '');
+    }
+
     function toggleChalType(type) {
       if (type === 'CTF') {
         document.getElementById('ctf-specific-fields').classList.remove('hidden');
@@ -2257,6 +2324,8 @@
       } else {
         document.getElementById('ctf-specific-fields').classList.add('hidden');
         document.getElementById('cp-specific-fields').classList.remove('hidden');
+        const list = document.getElementById('hidden-testcases-list');
+        if (list && list.children.length === 0) addHiddenTestCase();
       }
     }
 
@@ -2282,6 +2351,12 @@
         payload.memoryLimitMb = parseInt($('#create-chal-mem').value || 256);
         payload.sampleInput = $('#create-chal-samplein').value;
         payload.sampleOutput = $('#create-chal-sampleout').value;
+        const hiddenTests = collectHiddenTests();
+        if (hiddenTests.length === 0) {
+          showToast('Add at least one hidden testcase for a CP problem', 'warning');
+          return;
+        }
+        payload.hiddenTests = JSON.stringify(hiddenTests);
       }
       
       try {
@@ -2295,6 +2370,8 @@
           showToast(`Challenge ${data.id || payload.title} created successfully!`, 'success');
           document.getElementById('modal-admin-create-chal').classList.add('hidden');
           $('#form-admin-create-chal').reset();
+          const hiddenList = document.getElementById('hidden-testcases-list');
+          if (hiddenList) hiddenList.innerHTML = '';
           toggleChalType('CTF');
           fetchAdminData();
         } else {
@@ -2430,6 +2507,8 @@
     window.adminSyncCodeChef = adminSyncCodeChef;
     window.adminSyncCodeforces = adminSyncCodeforces;
     window.adminSyncSecurity = adminSyncSecurity;
+    window.addHiddenTestCase = addHiddenTestCase;
+    window.renumberHiddenTests = renumberHiddenTests;
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

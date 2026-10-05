@@ -13,6 +13,7 @@ public final class SubmissionResult implements Persistable {
         ACCEPTED,
         WRONG_ANSWER,
         TIME_LIMIT_EXCEEDED,
+        MEMORY_LIMIT_EXCEEDED,
         RUNTIME_ERROR,
         COMPILATION_ERROR,
         INVALID;

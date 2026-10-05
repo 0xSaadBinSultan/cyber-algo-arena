@@ -291,9 +291,16 @@ public final class MongoRepository {
                .append("flagHash", ctf.getFlagHash())
                .append("attachmentFileName", ctf.getAttachmentFileName());
         } else if (c instanceof CPProblem cp) {
+            List<Document> cases = new ArrayList<>();
+            for (CPTestCase tc : cp.getConfiguredTestCases()) {
+                cases.add(new Document("input", tc.input())
+                        .append("expectedOutput", tc.expectedOutput())
+                        .append("hidden", tc.hidden()));
+            }
             doc.append("timeLimitMs", cp.getTimeLimitMillis())
                .append("memoryLimitMb", cp.getMemoryLimitMb())
-               .append("testcaseDir", cp.getTestcaseDirectory().toString());
+               .append("testcaseDir", cp.getTestcaseDirectory().toString())
+               .append("testCases", cases);
         }
         return doc;
     }
@@ -322,6 +329,14 @@ public final class MongoRepository {
             ctf.setFirstBlood(doc.getString("firstBloodTeamId"), doc.getString("firstBloodUserId"));
             return ctf;
         } else {
+            List<CPTestCase> testCases = new ArrayList<>();
+            List<Document> storedCases = doc.getList("testCases", Document.class, List.of());
+            for (Document tc : storedCases) {
+                testCases.add(new CPTestCase(
+                        tc.getString("input"),
+                        tc.getString("expectedOutput"),
+                        tc.getBoolean("hidden", true)));
+            }
             CPProblem cp = new CPProblem(
                     id,
                     title,
@@ -329,7 +344,8 @@ public final class MongoRepository {
                     difficulty,
                     doc.getLong("timeLimitMs") != null ? doc.getLong("timeLimitMs") : 1000L,
                     doc.getInteger("memoryLimitMb", 256),
-                    Path.of(doc.getString("testcaseDir") != null ? doc.getString("testcaseDir") : "contest_data/testcases/" + id));
+                    Path.of(doc.getString("testcaseDir") != null ? doc.getString("testcaseDir") : "contest_data/testcases/" + id),
+                    testCases);
             cp.setDescription(doc.getString("description"));
             cp.setSolveCount(doc.getInteger("solveCount", 0));
             cp.setDecayLimit(doc.getInteger("decayLimit", 100));

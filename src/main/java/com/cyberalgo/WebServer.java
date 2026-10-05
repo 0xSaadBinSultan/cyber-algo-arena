@@ -127,6 +127,8 @@ public final class WebServer {
                     "timestamp", System.currentTimeMillis()
             ));
         });
+        app.get("/api/judge/status", this::handleJudgeStatus);
+
         // ── Auth ──
         app.post("/api/auth/login", this::handleLogin);
         app.post("/api/auth/admin-login", this::handleAdminLogin);
@@ -200,6 +202,15 @@ public final class WebServer {
         } catch (Exception ex) {
             ctx.status(404).result("Admin UI not found");
         }
+    }
+
+    private void handleJudgeStatus(Context ctx) {
+        String configured = System.getenv("PISTON_URL");
+        ctx.json(Map.of(
+                "provider", "Piston-compatible sandbox",
+                "configured", configured != null && !configured.isBlank(),
+                "mode", (configured != null && !configured.isBlank()) ? "configured" : "public-fallback"
+        ));
     }
 
     // ═══════════════════════════════════════════
@@ -567,16 +578,10 @@ public final class WebServer {
         User user = requireAuth(ctx);
         if (user == null) return;
 
-        String teamId = user.getTeamId();
-        if (teamId == null) {
-            ctx.status(400).json(errorMap("Join a team before requesting hints"));
-            return;
-        }
-
         String challengeId = ctx.pathParam("challengeId");
         try {
-            String hint = engine.requestHint(teamId, challengeId);
-            int usageCount = engine.getHintUsageCount(teamId, challengeId);
+            String hint = engine.requestHintForUser(user.getId(), challengeId);
+            int usageCount = engine.getUserHintUsageCount(user.getId(), challengeId);
             Challenge c = engine.getChallenge(challengeId);
             ctx.json(Map.of(
                     "hint", hint,
@@ -593,23 +598,16 @@ public final class WebServer {
         if (user == null) return;
 
         String teamId = user.getTeamId();
-        if (teamId == null) {
-            ctx.status(400).json(errorMap("Join or create a team before submitting solutions."));
-            return;
-        }
+        String rateKey = "submit:" + user.getId() + ":" + ctx.ip();
 
-        String rateKey = "submit:" + teamId + ":" + ctx.ip();
-
-        // 15-second cooldown on consecutive wrong attempts (3+ failures)
         if (rateLimiter.isCooldownActive(rateKey, 3, 15_000L)) {
             long remaining = rateLimiter.getRemainingCooldownSeconds(rateKey, 15_000L);
-            ctx.status(429).json(errorMap("Consecutive failure cooldown active. Wait " + remaining + " seconds before re-submitting."));
+            ctx.status(429).json(errorMap("Submission cooldown active. Wait " + remaining + " seconds before re-submitting."));
             return;
         }
 
-        // Sliding window rate limit: 10 submissions per minute
         if (!rateLimiter.allow(rateKey, 10, 60_000L)) {
-            ctx.status(429).json(errorMap("Too Many Requests: Submission rate limit exceeded. Max 10 submissions per minute."));
+            ctx.status(429).json(errorMap("Too Many Requests: max 10 submissions per minute."));
             return;
         }
 
@@ -617,6 +615,7 @@ public final class WebServer {
         String challengeId = body.getOrDefault("challengeId", "").trim();
         String payload = body.getOrDefault("payload", "").trim();
         String contestId = body.getOrDefault("contestId", "GLOBAL");
+        String language = body.getOrDefault("language", "").trim();
 
         if (challengeId.isBlank() || payload.isBlank()) {
             ctx.status(400).json(errorMap("challengeId and payload required"));
@@ -625,12 +624,9 @@ public final class WebServer {
 
         try {
             Challenge challenge = engine.getChallenge(challengeId);
-
-            String effectivePayload = payload;
-            if (challenge instanceof CPProblem && !payload.contains("/") && !payload.contains("\\")) {
-                Path tempDir = Files.createTempDirectory("cyber-algo-web-cp-");
-                Files.writeString(tempDir.resolve("output_1.txt"), payload);
-                effectivePayload = tempDir.toString();
+            if (challenge instanceof CPProblem && language.isBlank()) {
+                ctx.status(400).json(errorMap("language is required for CP submissions"));
+                return;
             }
 
             String subId = "SUB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -640,20 +636,21 @@ public final class WebServer {
                     user.getId(),
                     teamId,
                     challengeId,
-                    effectivePayload,
-                    engine.getWrongAttempts(teamId, challengeId),
-                    engine.getHintUsageCount(teamId, challengeId),
+                    payload,
+                    engine.getUserWrongAttempts(user.getId(), challengeId),
+                    engine.getUserHintUsageCount(user.getId(), challengeId),
                     Instant.now(),
-                    SubmissionResult.Status.INVALID,
+                    SubmissionResult.Status.PENDING,
                     0,
                     "",
                     Instant.now());
 
-            SubmissionResult result = engine.submit(submission);
+            SubmissionResult result = engine.submit(submission, language);
 
             if (result.getStatus() == SubmissionResult.Status.ACCEPTED) {
                 rateLimiter.resetFailures(rateKey);
-            } else if (result.getStatus() == SubmissionResult.Status.WRONG_ANSWER) {
+            } else if (result.getStatus() != SubmissionResult.Status.INVALID
+                    && result.getStatus() != SubmissionResult.Status.PENDING) {
                 rateLimiter.recordFailure(rateKey);
             }
 
@@ -662,12 +659,18 @@ public final class WebServer {
             response.put("status", result.getStatus().name());
             response.put("pointsAwarded", result.getPointsAwarded());
             response.put("message", result.getMessage());
-            response.put("teamScore", engine.getTeam(teamId).getTotalScore());
             response.put("personalScore", engine.getUser(user.getId()).getPersonalScore());
+            response.put("track", challenge.getType());
+
+            if (teamId != null && !teamId.isBlank()) {
+                response.put("teamScore", engine.getTeam(teamId).getTotalScore());
+            } else {
+                response.put("teamScore", null);
+            }
 
             if (challenge instanceof CTFChallenge ctf) {
                 response.put("hashVerified", result.getStatus() == SubmissionResult.Status.ACCEPTED);
-                response.put("hintDeduction", engine.getHintUsageCount(teamId, challengeId) * ctf.getHintCost());
+                response.put("hintDeduction", engine.getUserHintUsageCount(user.getId(), challengeId) * ctf.getHintCost());
             }
 
             ctx.json(response);
@@ -675,8 +678,6 @@ public final class WebServer {
             ctx.status(404).json(errorMap(ex.getMessage()));
         } catch (DuplicateSubmissionException | InvalidSubmissionException ex) {
             ctx.status(400).json(errorMap(ex.getMessage()));
-        } catch (IOException ex) {
-            ctx.status(500).json(errorMap("I/O error during evaluation: " + ex.getMessage()));
         }
     }
 
@@ -862,20 +863,44 @@ public final class WebServer {
             } else if ("CP".equalsIgnoreCase(type)) {
                 long timeLimitMs = Long.parseLong(body.getOrDefault("timeLimitMs", "1000"));
                 int memoryLimitMb = Integer.parseInt(body.getOrDefault("memoryLimitMb", "256"));
-                
+
                 String sampleIn = body.getOrDefault("sampleInput", "");
                 String sampleOut = body.getOrDefault("sampleOutput", "");
-                
-                java.nio.file.Path testcaseDir = java.nio.file.Path.of("contest_data", "testcases", id);
-                if (!sampleIn.isEmpty() || !sampleOut.isEmpty()) {
-                    try {
-                        java.nio.file.Files.createDirectories(testcaseDir);
-                        java.nio.file.Files.writeString(testcaseDir.resolve("input_1.txt"), sampleIn + "\n");
-                        java.nio.file.Files.writeString(testcaseDir.resolve("output_1.txt"), sampleOut + "\n");
-                    } catch (Exception e) {}
+                String hiddenTestsJson = body.getOrDefault("hiddenTests", "[]");
+
+                if (sampleIn.isBlank() && sampleOut.isBlank()) {
+                    throw new IllegalArgumentException("CP problem requires a public sample testcase");
                 }
-                
-                CPProblem cp = engine.addCpChallenge(id, title, basePoints, difficulty, timeLimitMs, memoryLimitMb, testcaseDir);
+
+                List<CPTestCase> testCases = new ArrayList<>();
+                testCases.add(CPTestCase.sample(sampleIn, sampleOut));
+
+                try {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> hidden = mapper.readValue(hiddenTestsJson, List.class);
+                    if (hidden.size() > 50) {
+                        throw new IllegalArgumentException("At most 50 hidden testcases are allowed");
+                    }
+                    for (Map<String, Object> item : hidden) {
+                        String input = Objects.toString(item.get("input"), "");
+                        String output = Objects.toString(item.get("output"), "");
+                        if (input.isBlank() && output.isBlank()) continue;
+                        testCases.add(CPTestCase.hidden(input, output));
+                    }
+                } catch (IllegalArgumentException ex) {
+                    throw ex;
+                } catch (Exception ex) {
+                    throw new IllegalArgumentException("hiddenTests must be a valid JSON array");
+                }
+
+                if (testCases.stream().noneMatch(CPTestCase::hidden)) {
+                    throw new IllegalArgumentException("CP problem requires at least one hidden testcase");
+                }
+
+                Path testcaseDir = Path.of("contest_data", "testcases", id);
+                CPProblem cp = engine.addCpChallenge(
+                        id, title, basePoints, difficulty,
+                        timeLimitMs, memoryLimitMb, testcaseDir, testCases);
                 cp.setDescription(description);
                 engine.getRepository().saveChallenge(cp);
                 created = cp;
@@ -1154,13 +1179,19 @@ public final class WebServer {
         } else if (c instanceof CPProblem cp) {
             map.put("timeLimitMs", cp.getTimeLimitMillis());
             map.put("memoryLimitMb", cp.getMemoryLimitMb());
-            map.put("testcaseDir", cp.getTestcaseDirectory().toString());
+            map.put("hiddenTestCount", cp.getHiddenTestCount());
+
+            List<Map<String, String>> samples = new ArrayList<>();
+            for (CPTestCase tc : cp.getPublicSampleCases()) {
+                samples.add(Map.of("input", tc.input(), "output", tc.expectedOutput()));
+            }
+            map.put("sampleCases", samples);
         }
 
-        if (teamId != null) {
-            map.put("solved", engine.isSolvedByTeam(teamId, c.getId()));
-        } else if (user != null) {
+        if (user != null) {
             map.put("solved", user.isSolved(c.getId()));
+        } else if (teamId != null) {
+            map.put("solved", engine.isSolvedByTeam(teamId, c.getId()));
         } else {
             map.put("solved", false);
         }
