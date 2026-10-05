@@ -1042,23 +1042,29 @@
             
             <!-- CP Specific -->
             <div id="cp-specific-fields" class="space-y-4 border-t border-ctf-border pt-4 hidden">
+              <div class="flex flex-wrap gap-2 text-xs">
+                <span class="px-2 py-1 rounded border border-sky-500/30 bg-sky-500/10 text-sky-300">CP Judge v2</span>
+                <span class="px-2 py-1 rounded border border-green-500/30 bg-green-500/10 text-green-300">Individual Practice</span>
+                <span class="px-2 py-1 rounded border border-white/10 text-ctf-muted">C++ · Java · Python</span>
+                <span class="px-2 py-1 rounded border border-white/10 text-ctf-muted">Hidden tests required</span>
+              </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="text-[11px] font-medium text-ctf-muted block mb-1">Time Limit (ms)</label>
-                  <input type="number" id="create-chal-time" value="2000" class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+                  <input type="number" id="create-chal-time" value="2000" min="50" max="30000" required class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono">
                 </div>
                 <div>
                   <label class="text-[11px] font-medium text-ctf-muted block mb-1">Memory Limit (MB)</label>
-                  <input type="number" id="create-chal-mem" value="256" class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono">
+                  <input type="number" id="create-chal-mem" value="256" min="16" max="2048" required class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono">
                 </div>
               </div>
               <div>
                 <label class="text-[11px] font-medium text-ctf-muted block mb-1">Sample Input (Testcase 1)</label>
-                <textarea id="create-chal-samplein" rows="2" class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
+                <textarea id="create-chal-samplein" rows="2" required class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
               </div>
               <div>
                 <label class="text-[11px] font-medium text-ctf-muted block mb-1">Sample Expected Output (Testcase 1)</label>
-                <textarea id="create-chal-sampleout" rows="2" class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
+                <textarea id="create-chal-sampleout" rows="2" required class="w-full bg-[#090303] border border-ctf-border rounded p-2 text-sm text-white font-mono"></textarea>
               </div>
 
               <div class="border-t border-ctf-border pt-4 space-y-3">
@@ -2148,7 +2154,10 @@
         tr.innerHTML = `
           <td class="p-2.5"><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${c.type === 'CTF' ? 'bg-ctf-blue/20 text-ctf-blue' : 'bg-ctf-yellow/20 text-ctf-yellow'}">${escapeHtml(c.type)}</span></td>
           <td class="p-2.5 font-bold text-white">${escapeHtml(c.id)}</td>
-          <td class="p-2.5 text-gray-300">${escapeHtml(c.title)}</td>
+          <td class="p-2.5 text-gray-300">
+            <div>${escapeHtml(c.title)}</div>
+            ${c.type === 'CP' ? `<div class="mt-1 text-[10px] text-sky-300/80 font-mono">${escapeHtml(c.timeLimitMs || 1000)} ms · ${escapeHtml(c.memoryLimitMb || 256)} MB · ${escapeHtml(c.hiddenTestCount || 0)} hidden</div>` : ''}
+          </td>
           <td class="p-2.5 text-center"><span class="px-1.5 py-0.2 rounded text-[10px] badge-${(c.category || 'misc').toLowerCase()}">${escapeHtml(c.category || 'CP')}</span></td>
           <td class="p-2.5 text-center font-bold text-ctf-blue">${escapeHtml(c.basePoints)}</td>
           <td class="p-2.5 text-center text-ctf-muted">${escapeHtml(c.solveCount || 0)}</td>
@@ -2193,7 +2202,7 @@
             <tr>
               <td class="p-2.5 text-ctf-muted">${new Date(s.timestamp).toLocaleTimeString()}</td>
               <td class="p-2.5 text-white">${escapeHtml(s.id)}</td>
-              <td class="p-2.5 text-ctf-purple">${escapeHtml(s.teamId)}</td>
+              <td class="p-2.5 text-ctf-purple">${s.teamId ? escapeHtml(s.teamId) : '<span class="text-green-400">Individual</span>'}</td>
               <td class="p-2.5 text-ctf-blue">${escapeHtml(s.challengeId)}</td>
               <td class="p-2.5"><span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${s.status === 'ACCEPTED' ? 'bg-ctf-green/20 text-ctf-green' : 'bg-ctf-red/20 text-ctf-red'}">${s.status}</span></td>
               <td class="p-2.5 font-bold">${escapeHtml(s.pointsAwarded || 0)}</td>
