@@ -91,6 +91,19 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>mongo-integration</id>
+            <activation><property><name>env.MONGODB_TEST_URI</name></property></activation>
+            <build><plugins><plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions>
+            </plugin></plugins></build>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>io.javalin</groupId>
@@ -131,6 +144,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.15.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

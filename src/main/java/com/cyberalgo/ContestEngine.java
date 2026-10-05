@@ -34,15 +34,21 @@ public final class ContestEngine {
     /** Auto-resync interval: keeps multi-instance deployments convergent. */
     private static final long SYNC_INTERVAL_MS = 5_000L;
     private volatile long lastSyncMillis = 0L;
+    private volatile boolean refreshRequired = true;
 
     public ContestEngine(MongoRepository repository) {
+        this(repository, new PistonJudgeEngine());
+    }
+
+    ContestEngine(MongoRepository repository, PistonJudgeEngine judge) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.leaderboard = new Leaderboard();
-        this.pistonJudge = new PistonJudgeEngine();
+        this.pistonJudge = judge;
     }
 
     /** Loads all persisted state from MongoDB into memory. */
     public synchronized void load() {
+        refreshRequired = true;
         challengesById.clear();
         usersById.clear();
         usersByUsername.clear();
@@ -56,7 +62,7 @@ public final class ContestEngine {
         userWrongAttempts.clear();
         userHintUsage.clear();
 
-        DatabaseSeeder.seedIfEmpty(repository);
+        repository.initialize();
 
         for (Challenge c : repository.getAllChallenges()) {
             challengesById.put(c.getId(), c);
@@ -110,6 +116,7 @@ public final class ContestEngine {
 
         refreshLeaderboard();
         lastSyncMillis = System.currentTimeMillis();
+        refreshRequired = false;
         System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
                 + usersById.size() + " users, " + teamsById.size() + " teams, " + submissions.size() + " submissions.");
     }
@@ -126,8 +133,12 @@ public final class ContestEngine {
         }
     }
 
-    public boolean isDatabaseReady() {
-        return repository.isDatabaseReady();
+    public synchronized boolean isDatabaseReady() {
+        if (!repository.isDatabaseReady()) return false;
+        if (refreshRequired) {
+            try { load(); } catch (DatabaseUnavailableException ignored) { return false; }
+        }
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -154,9 +165,9 @@ public final class ContestEngine {
         String passHash = User.hashPassword(password);
         User user = new User(userId, username.trim(), email, passHash, User.Role.PLAYER, null);
 
+        repository.saveUser(user);
         usersById.put(user.getId(), user);
         usersByUsername.put(normUsername, user);
-        repository.saveUser(user);
         return user;
     }
 
@@ -168,9 +179,9 @@ public final class ContestEngine {
         String passHash = User.hashPassword(password);
         User user = new User(id, username, null, passHash, role, teamId);
 
+        repository.saveUser(user);
         usersById.put(user.getId(), user);
         usersByUsername.put(normUsername, user);
-        repository.saveUser(user);
         return user;
     }
 
@@ -289,8 +300,8 @@ public final class ContestEngine {
 
     public synchronized void addChallenge(Challenge challenge) {
         Objects.requireNonNull(challenge, "challenge must not be null");
-        challengesById.put(challenge.getId(), challenge);
         repository.saveChallenge(challenge);
+        challengesById.put(challenge.getId(), challenge);
     }
 
     public synchronized CTFChallenge addCtfChallenge(
@@ -369,9 +380,9 @@ public final class ContestEngine {
     }
 
     public synchronized void removeChallenge(String challengeId) {
-        Challenge c = challengesById.remove(challengeId);
-        if (c == null) throw new ChallengeNotFoundException(challengeId);
+        Challenge c = getChallenge(challengeId);
         repository.deleteChallenge(challengeId);
+        challengesById.remove(challengeId);
 
         // Clean attachment file from disk if present
         if (c instanceof CTFChallenge ctf && ctf.hasAttachment()) {
@@ -396,8 +407,13 @@ public final class ContestEngine {
         } else {
             throw new IllegalArgumentException("Unsupported challenge type: " + existing.getClass().getName());
         }
-        challengesById.put(challengeId, updated);
+        updated.setDescription(existing.getDescription());
+        updated.setSolveCount(existing.getSolveCount());
+        updated.setDecayLimit(existing.getDecayLimit());
+        updated.setMinimumPoints(existing.getMinimumPoints());
+        updated.setFirstBlood(existing.getFirstBloodTeamId(), existing.getFirstBloodUserId());
         repository.saveChallenge(updated);
+        challengesById.put(challengeId, updated);
     }
 
     public Challenge getChallenge(String challengeId) {
@@ -449,60 +465,20 @@ public final class ContestEngine {
             } catch (InvalidSubmissionException ex) {
                 SubmissionResult errResult = new SubmissionResult(SubmissionResult.Status.INVALID, 0, ex.getMessage());
                 submission.applyResult(errResult);
-                submissions.add(submission);
                 repository.saveSubmission(submission);
+                submissions.add(submission);
                 return errResult;
             }
         }
 
         if (status == SubmissionResult.Status.ACCEPTED) {
-            String firstBloodOwner = team != null ? team.getId() : "USER:" + user.getId();
-            if (!challenge.hasFirstBlood()) {
-                challenge.setFirstBlood(firstBloodOwner, user.getId());
+            String acceptedMessage = outcomeMessage;
+            try {
+                return repository.atomic(() -> persistAccepted(submission, acceptedMessage));
+            } catch (RuntimeException failure) {
+                refreshRequired = true;
+                throw failure;
             }
-            boolean isFirstBlood = user.getId().equals(challenge.getFirstBloodUserId());
-
-            challenge.incrementSolveCount();
-
-            int wrongCount = getUserWrongAttempts(user.getId(), challenge.getId());
-            int hintsCount = getUserHintUsageCount(user.getId(), challenge.getId());
-            int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
-
-            int firstBloodBonus = 0;
-            if (isFirstBlood) {
-                firstBloodBonus = Math.max(1, pointsAwarded / 10);
-                pointsAwarded += firstBloodBonus;
-            }
-
-            String fbTag = isFirstBlood ? " FIRST BLOOD (+" + firstBloodBonus + " bonus)" : "";
-            Instant solveTime = submission.getTimestamp();
-
-            // Personal profile always receives the solve/points.
-            boolean isCpTrack = challenge instanceof CPProblem;
-            String cat = isCpTrack ? "CP" : ((CTFChallenge) challenge).getCategoryName();
-            user.recordSolve(challenge.getId(), cat, pointsAwarded, isCpTrack ? "CP" : "CTF");
-            repository.saveUser(user);
-
-            // A team receives points for a challenge only once, while every member can
-            // still solve it individually for practice/profile tracking.
-            if (team != null && !isSolvedByTeam(team.getId(), challenge.getId())) {
-                team.applyScore(pointsAwarded, solveTime);
-                teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
-                repository.saveTeam(team);
-            }
-
-            repository.saveChallenge(challenge);
-
-            SubmissionResult acceptResult = new SubmissionResult(
-                    SubmissionResult.Status.ACCEPTED,
-                    pointsAwarded,
-                    outcomeMessage + fbTag);
-            submission.applyResult(acceptResult);
-            submissions.add(submission);
-            repository.saveSubmission(submission);
-
-            refreshLeaderboard();
-            return acceptResult;
         }
 
         if (status != SubmissionResult.Status.INVALID && status != SubmissionResult.Status.PENDING) {
@@ -516,9 +492,64 @@ public final class ContestEngine {
 
         SubmissionResult failResult = new SubmissionResult(status, 0, outcomeMessage);
         submission.applyResult(failResult);
-        submissions.add(submission);
         repository.saveSubmission(submission);
+        submissions.add(submission);
         return failResult;
+    }
+
+    private SubmissionResult persistAccepted(Submission submission, String outcomeMessage) {
+        load();
+        Challenge challenge = getChallenge(submission.getChallengeId());
+        User user = getUser(submission.getUserId());
+        Team team = submission.getTeamId().isBlank() ? null : getTeam(submission.getTeamId());
+        if (user.isSolved(challenge.getId())) throw new DuplicateSubmissionException("Challenge already solved by user");
+        String firstBloodOwner = team != null ? team.getId() : "USER:" + user.getId();
+        if (!challenge.hasFirstBlood()) {
+            challenge.setFirstBlood(firstBloodOwner, user.getId());
+        }
+        boolean isFirstBlood = user.getId().equals(challenge.getFirstBloodUserId());
+
+        challenge.incrementSolveCount();
+
+        int wrongCount = getUserWrongAttempts(user.getId(), challenge.getId());
+        int hintsCount = getUserHintUsageCount(user.getId(), challenge.getId());
+        int pointsAwarded = challenge.calculateScore(wrongCount, hintsCount, 0L);
+
+        int firstBloodBonus = 0;
+        if (isFirstBlood) {
+            firstBloodBonus = Math.max(1, pointsAwarded / 10);
+            pointsAwarded += firstBloodBonus;
+        }
+
+        String fbTag = isFirstBlood ? " FIRST BLOOD (+" + firstBloodBonus + " bonus)" : "";
+        Instant solveTime = submission.getTimestamp();
+
+        // Personal profile always receives the solve/points.
+        boolean isCpTrack = challenge instanceof CPProblem;
+        String cat = isCpTrack ? "CP" : ((CTFChallenge) challenge).getCategoryName();
+        user.recordSolve(challenge.getId(), cat, pointsAwarded, isCpTrack ? "CP" : "CTF");
+        repository.saveUser(user);
+
+        // A team receives points for a challenge only once, while every member can
+        // still solve it individually for practice/profile tracking.
+        if (team != null && !isSolvedByTeam(team.getId(), challenge.getId())) {
+            team.applyScore(pointsAwarded, solveTime);
+            teamSolvedChallenges.computeIfAbsent(team.getId(), k -> ConcurrentHashMap.newKeySet()).add(challenge.getId());
+            repository.saveTeam(team);
+        }
+
+        repository.saveChallenge(challenge);
+
+        SubmissionResult acceptResult = new SubmissionResult(
+                SubmissionResult.Status.ACCEPTED,
+                pointsAwarded,
+                outcomeMessage + fbTag);
+        submission.applyResult(acceptResult);
+        repository.saveSubmission(submission);
+        submissions.add(submission);
+
+        refreshLeaderboard();
+        return acceptResult;
     }
 
     public synchronized String requestHint(String teamId, String challengeId) {

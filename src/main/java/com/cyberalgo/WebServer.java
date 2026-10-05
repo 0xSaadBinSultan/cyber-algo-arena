@@ -18,7 +18,7 @@ import java.util.*;
  * Hardened REST Web layer for Cyber-Algo Arena.
  * Enforces rate limiting, path traversal guards, security response headers, and session controls.
  */
-public final class WebServer {
+public final class WebServer implements AutoCloseable {
 
     private final ContestEngine engine;
     private final Javalin app;
@@ -57,11 +57,11 @@ public final class WebServer {
         registerSecurityMiddleware();
         registerRoutes();
         app.start(effectivePort);
-        System.out.println("[WebServer] Running on http://localhost:" + effectivePort);
+        System.out.println("[WebServer] Listening on port " + app.port());
     }
 
     public static int resolvePort(int defaultPort) {
-        if (defaultPort > 0) {
+        if (defaultPort >= 0) {
             return defaultPort;
         }
         String envPort = System.getenv("PORT");
@@ -73,7 +73,20 @@ public final class WebServer {
         return 8080;
     }
 
+    public int port() { return app.port(); }
+
+    @Override
+    public void close() { app.stop(); }
+
     private void registerSecurityMiddleware() {
+        app.exception(DatabaseUnavailableException.class, (ex, ctx) ->
+                ctx.status(503).json(errorMap("Persistent database unavailable. Please retry later.")));
+        app.before("/api/*", ctx -> {
+            if (!ctx.path().equals("/api/ping") && !ctx.path().startsWith("/api/health")
+                    && !engine.isDatabaseReady()) {
+                throw new DatabaseUnavailableException();
+            }
+        });
         app.before(ctx -> {
             ctx.header("X-Content-Type-Options", "nosniff");
             ctx.header("X-Frame-Options", "DENY");
@@ -121,9 +134,9 @@ public final class WebServer {
         app.get("/api/health", ctx -> {
             boolean databaseReady = engine.isDatabaseReady();
             ctx.status(200).json(Map.of(
-                    "status", "UP",
+                    "status", databaseReady ? "UP" : "DEGRADED",
                     "engine", "Cyber-Algo Arena",
-                    "database", databaseReady ? "UP" : "DEGRADED",
+                    "database", databaseReady ? "UP" : "DOWN",
                     "timestamp", System.currentTimeMillis()
             ));
         });
@@ -518,7 +531,6 @@ public final class WebServer {
             } else if (c instanceof CPProblem cp) {
                 map.put("timeLimitMs", cp.getTimeLimitMillis());
                 map.put("memoryLimitMb", cp.getMemoryLimitMb());
-                map.put("testcaseDir", cp.getTestcaseDirectory().toString());
             }
 
             if (teamId != null) {

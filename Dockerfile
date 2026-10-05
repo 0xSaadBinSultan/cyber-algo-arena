@@ -8,7 +8,7 @@ RUN mvn dependency:go-offline -B
 
 # Copy source and build
 COPY src/ src/
-RUN mvn package -B -DskipTests
+RUN mvn --batch-mode --no-transfer-progress clean verify
 
 # ── Stage 2: Runtime ──
 FROM eclipse-temurin:21-jre-alpine
@@ -22,6 +22,7 @@ COPY public/ public/
 COPY views/ views/
 COPY contest_data/ contest_data/
 
+ENV APP_ENV=production
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "app.jar", "--web"]

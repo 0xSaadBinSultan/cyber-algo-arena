@@ -177,3 +177,82 @@ cyber-algo-arena/
 ```
 
 Temporary root-level patch scripts from earlier development are no longer part of the active tree. Their history remains available through Git.
+
+## Production MongoDB deployment
+
+`MONGODB_URI` is authoritative. When set, no other URI, localhost endpoint, Docker
+hostname, or memory store is tried. URI aliases are intentionally unsupported.
+`MONGODB_DATABASE_NAME` selects the database and defaults to `cyber_algo_arena`
+only when absent; a configured empty value is rejected.
+
+Set `APP_ENV=production` in cloud deployments. Render is also detected automatically.
+Production requires a reachable MongoDB replica set (for example MongoDB Atlas)
+or sharded cluster, with permission to read/write the selected database and manage
+its indexes. This allows Accepted submissions and their profile/team/challenge
+scores to commit together in a transaction. A standalone MongoDB server is
+supported for local development only. Production rejects loopback addresses and
+missing connection configuration. Configure network access and TLS through your
+MongoDB provider and store credentials only in Render's secret environment settings.
+
+The client uses a 2-second server-selection/connect timeout, a 3-second socket
+read timeout, and a 5-second overall operation timeout. Driver retries are disabled;
+transaction conflicts receive at most three attempts. Failed operations return a
+sanitized error, never a success backed only by memory. Mongo driver diagnostics
+are disabled because they can include connection settings. Application logs emit
+`Connected to persistent MongoDB` only after ping and index initialization succeed.
+
+Persistence mapping:
+
+| Collection | Persisted data |
+|---|---|
+| `users` | Accounts, profiles, team membership, per-track/category scores and solved IDs |
+| `teams` | Membership, password hashes and team scores |
+| `challenges` | CP/CTF definitions, weekly problems, samples, hidden tests and solve statistics |
+| `submissions` | All verdicts, unique submission IDs and awarded points |
+| `contests` | Contest settings, registration and scoreboard freeze state |
+| `contest_participations` | Unique contest/user participation records |
+
+Legacy CP testcase files are migrated into challenge documents on initialization.
+Public APIs include samples only. Hidden judge stdout/stderr and compiler diagnostics
+are never returned to clients. Hidden tests are passed only to your authorized
+Piston judge; configure `PISTON_URL` accordingly. Mongo URI and credential values
+are removed from outbound Gemini prompt text as an additional safeguard.
+
+Submission indexes enforce unique submission IDs, not unique user/problem or
+team/problem attempts. Old unique solve indexes are removed by key definition.
+Accepted solves are checked in application logic inside a transaction; WA, TLE,
+MLE, RE and CE remain retryable. Readiness is 503 during database outages, while
+liveness stays 200. Initialization retries when a health/request check reaches
+MongoDB again; the application does not accept operations against an empty memory
+store during an outage.
+
+`render.yaml` defines the Docker service and `/api/health/ready` health check. For an
+existing manually created Render service, set that health-check path in its settings;
+adding a Blueprint file alone does not change an existing service. Set `MONGODB_URI`
+securely before deploying. The Docker image runs `mvn clean verify` during its build.
+The Compose configuration explicitly selects development mode and keeps database
+storage in a named volume.
+
+After configuring the real environment, run the operational persistence check:
+
+```bash
+java -jar target/cyber-algo-arena-1.0.0.jar --verify-persistence
+```
+
+It requires `MONGODB_URI` in the environment, pings MongoDB, creates a uniquely named
+temporary CP record, reads it, closes and recreates the client/repository, verifies
+its hidden tests, and deletes the record in a `finally` block. If connectivity fails
+during cleanup, it reports cleanup failure; inspect only records whose IDs start
+with `persistence-check-` before retrying. No URI or credentials are printed.
+
+Run all unit tests with `mvn clean verify` (or `./mvnw clean verify`). To include real
+MongoDB integration tests, set `MONGODB_TEST_URI` securely to a **test replica set**
+and run the same command. Those tests use randomly named `arena_it_*` databases
+and delete them afterward; they never select the application database. CI starts
+an isolated replica set and runs this profile automatically. Coverage includes
+restart persistence, HTTP health transitions, admin-created weekly tests, retry
+verdicts, legacy index migration, hidden diagnostic suppression, transaction
+rollback, and competing Accepted submissions across application instances.
+
+Do not run `--demo` against application data: the legacy demo resets its dedicated
+test database and refuses production mode or a conflicting database environment.
