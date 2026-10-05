@@ -1,6 +1,6 @@
 # Cyber-Algo Arena
 
-Cyber-Algo Arena is a Java 21 web platform that combines Capture The Flag (CTF) challenges and Competitive Programming (CP) problems in one competition system. It includes authentication, teams, contests, scoring, profiles, an admin portal, MongoDB persistence, cloud code execution through Piston, and live contest feeds.
+Cyber-Algo Arena is a Java 21 club-practice platform that combines Capture The Flag (CTF) challenges and Competitive Programming (CP) problems under one member profile. It includes authentication, teams, contests, scoring, profiles, an admin portal, MongoDB persistence, cloud code execution through Piston, and live contest feeds.
 
 ## Architecture
 
@@ -125,6 +125,23 @@ Administrative routes require an authenticated user with the `ADMIN` role.
 - Mongo-aware readiness checks
 - Local secret files excluded from version control
 
+## Club practice model
+
+The platform is designed for a university or community club that publishes new CP and CTF practice problems each week.
+
+- Members use one account/profile for both tracks.
+- Personal totals, CP score/solves, CTF score/solves, categories, and solved-problem history are tracked together.
+- Team membership is optional for practice. Team scoreboards remain available for group competitions.
+- Administrators publish CP/CTF problems from `/admin`.
+- CP problems require at least one public sample and one hidden testcase.
+- Hidden CP testcase inputs/outputs are persisted server-side and are never included in public challenge responses.
+
+## CP judge
+
+CP source submissions support C++, Java, and Python. The Piston-compatible judge enforces configured wall/CPU time and memory limits and returns distinct verdicts for Accepted, Wrong Answer, Time Limit Exceeded, Memory Limit Exceeded, Runtime Error, and Compilation Error.
+
+For a real public deployment, configure `PISTON_URL` to an authorized or self-hosted Piston-compatible execution service. Do not rely on an unauthenticated public endpoint.
+
 ## Gemini AI Tutor
 
 The challenge modal includes a server-side Gemini tutor with progressive Hint 1/2/3 and Explain modes. The browser never receives the Gemini API key, CTF flag hashes, or hidden testcase data. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the server.
@@ -134,10 +151,12 @@ The challenge modal includes a server-side Gemini tutor with progressive Hint 1/
 | Variable | Purpose | Default |
 |---|---|---|
 | `PORT` | HTTP port | `8080` |
-| `MONGODB_URI` | MongoDB connection URI | local discovery fallback |\n| `MONGO_URI`, `MONGO_URL`, `MONGODB_URL` | Accepted MongoDB URI aliases | optional |
+| `MONGODB_URI` | MongoDB connection URI | local discovery fallback |
+| `MONGO_URI`, `MONGO_URL`, `MONGODB_URL` | Accepted MongoDB URI aliases | optional |
 | `MONGODB_DATABASE_NAME` | MongoDB database name | `cyber_algo_arena` |
 | `ARENA_ADMIN_USERNAME` | Bootstrap admin username | `admin` |
 | `ARENA_ADMIN_PASSWORD` | Bootstrap admin password | none |
+| `PISTON_URL` | Authorized/self-hosted Piston-compatible judge base URL | public fallback (not recommended for production) |
 
 ## Repository layout
 
