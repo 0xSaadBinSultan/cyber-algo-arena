@@ -1396,9 +1396,13 @@
                 <div class="text-sm font-bold text-white flex items-center gap-2">
                   <i class="fa-solid fa-code text-sky-400"></i> Competitive Programming Workspace
                 </div>
-                <div class="text-xs text-ctf-muted mt-1">Write source code, submit once, and the judge runs public + hidden tests server-side.</div>
+                <div class="text-xs text-ctf-muted mt-1">Write source code and run it against public + hidden tests. Team membership is not required.</div>
               </div>
-              <div class="flex items-center gap-2 text-xs font-mono text-ctf-muted">
+              <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-ctf-muted">
+                <span class="px-2 py-1 border border-green-500/25 bg-green-500/10 text-green-300 rounded">
+                  <i class="fa-solid fa-user mr-1"></i>Individual Practice
+                </span>
+                <span class="px-2 py-1 border border-white/10 rounded">Team Optional</span>
                 <span id="mod-cp-hidden-count" class="px-2 py-1 border border-white/10 rounded">0 hidden tests</span>
               </div>
             </div>
@@ -2889,7 +2893,7 @@ if __name__ == "__main__":
         $('#team-hub-score-badge').classList.add('hidden');
         $('#team-roster-box').classList.add('hidden');
         $('#team-hub-content').innerHTML = `
-          <p>You are currently operating as an unaffiliated player. Create or join a team to unlock collaborative scoreboard participation.</p>
+          <p>You are currently an unaffiliated player. You can solve both CP and CTF challenges individually and build your personal profile. Create or join a team only if you want collaborative/team leaderboard participation.</p>
         `;
         return;
       }
