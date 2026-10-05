@@ -41,8 +41,9 @@ public final class MongoManager implements AutoCloseable {
         boolean isConnected = false;
         String establishedUri = null;
 
-        // Try connecting across candidates with retry loops for container boot synchronization
-        int maxRetries = 8;
+        // Keep startup bounded. Explicit remote configuration gets a few retries;
+        // local discovery gets only a short window so cloud cold starts are not delayed.
+        int maxRetries = candidateUris.size() == 1 ? 3 : 2;
         for (int attempt = 1; attempt <= maxRetries && !isConnected; attempt++) {
             for (String candidate : candidateUris) {
                 try {
@@ -95,32 +96,31 @@ public final class MongoManager implements AutoCloseable {
     }
 
     private static List<String> buildCandidateUris(String explicitUri) {
-        List<String> list = new ArrayList<>();
-        if (explicitUri != null && !explicitUri.isBlank()) {
-            list.add(explicitUri.trim());
-        }
+        List<String> configured = new ArrayList<>();
         String[] envNames = {"MONGODB_URI", "MONGO_URI", "MONGO_URL", "MONGODB_URL"};
         for (String envName : envNames) {
-            String envUri = System.getenv(envName);
-            if (envUri != null && !envUri.isBlank() && !list.contains(envUri.trim())) {
-                list.add(envUri.trim());
+            String value = System.getenv(envName);
+            if (value != null && !value.isBlank() && !configured.contains(value.trim())) {
+                configured.add(value.trim());
             }
         }
 
-        String[] defaults = {
-                "mongodb://mongodb:27017",
-                "mongodb://arena-mongodb:27017",
-                "mongodb://localhost:27017",
-                "mongodb://127.0.0.1:27017",
-                "mongodb://172.17.0.1:27017",
-                "mongodb://host.docker.internal:27017"
-        };
-        for (String d : defaults) {
-            if (!list.contains(d)) {
-                list.add(d);
-            }
+        // In cloud hosting, an environment variable is authoritative. Never waste
+        // startup time probing Docker/localhost endpoints after it fails.
+        if (!configured.isEmpty()) {
+            return configured;
         }
-        return list;
+
+        if (explicitUri != null && !explicitUri.isBlank()
+                && !DEFAULT_URI.equals(explicitUri.trim())) {
+            return List.of(explicitUri.trim());
+        }
+
+        // Local/container development discovery only.
+        List<String> local = new ArrayList<>();
+        local.add(DEFAULT_URI);
+        local.add("mongodb://mongodb:27017");
+        return local;
     }
 
     private void initIndexes() {
@@ -139,11 +139,19 @@ public final class MongoManager implements AutoCloseable {
                     Indexes.compoundIndex(Indexes.ascending("contestId"), Indexes.ascending("userId")),
                     new IndexOptions().unique(true));
 
+            try {
+                getSubmissionsCollection().dropIndex("contestId_1_challengeId_1_teamId_1");
+            } catch (Exception ignored) {
+                // Index did not exist or was already migrated.
+            }
+            getSubmissionsCollection().createIndex(
+                    Indexes.ascending("id"), new IndexOptions().unique(true));
             getSubmissionsCollection().createIndex(
                     Indexes.compoundIndex(
                             Indexes.ascending("contestId"),
                             Indexes.ascending("challengeId"),
-                            Indexes.ascending("teamId")));
+                            Indexes.ascending("userId")));
+            getSubmissionsCollection().createIndex(Indexes.ascending("teamId"));
         } catch (Exception ex) {
             System.err.println("[MongoManager] Index initialization warning: " + ex.getMessage());
         }

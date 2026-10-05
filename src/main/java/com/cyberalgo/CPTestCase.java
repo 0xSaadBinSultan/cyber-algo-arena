@@ -6,7 +6,7 @@ package com.cyberalgo;
  */
 public record CPTestCase(String input, String expectedOutput, boolean hidden) {
 
-    private static final int MAX_TEXT_LENGTH = 500_000;
+    private static final int MAX_TEXT_LENGTH = 64_000;
 
     public CPTestCase {
         input = input == null ? "" : input;

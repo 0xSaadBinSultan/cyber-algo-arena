@@ -624,6 +624,14 @@ public final class WebServer {
 
         try {
             Challenge challenge = engine.getChallenge(challengeId);
+            if (challenge instanceof CPProblem && payload.length() > 100_000) {
+                ctx.status(413).json(errorMap("CP source code exceeds the 100 KB submission limit"));
+                return;
+            }
+            if (challenge instanceof CTFChallenge && payload.length() > 4096) {
+                ctx.status(413).json(errorMap("CTF submission payload is too large"));
+                return;
+            }
             if (challenge instanceof CPProblem && language.isBlank()) {
                 ctx.status(400).json(errorMap("language is required for CP submissions"));
                 return;
@@ -878,13 +886,18 @@ public final class WebServer {
                 try {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> hidden = mapper.readValue(hiddenTestsJson, List.class);
-                    if (hidden.size() > 50) {
-                        throw new IllegalArgumentException("At most 50 hidden testcases are allowed");
+                    if (hidden.size() > 30) {
+                        throw new IllegalArgumentException("At most 30 hidden testcases are allowed");
                     }
+                    int totalHiddenChars = 0;
                     for (Map<String, Object> item : hidden) {
                         String input = Objects.toString(item.get("input"), "");
                         String output = Objects.toString(item.get("output"), "");
                         if (input.isBlank() && output.isBlank()) continue;
+                        totalHiddenChars += input.length() + output.length();
+                        if (totalHiddenChars > 2_000_000) {
+                            throw new IllegalArgumentException("Hidden testcase payload is too large");
+                        }
                         testCases.add(CPTestCase.hidden(input, output));
                     }
                 } catch (IllegalArgumentException ex) {
