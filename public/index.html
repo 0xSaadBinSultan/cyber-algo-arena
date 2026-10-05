@@ -704,6 +704,39 @@
         align-items: start;
       }
     }
+
+    /* Readability pass: visibly larger typography without changing layout */
+    body { font-size: 16px; line-height: 1.55; }
+    .command-sidebar .nav-tab,
+    .command-sidebar .command-side-action { font-size: 14px !important; }
+    .command-search input { font-size: 15px; }
+    .command-table { font-size: 14px; }
+    .command-table thead { font-size: 12px; }
+    .command-table th,
+    .command-table td { padding: 14px 15px; }
+    .command-status-item { font-size: 13px; }
+    .command-ai-input { font-size: 14px; line-height: 1.5; }
+    .command-ai-chip { font-size: 12px; }
+    .command-btn-primary,
+    .command-btn-ghost { font-size: 13px; }
+    .command-eyebrow { font-size: 12px; }
+    .cf-code-editor { font-size: 15px; line-height: 1.7; }
+    .cf-sample-label { font-size: 12px; }
+    .cf-sample-pre { font-size: 14px; }
+    .cf-verdict { font-size: 13px; }
+    [class~="text-[8px]"] { font-size: 12px !important; }
+    [class~="text-[9px]"] { font-size: 12.5px !important; }
+    [class~="text-[10px]"] { font-size: 13px !important; }
+    [class~="text-[11px]"] { font-size: 14px !important; }
+    [class~="text-xs"] { font-size: 13.5px !important; line-height: 1.45 !important; }
+    [class~="text-sm"] { font-size: 15px !important; line-height: 1.5 !important; }
+
+    @media (max-width: 640px) {
+      body { font-size: 15px; }
+      .command-table { font-size: 13px; }
+      [class~="text-xs"] { font-size: 13px !important; }
+      [class~="text-sm"] { font-size: 14px !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">

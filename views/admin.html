@@ -135,6 +135,24 @@
     label { font-size: 13px !important; }
     input, textarea, select, button { font-size: 14px; }
     .hidden-test-row { border:1px solid rgba(255,77,77,.20); border-radius:8px; padding:12px; background:rgba(0,0,0,.20); }
+
+    /* Readability pass: larger admin typography, same layout */
+    body { font-size: 16px; line-height: 1.55; }
+    label { font-size: 14px !important; }
+    input, textarea, select, button { font-size: 15px; }
+    table { font-size: 13.5px; }
+    [class~="text-[8px]"] { font-size: 12px !important; }
+    [class~="text-[9px]"] { font-size: 12.5px !important; }
+    [class~="text-[10px]"] { font-size: 13px !important; }
+    [class~="text-[11px]"] { font-size: 14px !important; }
+    [class~="text-xs"] { font-size: 13.5px !important; line-height: 1.45 !important; }
+    [class~="text-sm"] { font-size: 15px !important; line-height: 1.5 !important; }
+    .font-mono { line-height: 1.5; }
+
+    @media (max-width: 640px) {
+      body { font-size: 15px; }
+      input, textarea, select, button { font-size: 14px; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-ctf-blue/30 selection:text-white">
