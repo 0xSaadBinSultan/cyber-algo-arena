@@ -235,6 +235,15 @@ function renderCp(cps) {
         "Try another filter, or choose an Arena problem.",
       );
 }
+const categoryColor = (cat) =>
+  ({
+    CRYPTO: "#c084fc",
+    FORENSICS: "var(--orange)",
+    REVERSE_ENGINEERING: "#4ade80",
+    WEB: "var(--teal)",
+    PWN: "var(--red)",
+  }[cat] || "var(--teal)");
+
 function ctfPage() {
   const labs = problems.filter(
     (p) =>
@@ -254,7 +263,7 @@ function ctfPage() {
       .filter((p) => category === "ALL" || p.category === category)
       .map(
         (p) =>
-          `<article class="lab-card"><div class="lab-meta"><span class="track-icon ctf">${icon("flag")}</span>${tag(p.solved ? "Solved ✓" : p.difficulty.toLowerCase(), p.solved ? "" : "gray")}</div><span class="eyebrow" style="color:var(--teal);margin-bottom:10px">${esc(p.category.replaceAll("_", " "))}</span><h3>${esc(p.title)}</h3><p>${esc({ CRYPTO: "An encoded note landed in the club chat. Can you read it?", FORENSICS: "A late-night request left a trail. Take a closer look.", REVERSE_ENGINEERING: "The checker knows the answer. Work backwards." }[p.category] || "Inspect the evidence, connect the clues, and recover the flag.")}</p><div class="lab-bottom"><span>${p.currentPoints || p.basePoints} <span class="muted">pts</span> <span class="muted small">· ${p.solveCount || 0} solves</span></span><button class="button subtle" data-open="${esc(p.id)}">Open lab ↗</button></div></article>`,
+          `<article class="lab-card"><div class="lab-meta"><span class="track-icon ctf">${icon("flag")}</span><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${p.firstBloodUserId ? '<span class="tag blood">🩸 First blood</span>' : ""}${tag(p.solved ? "Solved ✓" : p.difficulty.toLowerCase(), p.solved ? "green" : "gray")}</div></div><span class="eyebrow" style="color:${categoryColor(p.category)};margin-bottom:10px">${esc(p.category.replaceAll("_", " "))}</span><h3>${esc(p.title)}</h3><p>${esc({ CRYPTO: "An encoded note landed in the club chat. Can you read it?", FORENSICS: "A late-night request left a trail. Take a closer look.", REVERSE_ENGINEERING: "The checker knows the answer. Work backwards.", WEB: "An intercepted HTTP session header contains secrets. Inspect the cookie." }[p.category] || "Inspect the evidence, connect the clues, and recover the flag.")}</p><div class="lab-bottom"><span>${p.currentPoints || p.basePoints} <span class="muted">pts</span> <span class="muted small">· ${p.solveCount || 0} solves</span></span><button class="button subtle" data-open="${esc(p.id)}">Open lab ↗</button></div></article>`,
       )
       .join(
         "",
@@ -610,19 +619,132 @@ async function openProblem(id) {
     $("#problem-track").textContent =
       (activeContest ? activeContest.title + " / " : "PRACTICE / ") +
       (p.type === "CP" ? "COMPETITIVE PROGRAMMING" : "CAPTURE THE FLAG");
-    const info = `<h2 id="problem-title">${esc(p.title)}</h2><div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:25px">${tag(p.difficulty.toLowerCase())}${tag(p.basePoints + " points", "gray")}${p.type === "CP" ? tag(p.timeLimitMs / 1000 + "s · " + p.memoryLimitMb + " MB", "gray") : tag(p.category.replaceAll("_", " "), "teal")}</div>`;
+    const catClass = p.category === "CRYPTO" ? "purple" : p.category === "REVERSE_ENGINEERING" ? "green" : p.category === "WEB" ? "teal" : p.category === "FORENSICS" ? "orange" : "gray";
+    const info = `<h2 id="problem-title">${esc(p.title)}</h2><div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:25px">${tag(p.difficulty.toLowerCase())}${tag(p.basePoints + " points", "gray")}${p.type === "CP" ? tag(p.timeLimitMs / 1000 + "s · " + p.memoryLimitMb + " MB", "gray") : tag(p.category.replaceAll("_", " "), catClass)}</div>`;
     const samples = (p.sampleCases || [])
       .map(
         (s, i) =>
-          `<h3 class="subheading">Sample ${i + 1}</h3><span class="sample-label">Input</span><pre>${esc(s.input)}</pre><span class="sample-label">Expected output</span><pre>${esc(s.output)}</pre>`,
+          `<div class="sample-box">
+             <div class="sample-header">
+               <span class="subheading" style="margin:0;font-size:13px">Sample ${i + 1}</span>
+             </div>
+             <div class="sample-io">
+               <div class="sample-block">
+                 <div class="sample-label-row">
+                   <span class="sample-label">Input</span>
+                   <button type="button" class="copy-btn" data-copy="${esc(s.input)}">Copy</button>
+                 </div>
+                 <pre>${esc(s.input)}</pre>
+               </div>
+               <div class="sample-block">
+                 <div class="sample-label-row">
+                   <span class="sample-label">Expected Output</span>
+                   <button type="button" class="copy-btn" data-copy="${esc(s.output)}">Copy</button>
+                 </div>
+                 <pre>${esc(s.output)}</pre>
+               </div>
+             </div>
+           </div>`,
       )
       .join("");
+    const aiTutorWidget = `
+      <div class="ai-tutor-box">
+        <div class="ai-tutor-head">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ai-sparkle">✦</span>
+            <strong>Gemini AI Tutor</strong>
+            <span class="tag gray small">Sanitized guidance · No spoilers</span>
+          </div>
+          <button type="button" class="button subtle small" id="ai-toggle-btn">Ask Tutor ▾</button>
+        </div>
+        <div id="ai-drawer" class="ai-drawer" hidden>
+          <p class="muted small" style="margin:0 0 10px">Need a nudge? The AI Tutor guides your thinking without revealing the flag or hidden tests.</p>
+          <div class="ai-action-buttons">
+            <button type="button" class="button subtle small" data-ai="HINT" data-level="1">💡 Concept Nudge (L1)</button>
+            <button type="button" class="button subtle small" data-ai="HINT" data-level="2">🔍 Algorithm Strategy (L2)</button>
+            <button type="button" class="button subtle small" data-ai="EXPLAIN">📖 Explain Problem</button>
+            ${p.type === "CP" ? '<button type="button" class="button subtle small" data-ai="DEBUG">🐛 Debug Advice</button>' : ""}
+          </div>
+          <div id="ai-feedback" class="ai-feedback" hidden>
+            <div id="ai-feedback-text" class="ai-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    `;
     $("#problem-body").innerHTML =
       info +
       (p.type === "CP"
-        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button class="button subtle" id="run-samples">Run samples</button><button class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Java receives 2× time for JVM startup. Drafts are saved in this browser.</p></section></div>`
-        : `<div class="ctf-workspace"><article class="statement">${markdown(p.description)}</article>${p.hasAttachment ? `<a class="button secondary" href="/api/challenges/${encodeURIComponent(p.id)}/download">Download ${esc(p.attachmentFileName)} ↓</a>` : ""}<div class="subheading"><button class="button subtle" id="hint-button">Need a nudge? Unlock hint (${p.hintCost} point penalty)</button><p id="hint-text" class="muted small"></p></div><form id="flag-form"><label>Recovered flag<input id="flag-input" placeholder="flag{your_discovery}" required autocomplete="off" spellcheck="false"></label><button class="button primary full">Submit flag ${icon("arrow")}</button></form><div id="verdict" class="verdict" role="status" style="margin-top:18px">${p.solved && !activeContest ? "You’ve already solved this lab. Nice work." : "Read the evidence. Find the flag. Take your time."}</div></div>`);
+        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}${aiTutorWidget}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button type="button" class="button subtle" id="run-samples">Run samples</button><button type="button" class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Java receives 2× time for JVM startup. Drafts are saved in this browser.</p></section></div>`
+        : `<div class="ctf-workspace">${p.firstBloodUserId ? '<div class="first-blood-banner"><span>🩸 First Blood claimed by competitor</span></div>' : ""}<article class="statement">${markdown(p.description)}</article>${p.hasAttachment ? `<div style="margin:16px 0"><a class="button secondary" href="/api/challenges/${encodeURIComponent(p.id)}/download">Download ${esc(p.attachmentFileName)} ${p.attachmentSize ? `<span class="muted small">(${Math.round(p.attachmentSize / 1024)} KB)</span>` : ""} ↓</a></div>` : ""}<div class="subheading"><button type="button" class="button subtle" id="hint-button">Need a nudge? Unlock hint (${p.hintCost} point penalty)</button><p id="hint-text" class="muted small"></p></div>${aiTutorWidget}<form id="flag-form" style="margin-top:20px"><label>Recovered flag<input id="flag-input" placeholder="flag{your_discovery}" required autocomplete="off" spellcheck="false"></label><button class="button primary full">Submit flag ${icon("arrow")}</button></form><div id="verdict" class="verdict" role="status" style="margin-top:18px">${p.solved && !activeContest ? "You’ve already solved this lab. Nice work." : "Read the evidence. Find the flag. Take your time."}</div></div>`);
     $("#problem-dialog").showModal();
+
+    // Copy buttons
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.onclick = async () => {
+        const text = btn.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "Copied! ✓";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Copy";
+            btn.classList.remove("copied");
+          }, 1800);
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          btn.textContent = "Copied! ✓";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Copy";
+            btn.classList.remove("copied");
+          }, 1800);
+        }
+      };
+    });
+
+    // AI Tutor
+    const aiToggle = $("#ai-toggle-btn");
+    const aiDrawer = $("#ai-drawer");
+    if (aiToggle && aiDrawer) {
+      aiToggle.onclick = () => {
+        aiDrawer.hidden = !aiDrawer.hidden;
+        aiToggle.textContent = aiDrawer.hidden ? "Ask Tutor ▾" : "Close Tutor ▴";
+      };
+      aiDrawer.querySelectorAll("[data-ai]").forEach((btn) => {
+        btn.onclick = async () => {
+          if (!user) {
+            openAuth();
+            return;
+          }
+          const done = busy(btn, "Consulting AI…");
+          const feedback = $("#ai-feedback");
+          const feedbackText = $("#ai-feedback-text");
+          feedback.hidden = false;
+          feedbackText.textContent = "Analyzing problem and formulating guidance…";
+          try {
+            const body = {
+              challengeId: p.id,
+              mode: btn.dataset.ai,
+              hintLevel: btn.dataset.level || "1",
+              code: p.type === "CP" ? $("#source-code")?.value || "" : "",
+              compilerError: $("#verdict")?.textContent || "",
+            };
+            const res = await api("/ai/tutor", body);
+            feedbackText.innerHTML = markdown(res.message);
+          } catch (err) {
+            feedbackText.textContent = err.message;
+          } finally {
+            done();
+          }
+        };
+      });
+    }
+
     if (p.type === "CP") {
       let lang = "cpp";
       const editor = $("#source-code");

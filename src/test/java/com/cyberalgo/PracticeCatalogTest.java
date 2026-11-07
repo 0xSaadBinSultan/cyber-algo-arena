@@ -28,6 +28,28 @@ class PracticeCatalogTest {
         assertTrue(log.contains("flag%7Bfollow_the_request%7D"));
         assertTrue(labs.get(1).evaluate("flag{follow_the_request}"));
         assertTrue(labs.get(2).evaluate(new StringBuilder("}esrever_neht_daer{galf").reverse().toString()));
+        assertTrue(labs.get(3).evaluate("flag{jwt_cookie_decoded_success}"));
         assertFalse(labs.get(0).evaluate("flag{wrong}"));
+    }
+
+    @Test void everySignalSurgeTestMatchesKadaneAlgorithm() {
+        CPProblem p = PracticeCatalog.signalSurge();
+        assertEquals(2, p.getPublicSampleCases().size());
+        assertEquals(6, p.getHiddenTestCount());
+        for (CPTestCase tc : p.getJudgeTestCases()) {
+            Scanner input = new Scanner(tc.input());
+            int n = input.nextInt();
+            long first = input.nextLong();
+            long maxSoFar = first;
+            long currMax = first;
+            for (int i = 1; i < n; i++) {
+                long x = input.nextLong();
+                currMax = Math.max(x, currMax + x);
+                maxSoFar = Math.max(maxSoFar, currMax);
+            }
+            assertFalse(input.hasNext());
+            assertEquals(Long.parseLong(tc.expectedOutput().trim()), maxSoFar);
+        }
+        assertTrue(p.isJudgeReady());
     }
 }

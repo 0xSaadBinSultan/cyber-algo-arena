@@ -39,6 +39,38 @@ public final class PracticeCatalog {
         return cp;
     }
 
+    public static CPProblem signalSurge() {
+        CPProblem cp = new CPProblem("ARENA-MAXSUB", "Signal Surge", 150, Challenge.Difficulty.MEDIUM,
+                2000, 256, Path.of("contest_data/testcases/ARENA-MAXSUB"), List.of(
+                CPTestCase.sample("9\n-2 1 -3 4 -1 2 1 -5 4\n", "6\n"),
+                CPTestCase.sample("5\n5 4 -1 7 8\n", "23\n"),
+                CPTestCase.hidden("1\n-42\n", "-42\n"),
+                CPTestCase.hidden("1\n1000000000\n", "1000000000\n"),
+                CPTestCase.hidden("5\n-10 -20 -3 -50 -100\n", "-3\n"),
+                CPTestCase.hidden("3\n1000000000 1000000000 1000000000\n", "3000000000\n"),
+                CPTestCase.hidden("6\n-1 2 -1 3 -2 4\n", "6\n"),
+                CPTestCase.hidden("50000\n" + "1 -1 ".repeat(25000) + "\n", "1\n")));
+        cp.setDescription("""
+                ## Signal Surge
+                A satellite transceiver receives a continuous telemetry stream of signal delta measurements.
+                A power surge occurs over the contiguous transmission interval that maximizes the cumulative sum of signal deltas.
+                Find the maximum possible sum of a non-empty contiguous subarray.
+
+                ## Input
+                The first line contains an integer n (1 ≤ n ≤ 100000), the number of measurements.
+                The second line contains n space-separated integers a_i (-10^9 ≤ a_i ≤ 10^9).
+
+                ## Output
+                Print a single integer: the maximum sum among all non-empty contiguous subarrays.
+                Use a 64-bit integer (long in C++/Java) as cumulative sums can exceed 32-bit limits.
+
+                ## Example explanation
+                In the first sample, the subarray [4, -1, 2, 1] yields 4 + (-1) + 2 + 1 = 6.
+                Aim for an O(n) algorithm (such as Kadane's algorithm).
+                """);
+        return cp;
+    }
+
     public static List<CTFChallenge> securityLabs() {
         CTFChallenge crypto = ctf("ARENA-CRYPTO", "A message between lectures", "CRYPTO", 100,
                 "flag{one_decode_closer}", """
@@ -88,7 +120,22 @@ public final class PracticeCatalog {
                 ## Objective
                 Find the string for which check returns True. Submit that string as the flag.
                 """);
-        return List.of(crypto, forensic, reverse);
+        CTFChallenge web = ctf("ARENA-WEB", "The Session Cookie", "WEB", 150,
+                "flag{jwt_cookie_decoded_success}", """
+                ## The story
+                A security audit of the club's staging API captured an HTTP response header during an administrator session:
+                ```http
+                HTTP/1.1 200 OK
+                Set-Cookie: session=eyJ1c2VyIjoiZ3Vlc3QiLCJyb2xlIjoiZ3Vlc3QiLCJmbGFnIjoiZmxhZ3tqd3RfY29va2llX2RlY29kZWRfc3VjY2Vzc30ifQ==; Path=/; HttpOnly
+                ```
+
+                ## Objective
+                Inspect the base64-encoded cookie payload, decode its JSON content, and recover the flag.
+
+                ## Submit
+                Submit the decoded flag string: `flag{...}`.
+                """);
+        return List.of(crypto, forensic, reverse, web);
     }
 
     private static CTFChallenge ctf(String id, String title, String category, int points, String flag, String description) {
@@ -102,6 +149,7 @@ public final class PracticeCatalog {
         java.util.Set<String> ids = new java.util.HashSet<>();
         for (Challenge c : repo.getAllChallenges()) ids.add(c.getId());
         if (!ids.contains("ARENA-SUM")) repo.saveChallenge(packetBudget());
+        if (!ids.contains("ARENA-MAXSUB")) repo.saveChallenge(signalSurge());
         for (CTFChallenge c : securityLabs()) if (!ids.contains(c.getId())) repo.saveChallenge(c);
     }
 }

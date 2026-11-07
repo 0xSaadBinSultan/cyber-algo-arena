@@ -202,8 +202,13 @@ public final class PistonJudgeEngine {
 
                 String stdout = run.path("stdout").asText("");
                 if (!outputsMatch(test.expectedOutput(), stdout)) {
+                    String detail = test.hidden()
+                            ? verdictMessage("Wrong Answer", test, i)
+                            : verdictMessage("Wrong Answer", test, i)
+                                + "\nExpected: " + truncate(test.expectedOutput().trim(), 120)
+                                + "\nYour output: " + truncate(stdout.trim(), 120);
                     return result(SubmissionResult.Status.WRONG_ANSWER,
-                            verdictMessage("Wrong Answer", test, i),
+                            detail,
                             passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 

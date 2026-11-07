@@ -181,6 +181,6 @@ Temporary root-level patch scripts from earlier development are no longer part o
 ## Final-project walkthrough and deployment
 
 See [Render setup, real judge configuration, presentation steps, and limitations](docs/RENDER.md).
-The current interface includes a CP problemset, a source-code workspace with sample runs and full judging, a category-based CTF lab board, team contest hosting, separate contest standings, and submission history. The original Packet Budget problem includes two public samples and six server-side hidden cases.
+The current interface includes a CP problemset with sample copy buttons and diagnostic feedback, an in-modal Gemini AI Tutor for progressive hints without spoilers, a source-code workspace with sample runs and full judging, a Flagyard-style category-based CTF lab board with first blood tracking, team contest hosting, separate contest standings, and submission history. Original practice problems include Packet Budget (summation) and Signal Surge (Kadane's maximum subarray) with public samples and server-side hidden testcases.
 
 Judge0 CE is supported as an alternative to Piston through `JUDGE0_URL` and `JUDGE0_API_KEY`. External catalog synchronization is opt-in with `ARENA_AUTO_SYNC=true`; imported references do not pretend to include official hidden tests.

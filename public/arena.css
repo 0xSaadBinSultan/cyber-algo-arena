@@ -605,6 +605,21 @@ main {
   background: #322326;
   border-color: #613c43;
 }
+.tag.purple {
+  color: #c084fc;
+  background: #281d33;
+  border-color: #4b3154;
+}
+.tag.green {
+  color: #4ade80;
+  background: #192b1f;
+  border-color: #2b4f36;
+}
+.tag.blood {
+  color: #ff8e8e;
+  background: #331518;
+  border-color: #632229;
+}
 .content-grid {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
@@ -924,6 +939,125 @@ code {
   letter-spacing: 0.06em;
   color: var(--muted);
   text-transform: uppercase;
+}
+.sample-box {
+  margin: 18px 0;
+  background: #0f151c;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.sample-header {
+  padding: 8px 14px;
+  background: #141b22;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sample-io {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+}
+@media (max-width: 680px) {
+  .sample-io {
+    grid-template-columns: 1fr;
+  }
+}
+.sample-block {
+  min-width: 0;
+}
+.sample-block pre {
+  margin: 0;
+}
+.sample-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.copy-btn {
+  background: #18222b;
+  border: 1px solid #33414f;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.copy-btn:hover {
+  background: #202d3a;
+  color: var(--text);
+  border-color: #52677c;
+}
+.copy-btn.copied {
+  background: #1b2f1d;
+  color: var(--accent);
+  border-color: #40683a;
+}
+.first-blood-banner {
+  background: linear-gradient(90deg, #381519, #201317);
+  border: 1px solid #632229;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: #ff8e8e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-tutor-box {
+  margin: 20px 0;
+  background: #111820;
+  border: 1px solid #2e3e4f;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ai-tutor-head {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #151e27;
+  border-bottom: 1px solid #2e3e4f;
+}
+.ai-sparkle {
+  color: var(--teal);
+  font-size: 14px;
+}
+.ai-drawer {
+  padding: 14px 16px;
+}
+.ai-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.ai-feedback {
+  background: #0b1116;
+  border: 1px solid #263442;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 10px;
+}
+.ai-feedback-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #d1dde6;
+}
+.ai-feedback-text h2 {
+  font-size: 15px;
+  margin: 10px 0 6px;
+  color: var(--accent);
+}
+.ai-feedback-text p {
+  margin: 6px 0;
 }
 .editor-panel {
   min-width: 0;
