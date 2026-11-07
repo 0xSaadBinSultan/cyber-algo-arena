@@ -647,7 +647,7 @@ async function openProblem(id) {
            </div>`,
       )
       .join("");
-    const aiTutorWidget = `
+    const aiTutorWidget = p.type === "CTF" ? `
       <div class="ai-tutor-box">
         <div class="ai-tutor-head">
           <div style="display:flex;align-items:center;gap:8px">
@@ -658,23 +658,22 @@ async function openProblem(id) {
           <button type="button" class="button subtle small" id="ai-toggle-btn">Ask Tutor ▾</button>
         </div>
         <div id="ai-drawer" class="ai-drawer" hidden>
-          <p class="muted small" style="margin:0 0 10px">Need a nudge? The AI Tutor guides your thinking without revealing the flag or hidden tests.</p>
+          <p class="muted small" style="margin:0 0 10px">Need a nudge? The AI Tutor guides your investigation without revealing the flag.</p>
           <div class="ai-action-buttons">
             <button type="button" class="button subtle small" data-ai="HINT" data-level="1">💡 Concept Nudge (L1)</button>
-            <button type="button" class="button subtle small" data-ai="HINT" data-level="2">🔍 Algorithm Strategy (L2)</button>
-            <button type="button" class="button subtle small" data-ai="EXPLAIN">📖 Explain Problem</button>
-            ${p.type === "CP" ? '<button type="button" class="button subtle small" data-ai="DEBUG">🐛 Debug Advice</button>' : ""}
+            <button type="button" class="button subtle small" data-ai="HINT" data-level="2">🔍 Investigation Strategy (L2)</button>
+            <button type="button" class="button subtle small" data-ai="EXPLAIN">📖 Explain Lab</button>
           </div>
           <div id="ai-feedback" class="ai-feedback" hidden>
             <div id="ai-feedback-text" class="ai-feedback-text"></div>
           </div>
         </div>
       </div>
-    `;
+    ` : "";
     $("#problem-body").innerHTML =
       info +
       (p.type === "CP"
-        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}${aiTutorWidget}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button type="button" class="button subtle" id="run-samples">Run samples</button><button type="button" class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Java receives 2× time for JVM startup. Drafts are saved in this browser.</p></section></div>`
+        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button type="button" class="button subtle" id="run-samples">Run samples</button><button type="button" class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Java receives 2× time for JVM startup. Drafts are saved in this browser.</p></section></div>`
         : `<div class="ctf-workspace">${p.firstBloodUserId ? '<div class="first-blood-banner"><span>🩸 First Blood claimed by competitor</span></div>' : ""}<article class="statement">${markdown(p.description)}</article>${p.hasAttachment ? `<div style="margin:16px 0"><a class="button secondary" href="/api/challenges/${encodeURIComponent(p.id)}/download">Download ${esc(p.attachmentFileName)} ${p.attachmentSize ? `<span class="muted small">(${Math.round(p.attachmentSize / 1024)} KB)</span>` : ""} ↓</a></div>` : ""}<div class="subheading"><button type="button" class="button subtle" id="hint-button">Need a nudge? Unlock hint (${p.hintCost} point penalty)</button><p id="hint-text" class="muted small"></p></div>${aiTutorWidget}<form id="flag-form" style="margin-top:20px"><label>Recovered flag<input id="flag-input" placeholder="flag{your_discovery}" required autocomplete="off" spellcheck="false"></label><button class="button primary full">Submit flag ${icon("arrow")}</button></form><div id="verdict" class="verdict" role="status" style="margin-top:18px">${p.solved && !activeContest ? "You’ve already solved this lab. Nice work." : "Read the evidence. Find the flag. Take your time."}</div></div>`);
     $("#problem-dialog").showModal();
 

@@ -339,13 +339,18 @@ public final class WebServer {
             return;
         }
 
-        if (!aiTutorService.isConfigured()) {
-            ctx.status(503).json(errorMap("Gemini AI Tutor is not configured on the server."));
-            return;
-        }
-
         try {
             Challenge challenge = engine.getChallenge(challengeId);
+            if (challenge instanceof CPProblem) {
+                ctx.status(400).json(errorMap("AI Tutor is disabled for Competitive Programming problems"));
+                return;
+            }
+
+            if (!aiTutorService.isConfigured()) {
+                ctx.status(503).json(errorMap("Gemini AI Tutor is not configured on the server."));
+                return;
+            }
+
             String message = aiTutorService.tutor(
                     challenge,
                     mode,

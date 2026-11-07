@@ -95,4 +95,15 @@ class ArenaIntegrationTest {
         assertEquals(200,req("/api/submissions/me",null).statusCode());
         assertEquals(200,req("/api/standings/practice",null).statusCode());
     }
+    @Test void aiTutorIsDisabledForCpProblems() throws Exception {
+        String name = "aitutor" + UUID.randomUUID();
+        var registered = req("/api/auth/register", json.writeValueAsString(java.util.Map.of("username", name, "password", "AiPass!2026")));
+        assertEquals(201, registered.statusCode());
+        var resp = req("/api/ai/tutor", json.writeValueAsString(java.util.Map.of(
+                "challengeId", "ARENA-SUM",
+                "mode", "HINT"
+        )));
+        assertEquals(400, resp.statusCode());
+        assertTrue(resp.body().contains("AI Tutor is disabled for Competitive Programming problems"));
+    }
 }
