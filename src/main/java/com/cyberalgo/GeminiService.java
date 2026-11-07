@@ -25,22 +25,32 @@ public final class GeminiService {
     private final String model;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
+    private final URI apiBase;
+    private final Duration retryDelay;
 
     public GeminiService() {
         this(
                 System.getenv("GEMINI_API_KEY"),
                 firstNonBlank(System.getenv("GEMINI_MODEL"), DEFAULT_MODEL),
                 HttpClient.newBuilder()
+                        .version(HttpClient.Version.HTTP_1_1)
                         .connectTimeout(Duration.ofSeconds(10))
                         .build(),
                 new ObjectMapper());
     }
 
     GeminiService(String apiKey, String model, HttpClient httpClient, ObjectMapper mapper) {
+        this(apiKey, model, httpClient, mapper, URI.create(API_BASE), Duration.ofMillis(750));
+    }
+
+    GeminiService(String apiKey, String model, HttpClient httpClient, ObjectMapper mapper,
+                  URI apiBase, Duration retryDelay) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = normalizeModel(model);
         this.httpClient = httpClient;
         this.mapper = mapper;
+        this.apiBase = apiBase;
+        this.retryDelay = retryDelay;
     }
 
     public boolean isConfigured() {
@@ -74,15 +84,21 @@ public final class GeminiService {
         payload.set("contents", contents);
 
         ObjectNode generationConfig = mapper.createObjectNode();
-        generationConfig.put("temperature", 0.35);
-        generationConfig.put("maxOutputTokens", 800);
+        // Gemini 3 no longer accepts sampling controls; leave room for its reasoning
+        // and request low thinking effort for an interactive, concise tutor response.
+        if (model.startsWith("gemini-3")) {
+            generationConfig.putObject("thinkingConfig").put("thinkingLevel", "low");
+        } else {
+            generationConfig.put("temperature", 0.35);
+        }
+        generationConfig.put("maxOutputTokens", 4096);
         payload.set("generationConfig", generationConfig);
 
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder()
-                    .uri(URI.create(API_BASE + model + ":generateContent"))
-                    .timeout(Duration.ofSeconds(35))
+                    .uri(apiBase.resolve("./" + model + ":generateContent"))
+                    .timeout(Duration.ofSeconds(12))
                     .header("Content-Type", "application/json")
                     .header("x-goog-api-key", apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
@@ -92,9 +108,7 @@ public final class GeminiService {
         }
 
         try {
-            HttpResponse<String> response = httpClient.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = sendWithRetry(request);
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw apiError(response.statusCode());
@@ -110,6 +124,7 @@ public final class GeminiService {
             StringBuilder answer = new StringBuilder();
             if (parts.isArray()) {
                 for (JsonNode part : parts) {
+                    if (part.path("thought").asBoolean(false)) continue;
                     String text = part.path("text").asText("");
                     if (!text.isBlank()) {
                         if (!answer.isEmpty()) answer.append("\n");
@@ -128,6 +143,22 @@ public final class GeminiService {
             throw new IllegalStateException("Gemini request was interrupted.", ex);
         } catch (IOException ex) {
             throw new IllegalStateException("Gemini request failed.", ex);
+        }
+    }
+
+    private HttpResponse<String> sendWithRetry(HttpRequest request) throws IOException, InterruptedException {
+        // At most two attempts: a provider outage must not strand the learner.
+        for (int attempt = 0; ; attempt++) {
+            try {
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                int status = response.statusCode();
+                if (attempt > 0 || !(status == 429 || status == 500 || status == 502 || status == 503 || status == 504)) {
+                    return response;
+                }
+            } catch (IOException ex) {
+                if (attempt > 0) throw ex;
+            }
+            Thread.sleep(retryDelay.toMillis());
         }
     }
 

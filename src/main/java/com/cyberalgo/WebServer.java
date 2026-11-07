@@ -346,12 +346,7 @@ public final class WebServer {
                 return;
             }
 
-            if (!aiTutorService.isConfigured()) {
-                ctx.status(503).json(errorMap("Gemini AI Tutor is not configured on the server."));
-                return;
-            }
-
-            String message = aiTutorService.tutor(
+            AiTutorService.Reply reply = aiTutorService.reply(
                     challenge,
                     mode,
                     hintLevel,
@@ -360,10 +355,12 @@ public final class WebServer {
                     compilerError);
 
             ctx.json(Map.of(
-                    "message", message,
+                    "message", reply.message(),
                     "mode", mode.toUpperCase(Locale.ROOT),
                     "hintLevel", Math.max(1, Math.min(3, hintLevel)),
-                    "model", aiTutorService.model()
+                    "model", reply.model(),
+                    "source", reply.source(),
+                    "notice", reply.notice()
             ));
         } catch (ChallengeNotFoundException ex) {
             ctx.status(404).json(errorMap(ex.getMessage()));
