@@ -20,6 +20,9 @@ class ArenaIntegrationTest {
     @BeforeAll static void setup() throws Exception {
         System.setProperty("arena.admin.password","IntegrationAdminOnly!2026");
         mongo=new MongoManager("mongodb://localhost:27017","arena_test_"+UUID.randomUUID().toString().replace("-",""));
+        if ("true".equals(System.getenv("ARENA_TEST_REQUIRE_MONGO"))) {
+            assertTrue(mongo.isConnected(), "CI integration tests require persistent MongoDB");
+        }
         engine=new ContestEngine(new MongoRepository(mongo)); engine.load();
         int port;try(java.net.ServerSocket socket=new java.net.ServerSocket(0)){port=socket.getLocalPort();}
         web=new WebServer(engine,port);url="http://localhost:"+port;
@@ -87,6 +90,56 @@ class ArenaIntegrationTest {
             assertEquals(score,user.getPersonalScore());assertEquals(1,user.getSolvesCount());assertEquals(1,cp.getSolveCount());
         }finally{mock.stop(0);}
     }
+    @Test void editingPointsPreservesProblemContentAndScoringHistory() {
+        String id = "EDIT-" + UUID.randomUUID();
+        CPProblem cp = PracticeCatalog.packetBudget();
+        CPProblem editable = new CPProblem(id, cp.getTitle(), cp.getBasePoints(), cp.getDifficulty(),
+                cp.getTimeLimitMillis(), cp.getMemoryLimitMb(), cp.getTestcaseDirectory(), cp.getConfiguredTestCases());
+        editable.setDescription(cp.getDescription()); editable.setSolveCount(7);
+        editable.setDecayLimit(30); editable.setMinimumPoints(20); editable.setFirstBlood("team", "user");
+        engine.addChallenge(editable);
+        engine.updateChallengeBasePoints(id, 250);
+        CPProblem saved = (CPProblem) engine.getRepository().getChallengeById(id).orElseThrow();
+        assertEquals(250, saved.getBasePoints()); assertEquals(cp.getDescription(), saved.getDescription());
+        assertEquals(7, saved.getSolveCount()); assertEquals(30, saved.getDecayLimit());
+        assertEquals(20, saved.getMinimumPoints()); assertEquals("team", saved.getFirstBloodTeamId());
+        assertEquals("user", saved.getFirstBloodUserId()); assertEquals(8, saved.getJudgeTestCases().size());
+    }
+
+    @Test void hintUnlockSurvivesReloadBeforeAnySubmissionAndChargesOnce() {
+        String key = UUID.randomUUID().toString();
+        User user = engine.registerUser("hint" + key, "hint@example.test", "HintPassword!2026");
+        Team team = engine.createTeam("hintTeam" + key, "HintPassword!2026", user.getId());
+        String hint = engine.requestHintForUser(user.getId(), "ARENA-CRYPTO");
+        assertFalse(hint.isBlank());
+        engine.requestHintForUser(user.getId(), "ARENA-CRYPTO");
+        engine.requestHint(team.getId(), "ARENA-LOG");
+        // A new repository also proves this is persisted, rather than just cached.
+        ContestEngine reloaded = new ContestEngine(new MongoRepository(mongo)); reloaded.load();
+        assertEquals(1, reloaded.getUserHintUsageCount(user.getId(), "ARENA-CRYPTO"));
+        assertEquals(1, reloaded.getHintUsageCount(team.getId(), "ARENA-LOG"));
+    }
+
+    @Test void concurrentCatalogReadsNeverObservePartialReloads() throws Exception {
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(3);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            var reload = executor.submit(() -> { start.await(); for (int i=0;i<10;i++) engine.load(); return true; });
+            var reader = executor.submit(() -> {
+                start.await();
+                for (int i=0;i<1000;i++) {
+                    assertFalse(engine.getUsers().isEmpty());
+                    assertNotNull(engine.getChallenge("ARENA-SUM"));
+                    assertFalse(engine.getChallenges().isEmpty());
+                }
+                return true;
+            });
+            start.countDown();
+            assertTrue(reload.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(reader.get(60, java.util.concurrent.TimeUnit.SECONDS));
+        } finally { executor.shutdownNow(); }
+    }
+
     @Test void playerCannotCreateAContestAndCanReadOwnHistory() throws Exception {
         String name="http"+UUID.randomUUID();
         var registered=req("/api/auth/register",json.writeValueAsString(java.util.Map.of("username",name,"password","PlayerOnly!2026")));
