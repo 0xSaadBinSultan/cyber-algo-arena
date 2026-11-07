@@ -89,6 +89,14 @@ public final class CPProblem extends Challenge {
         return evaluateOutputs(Path.of(submissionPayload));
     }
 
+    public boolean isExternalReference() {
+        return getId().startsWith("CF-") || getId().startsWith("AC-") || getId().startsWith("CC-");
+    }
+
+    public boolean isJudgeReady() {
+        return !isExternalReference() && !getPublicSampleCases().isEmpty() && getHiddenTestCount() > 0;
+    }
+
     public List<CPTestCase> getConfiguredTestCases() {
         return testCases;
     }

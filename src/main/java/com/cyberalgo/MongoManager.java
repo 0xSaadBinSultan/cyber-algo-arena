@@ -43,20 +43,22 @@ public final class MongoManager implements AutoCloseable {
 
         // Keep startup bounded. Explicit remote configuration gets a few retries;
         // local discovery gets only a short window so cloud cold starts are not delayed.
-        int maxRetries = candidateUris.size() == 1 ? 3 : 2;
+        boolean remote = candidateUris.size() == 1 && !candidateUris.get(0).contains("localhost");
+        int maxRetries = 2;
         for (int attempt = 1; attempt <= maxRetries && !isConnected; attempt++) {
             for (String candidate : candidateUris) {
+                MongoClient testClient = null;
                 try {
                     MongoClientSettings settings = MongoClientSettings.builder()
                             .applyConnectionString(new ConnectionString(candidate))
                             .applyToClusterSettings(builder ->
-                                    builder.serverSelectionTimeout(2500, TimeUnit.MILLISECONDS))
+                                    builder.serverSelectionTimeout(remote ? 20000 : 2500, TimeUnit.MILLISECONDS))
                             .applyToSocketSettings(builder ->
-                                    builder.connectTimeout(2500, TimeUnit.MILLISECONDS)
-                                           .readTimeout(5000, TimeUnit.MILLISECONDS))
+                                    builder.connectTimeout(remote ? 10000 : 2500, TimeUnit.MILLISECONDS)
+                                           .readTimeout(remote ? 15000 : 5000, TimeUnit.MILLISECONDS))
                             .build();
 
-                    MongoClient testClient = MongoClients.create(settings);
+                    testClient = MongoClients.create(settings);
                     MongoDatabase testDb = testClient.getDatabase(effectiveDbName);
                     testDb.runCommand(new Document("ping", 1));
 
@@ -67,8 +69,11 @@ public final class MongoManager implements AutoCloseable {
                     establishedUri = candidate;
                     System.out.println("[MongoManager] Connected to persistent MongoDB (DB: " + effectiveDbName + ")");
                     break;
-                } catch (Exception ignored) {
-                    // Try next candidate
+                } catch (Exception ex) {
+                    if (testClient != null) testClient.close();
+                    // Print the failure category only: driver messages can include credentials/hosts.
+                    System.err.println("[MongoManager] Connection attempt " + attempt + " failed: " + ex.getClass().getSimpleName()
+                            + ". Check URI, database user permissions, Atlas network access and cluster availability.");
                 }
             }
 

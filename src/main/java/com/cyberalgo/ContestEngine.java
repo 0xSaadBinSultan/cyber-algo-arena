@@ -36,9 +36,13 @@ public final class ContestEngine {
     private volatile long lastSyncMillis = 0L;
 
     public ContestEngine(MongoRepository repository) {
+        this(repository, new PistonJudgeEngine());
+    }
+
+    ContestEngine(MongoRepository repository, PistonJudgeEngine judge) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.leaderboard = new Leaderboard();
-        this.pistonJudge = new PistonJudgeEngine();
+        this.pistonJudge = Objects.requireNonNull(judge, "judge must not be null");
     }
 
     /** Loads all persisted state from MongoDB into memory. */
@@ -77,6 +81,7 @@ public final class ContestEngine {
         allSubs.sort(Comparator.comparing(Submission::getTimestamp));
         for (Submission s : allSubs) {
             submissions.add(s);
+            if (!"GLOBAL".equals(s.getContestId())) continue;
             String teamId = s.getTeamId();
             String userId = s.getUserId();
             String challengeId = s.getChallengeId();
@@ -260,6 +265,10 @@ public final class ContestEngine {
     // ═══════════════════════════════════════════════════════════
 
     public synchronized void registerPlayerInContest(String contestId, String teamId, String userId) {
+        Contest target = getContest(contestId);
+        if ("ENDED".equals(target.getStatus())) throw new IllegalStateException("Contest has ended");
+        getUser(userId);
+        getTeam(teamId);
         // Enforce: Player cannot belong to multiple teams in the same contest
         Optional<ContestParticipation> existing = repository.getParticipation(contestId, userId);
         if (existing.isPresent()) {
@@ -277,6 +286,37 @@ public final class ContestEngine {
             contest.registerTeam(teamId);
             repository.saveContest(contest);
         }
+    }
+
+    public Contest getContest(String id) {
+        return repository.getContestById(id).orElseThrow(() -> new IllegalArgumentException("Contest not found"));
+    }
+
+    public synchronized void createContest(Contest contest) {
+        if (repository.getContestById(contest.getId()).isPresent()) throw new IllegalArgumentException("Contest ID already exists");
+        if (!contest.getEndTime().isAfter(contest.getStartTime())) throw new IllegalArgumentException("End time must follow start time");
+        if (!contest.getEndTime().isAfter(Instant.now())) throw new IllegalArgumentException("End time must be in the future");
+        if (contest.getChallengeIds().isEmpty()) throw new IllegalArgumentException("Select at least one problem");
+        for (String id : contest.getChallengeIds()) {
+            Challenge c = getChallenge(id);
+            if (c instanceof CPProblem cp && !cp.isJudgeReady()) throw new IllegalArgumentException("CP problem is not judge-ready: " + id);
+        }
+        contestsById.put(contest.getId(), contest);
+        repository.saveContest(contest);
+    }
+
+    public void validateContestSubmission(Submission submission) {
+        if ("GLOBAL".equals(submission.getContestId())) return;
+        Contest contest = getContest(submission.getContestId());
+        if (!"LIVE".equals(contest.getStatus())) throw new InvalidSubmissionException("Contest is not live");
+        if (!contest.getChallengeIds().contains(submission.getChallengeId())) throw new InvalidSubmissionException("Problem is not in this contest");
+        ContestParticipation participant = repository.getParticipation(contest.getId(), submission.getUserId())
+                .orElseThrow(() -> new InvalidSubmissionException("Register for the contest first"));
+        if (!participant.getTeamId().equals(submission.getTeamId())) throw new InvalidSubmissionException("Submit with your registered team");
+        boolean solved = submissions.stream().anyMatch(s -> contest.getId().equals(s.getContestId())
+                && participant.getTeamId().equals(s.getTeamId()) && submission.getChallengeId().equals(s.getChallengeId())
+                && s.getStatus() == SubmissionResult.Status.ACCEPTED);
+        if (solved) throw new DuplicateSubmissionException("Your team already solved this contest problem");
     }
 
     public List<Contest> getContests() {
@@ -421,6 +461,7 @@ public final class ContestEngine {
     public synchronized SubmissionResult submit(Submission submission, String language) {
         Objects.requireNonNull(submission, "submission must not be null");
 
+        validateContestSubmission(submission);
         Challenge challenge = getChallenge(submission.getChallengeId());
         User user = getUser(submission.getUserId());
         Team team = null;
@@ -428,9 +469,8 @@ public final class ContestEngine {
             team = getTeam(submission.getTeamId());
         }
 
-        // Club practice is individual-first: every member can solve a problem once,
-        // even if another member of the same team already solved it.
-        if (user.isSolved(challenge.getId())) {
+        // Practice awards points once per member. CP resubmissions are still evaluated.
+        if ("GLOBAL".equals(submission.getContestId()) && user.isSolved(challenge.getId()) && !(challenge instanceof CPProblem)) {
             throw new DuplicateSubmissionException("Challenge already solved by user " + user.getUsername());
         }
 
@@ -453,6 +493,24 @@ public final class ContestEngine {
                 repository.saveSubmission(submission);
                 return errResult;
             }
+        }
+
+        // Contest results have their own fixed-point scoreboard; practice totals stay independent.
+        if (!"GLOBAL".equals(submission.getContestId())) {
+            SubmissionResult result = new SubmissionResult(status,
+                    status == SubmissionResult.Status.ACCEPTED ? challenge.getBasePoints() : 0, outcomeMessage);
+            submission.applyResult(result);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+            return result;
+        }
+
+        if (status == SubmissionResult.Status.ACCEPTED && challenge instanceof CPProblem && user.isSolved(challenge.getId())) {
+            SubmissionResult repeat = new SubmissionResult(status, 0, outcomeMessage + " · Already solved; no additional practice points.");
+            submission.applyResult(repeat);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+            return repeat;
         }
 
         if (status == SubmissionResult.Status.ACCEPTED) {

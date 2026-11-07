@@ -28,7 +28,7 @@ public final class MongoRepository {
     public MongoRepository(MongoManager mongoManager) {
         this.mongoManager = Objects.requireNonNull(mongoManager, "mongoManager must not be null");
         bootstrapAdminAccount();
-        seedDefaultChallengesIfEmpty();
+        PracticeCatalog.ensureInstalled(this);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -369,6 +369,7 @@ public final class MongoRepository {
                         .append("startTime", contest.getStartTime().toString())
                         .append("endTime", contest.getEndTime().toString())
                         .append("isRunning", contest.isRunning())
+                        .append("challengeIds", contest.getChallengeIds())
                         .append("scoreboardFrozen", contest.isScoreboardFrozen())
                         .append("freezeTimestamp", contest.getFreezeTimestamp())
                         .append("registeredTeamIds", new ArrayList<>(contest.getRegisteredTeamIds()));
@@ -394,6 +395,7 @@ public final class MongoRepository {
                             parseInstant(doc.getString("endTime")),
                             doc.getBoolean("isRunning", true),
                             doc.getList("registeredTeamIds", String.class, List.of()));
+                    c.setChallengeIds(doc.getList("challengeIds", String.class, List.of()));
                     c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
                     c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
                     return Optional.of(c);
@@ -416,6 +418,7 @@ public final class MongoRepository {
                             parseInstant(doc.getString("endTime")),
                             doc.getBoolean("isRunning", true),
                             doc.getList("registeredTeamIds", String.class, List.of()));
+                    c.setChallengeIds(doc.getList("challengeIds", String.class, List.of()));
                     c.toggleFreeze(doc.getBoolean("scoreboardFrozen", false));
                     c.setFreezeTimestamp(doc.getLong("freezeTimestamp") != null ? doc.getLong("freezeTimestamp") : 0L);
                     list.add(c);
@@ -552,89 +555,21 @@ public final class MongoRepository {
     // ═══════════════════════════════════════════════════════════
 
     private void bootstrapAdminAccount() {
-        SecurityConfig.AdminBootstrap config = SecurityConfig.effectiveAdminBootstrap();
+        Optional<SecurityConfig.AdminBootstrap> configured = SecurityConfig.adminBootstrap();
+        if (configured.isEmpty()) {
+            System.out.println("[MongoRepository] Admin bootstrap disabled. Configure ARENA_ADMIN_PASSWORD to create an administrator.");
+            return;
+        }
+        SecurityConfig.AdminBootstrap config = configured.get();
         Optional<User> existing = getUserByUsername(config.username());
-
         if (existing.isPresent()) {
-            User current = existing.get();
-            if (!current.isAdmin()) {
-                throw new IllegalStateException(
-                        "Administrator username belongs to a non-admin account: " + config.username());
-            }
-
-            if (!current.verifyPassword(config.password())) {
-                User updated = new User(
-                        current.getId(),
-                        current.getUsername(),
-                        current.getEmail(),
-                        User.hashPassword(config.password()),
-                        User.Role.ADMIN,
-                        current.getTeamId(),
-                        current.getCreatedAt(),
-                        current.getPersonalScore(),
-                        current.getSolvesCount(),
-                        current.getCtfScore(),
-                        current.getCtfSolvesCount(),
-                        current.getCpScore(),
-                        current.getCpSolvesCount(),
-                        current.getCategoryBreakdown(),
-                        current.getSolvedChallengeIds());
-                saveUser(updated);
-                System.out.println("[MongoRepository] Administrator credential synchronized for: " + config.username());
-            }
-        } else {
-            String adminHash = User.hashPassword(config.password());
-            User admin = new User(
-                    "USER-ADMIN",
-                    config.username(),
-                    config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
-                    adminHash,
-                    User.Role.ADMIN,
-                    null);
-            saveUser(admin);
-            System.out.println("[MongoRepository] Bootstrapped administrator account: " + config.username());
+            if (!existing.get().isAdmin()) throw new IllegalStateException("Administrator username belongs to a player");
+            return;
         }
-
-        if (SecurityConfig.isTemporaryDefault(config)) {
-            System.err.println("[SECURITY WARNING] Temporary admin credentials admin/admin are active. " +
-                    "Set ARENA_ADMIN_PASSWORD to a strong password before public production use.");
-        }
-    }
-
-    private void seedDefaultChallengesIfEmpty() {
-        if (getAllChallenges().isEmpty()) {
-            CTFChallenge ctf1 = new CTFChallenge(
-                    "CTF-01",
-                    "Base64 Mystery",
-                    100,
-                    Challenge.Difficulty.EASY,
-                    "CRYPTO",
-                    "5e19ee72564b8c4bfb2209c349ab4099958e710b2ba18ff0caa4c1a9cbcc2508",
-                    20,
-                    "mystery.txt");
-            CTFChallenge ctf2 = new CTFChallenge(
-                    "CTF-02",
-                    "Buffer Overflow Intro",
-                    300,
-                    Challenge.Difficulty.HARD,
-                    "PWN",
-                    "7e128ef8f5d457d54e1859fac34837e8548bfd0b344de0321ddfb05d24bd3479",
-                    50,
-                    "vuln_binary.elf");
-            CPProblem cp1 = new CPProblem(
-                    "CP-01",
-                    "Array Inversion Count",
-                    200,
-                    Challenge.Difficulty.MEDIUM,
-                    1000L,
-                    256,
-                    Path.of("contest_data/testcases/CP-01"));
-
-            saveChallenge(ctf1);
-            saveChallenge(ctf2);
-            saveChallenge(cp1);
-            System.out.println("[MongoRepository] Initialized CTF & CP challenge suite.");
-        }
+        User admin = new User("USER-ADMIN", config.username(), config.username().toLowerCase(Locale.ROOT) + "@cyberarena.local",
+                User.hashPassword(config.password()), User.Role.ADMIN, null);
+        saveUser(admin);
+        System.out.println("[MongoRepository] Created administrator account from environment configuration.");
     }
 
     private static Instant parseInstant(String s) {

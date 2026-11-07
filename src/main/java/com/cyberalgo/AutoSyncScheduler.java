@@ -28,6 +28,7 @@ public final class AutoSyncScheduler {
 
     /** Starts the periodic sync. Initial run after 30 seconds, then every 12 hours. */
     public void start() {
+        if (!Boolean.parseBoolean(System.getenv("ARENA_AUTO_SYNC"))) return;
         if (running) return;
         running = true;
         executor.scheduleAtFixedRate(this::runSync, 30, 12 * 60 * 60, TimeUnit.SECONDS);

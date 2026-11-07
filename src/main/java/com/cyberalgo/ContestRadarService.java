@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class ContestRadarService {
 
-    private static final long CACHE_TTL_MILLIS = 60 * 1000L; // 15 minutes
+    private static final long CACHE_TTL_MILLIS = 15 * 60 * 1000L; // 15 minutes
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     private final HttpClient httpClient;
@@ -76,6 +76,7 @@ public final class ContestRadarService {
             return t1.compareTo(t2);
         });
 
+        if (merged.isEmpty() && !cachedEvents.isEmpty()) return;
         this.cachedEvents = Collections.unmodifiableList(merged);
         this.lastFetchTimestamp = System.currentTimeMillis();
     }
@@ -223,7 +224,8 @@ public final class ContestRadarService {
                     String startTimeStr = item.path("start_time").asText();
                     double durationSec = item.path("duration").asDouble(7200.0);
 
-                    String startIso = parseIsoOrFallback(startTimeStr, Instant.now().plusSeconds(86400 * 2));
+                    String startIso = parseIsoOrFallback(startTimeStr, null);
+                    if (startIso.isBlank() || Instant.parse(startIso).plusSeconds((long) durationSec).isBefore(Instant.now())) continue;
 
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", platform + "-" + Math.abs(name.hashCode() % 10000));
@@ -248,7 +250,7 @@ public final class ContestRadarService {
     }
 
     private String parseIsoOrFallback(String input, Instant fallback) {
-        if (input == null || input.isBlank()) return fallback.toString();
+        if (input == null || input.isBlank()) return "";
         try {
             // Check if standard ISO-8601
             return Instant.parse(input).toString();
@@ -258,95 +260,14 @@ public final class ContestRadarService {
                 String clean = input.replace(" UTC", "Z").replace(" ", "T");
                 return Instant.parse(clean).toString();
             } catch (Exception e2) {
-                return fallback.toString();
+                return "";
             }
         }
     }
 
-    // ── Fallback Datasets ──
-    private List<Map<String, Object>> getFallbackCtftimeEvents() {
-        return List.of(
-                Map.of(
-                        "id", "CTFTIME-3159",
-                        "title", "PwnSec CTF 2026",
-                        "platform", "CTFTIME",
-                        "url", "https://ctftime.org/event/3159",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 2).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 2).toString(),
-                        "durationSeconds", 86400 * 2L,
-                        "status", "UPCOMING",
-                        "format", "Jeopardy"
-                ),
-                Map.of(
-                        "id", "CTFTIME-3065",
-                        "title", "BrunnerCTF 2026",
-                        "platform", "CTFTIME",
-                        "url", "https://ctftime.org/event/3065",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 4).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 4).toString(),
-                        "durationSeconds", 86400 * 2L,
-                        "status", "UPCOMING",
-                        "format", "Jeopardy"
-                )
-        );
-    }
-
-    private List<Map<String, Object>> getFallbackCodeforcesEvents() {
-        return List.of(
-                Map.of(
-                        "id", "CF-2257",
-                        "title", "Codeforces Round 998 (Div. 2)",
-                        "platform", "CODEFORCES",
-                        "url", "https://codeforces.com/contests/2257",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 1 + 3600 * 4).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 1 + 3600 * 4).toString(),
-                        "durationSeconds", 7200L,
-                        "status", "UPCOMING",
-                        "format", "CF Round"
-                ),
-                Map.of(
-                        "id", "CF-2258",
-                        "title", "Codeforces Round 999 (Div. 3)",
-                        "platform", "CODEFORCES",
-                        "url", "https://codeforces.com/contests/2258",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 3 + 3600 * 2).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 3 + 3600 * 2).toString(),
-                        "durationSeconds", 8100L,
-                        "status", "UPCOMING",
-                        "format", "CF Round"
-                )
-        );
-    }
-
-    private List<Map<String, Object>> getFallbackAtCoderEvents() {
-        return List.of(
-                Map.of(
-                        "id", "ATCODER-368",
-                        "title", "AtCoder Beginner Contest 368",
-                        "platform", "ATCODER",
-                        "url", "https://atcoder.jp/contests/abc368",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 2 + 7200).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 2 + 7200).toString(),
-                        "durationSeconds", 6000L,
-                        "status", "UPCOMING",
-                        "format", "ABC"
-                )
-        );
-    }
-
-    private List<Map<String, Object>> getFallbackCodeChefEvents() {
-        return List.of(
-                Map.of(
-                        "id", "CODECHEF-START150",
-                        "title", "CodeChef Starters 150 (Rated)",
-                        "platform", "CODECHEF",
-                        "url", "https://www.codechef.com/START150",
-                        "startTimeIso", Instant.now().plusSeconds(86400 * 3 + 1800).toString(),
-                        "startTime", Instant.now().plusSeconds(86400 * 3 + 1800).toString(),
-                        "durationSeconds", 7200L,
-                        "status", "UPCOMING",
-                        "format", "Starters"
-                )
-        );
-    }
+    // An unavailable upstream must not invent future dates or fake rounds.
+    private List<Map<String, Object>> getFallbackCtftimeEvents() { return List.of(); }
+    private List<Map<String, Object>> getFallbackCodeforcesEvents() { return List.of(); }
+    private List<Map<String, Object>> getFallbackAtCoderEvents() { return List.of(); }
+    private List<Map<String, Object>> getFallbackCodeChefEvents() { return List.of(); }
 }
