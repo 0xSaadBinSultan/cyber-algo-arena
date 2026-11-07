@@ -52,6 +52,12 @@ async function api(path, body) {
       "The server returned an unexpected response. Please try again.",
     );
   }
+  if (response.status === 401 && user && !path.startsWith("/auth/")) {
+    user = null;
+    authUI();
+    if (path === "/submit" || path === "/run-samples") openAuth();
+    throw Error("Your session ended. Please sign in again; your solution is still in the editor.");
+  }
   if (!response.ok) throw Error(data.error || data.message || "Request failed");
   return data;
 }
