@@ -113,6 +113,12 @@ public final class ContestEngine {
             }
         }
 
+        repository.getHintUsage("user").forEach((owner, counts) ->
+                counts.forEach((challenge, count) -> userHintUsage.computeIfAbsent(owner, k -> new ConcurrentHashMap<>())
+                        .merge(challenge, count, Math::max)));
+        repository.getHintUsage("team").forEach((owner, counts) ->
+                counts.forEach((challenge, count) -> teamHintUsage.computeIfAbsent(owner, k -> new ConcurrentHashMap<>())
+                        .merge(challenge, count, Math::max)));
         refreshLeaderboard();
         lastSyncMillis = System.currentTimeMillis();
         System.out.println("[ContestEngine] Loaded state: " + challengesById.size() + " challenges, "
@@ -125,7 +131,7 @@ public final class ContestEngine {
      * anonymous visitors) serving consistent challenge data in multi-instance
      * deployments without hammering the database on every request.
      */
-    public void syncIfStale() {
+    public synchronized void syncIfStale() {
         if (System.currentTimeMillis() - lastSyncMillis >= SYNC_INTERVAL_MS) {
             load();
         }
@@ -179,13 +185,13 @@ public final class ContestEngine {
         return user;
     }
 
-    public User getUser(String userId) {
+    public synchronized User getUser(String userId) {
         User user = usersById.get(userId);
         if (user == null) throw new UserNotFoundException(userId);
         return user;
     }
 
-    public List<User> getUsers() {
+    public synchronized List<User> getUsers() {
         return List.copyOf(usersById.values());
     }
 
@@ -250,13 +256,13 @@ public final class ContestEngine {
         refreshLeaderboard();
     }
 
-    public Team getTeam(String teamId) {
+    public synchronized Team getTeam(String teamId) {
         Team team = teamsById.get(teamId);
         if (team == null) throw new TeamNotFoundException(teamId);
         return team;
     }
 
-    public List<Team> getTeams() {
+    public synchronized List<Team> getTeams() {
         return List.copyOf(teamsById.values());
     }
 
@@ -288,7 +294,7 @@ public final class ContestEngine {
         }
     }
 
-    public Contest getContest(String id) {
+    public synchronized Contest getContest(String id) {
         return repository.getContestById(id).orElseThrow(() -> new IllegalArgumentException("Contest not found"));
     }
 
@@ -305,7 +311,7 @@ public final class ContestEngine {
         repository.saveContest(contest);
     }
 
-    public void validateContestSubmission(Submission submission) {
+    public synchronized void validateContestSubmission(Submission submission) {
         if ("GLOBAL".equals(submission.getContestId())) return;
         Contest contest = getContest(submission.getContestId());
         if (!"LIVE".equals(contest.getStatus())) throw new InvalidSubmissionException("Contest is not live");
@@ -319,7 +325,7 @@ public final class ContestEngine {
         if (solved) throw new DuplicateSubmissionException("Your team already solved this contest problem");
     }
 
-    public List<Contest> getContests() {
+    public synchronized List<Contest> getContests() {
         return repository.getAllContests();
     }
 
@@ -436,17 +442,22 @@ public final class ContestEngine {
         } else {
             throw new IllegalArgumentException("Unsupported challenge type: " + existing.getClass().getName());
         }
+        updated.setDescription(existing.getDescription());
+        updated.setSolveCount(existing.getSolveCount());
+        updated.setDecayLimit(existing.getDecayLimit());
+        updated.setMinimumPoints(existing.getMinimumPoints());
+        updated.setFirstBlood(existing.getFirstBloodTeamId(), existing.getFirstBloodUserId());
         challengesById.put(challengeId, updated);
         repository.saveChallenge(updated);
     }
 
-    public Challenge getChallenge(String challengeId) {
+    public synchronized Challenge getChallenge(String challengeId) {
         Challenge challenge = challengesById.get(challengeId);
         if (challenge == null) throw new ChallengeNotFoundException(challengeId);
         return challenge;
     }
 
-    public List<Challenge> getChallenges() {
+    public synchronized List<Challenge> getChallenges() {
         return List.copyOf(challengesById.values());
     }
 
@@ -582,45 +593,51 @@ public final class ContestEngine {
     public synchronized String requestHint(String teamId, String challengeId) {
         getTeam(teamId);
         Challenge challenge = getChallenge(challengeId);
-        teamHintUsage.computeIfAbsent(teamId, k -> new ConcurrentHashMap<>())
-                .merge(challengeId, 1, Integer::sum);
+        unlockHint("team", teamId, challengeId, teamHintUsage);
         return challenge.getHintText();
     }
 
     public synchronized String requestHintForUser(String userId, String challengeId) {
         getUser(userId);
         Challenge challenge = getChallenge(challengeId);
-        userHintUsage.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
-                .merge(challengeId, 1, Integer::sum);
+        unlockHint("user", userId, challengeId, userHintUsage);
         return challenge.getHintText();
     }
 
-    public boolean isSolvedByTeam(String teamId, String challengeId) {
+    private void unlockHint(String type, String owner, String challengeId,
+                            Map<String, Map<String, Integer>> usage) {
+        Map<String, Integer> counts = new HashMap<>(usage.getOrDefault(owner, Map.of()));
+        counts.putIfAbsent(challengeId, 1);
+        repository.saveHintUsage(type, owner, counts);
+        usage.put(owner, new ConcurrentHashMap<>(counts));
+    }
+
+    public synchronized boolean isSolvedByTeam(String teamId, String challengeId) {
         Set<String> solved = teamSolvedChallenges.get(teamId);
         return solved != null && solved.contains(challengeId);
     }
 
-    public int getSolveCount(String teamId) {
+    public synchronized int getSolveCount(String teamId) {
         Set<String> solved = teamSolvedChallenges.get(teamId);
         return solved != null ? solved.size() : 0;
     }
 
-    public int getWrongAttempts(String teamId, String challengeId) {
+    public synchronized int getWrongAttempts(String teamId, String challengeId) {
         Map<String, Integer> map = teamWrongAttempts.get(teamId);
         return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
     }
 
-    public int getHintUsageCount(String teamId, String challengeId) {
+    public synchronized int getHintUsageCount(String teamId, String challengeId) {
         Map<String, Integer> map = teamHintUsage.get(teamId);
         return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
     }
 
-    public int getUserWrongAttempts(String userId, String challengeId) {
+    public synchronized int getUserWrongAttempts(String userId, String challengeId) {
         Map<String, Integer> map = userWrongAttempts.get(userId);
         return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
     }
 
-    public int getUserHintUsageCount(String userId, String challengeId) {
+    public synchronized int getUserHintUsageCount(String userId, String challengeId) {
         Map<String, Integer> map = userHintUsage.get(userId);
         return (map != null) ? map.getOrDefault(challengeId, 0) : 0;
     }
@@ -629,15 +646,15 @@ public final class ContestEngine {
         leaderboard.update(teamsById.values());
     }
 
-    public Leaderboard getLeaderboard() {
+    public synchronized Leaderboard getLeaderboard() {
         return leaderboard;
     }
 
-    public List<Submission> getSubmissions() {
+    public synchronized List<Submission> getSubmissions() {
         return List.copyOf(submissions);
     }
 
-    public MongoRepository getRepository() {
+    public synchronized MongoRepository getRepository() {
         return repository;
     }
 

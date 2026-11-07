@@ -546,6 +546,32 @@ public final class MongoRepository {
         return new ArrayList<>(memSubmissions);
     }
 
+    // Hint unlocks are persisted immediately, even before the first submission.
+    private final Map<String, Map<String, Map<String, Integer>>> memHintUsage = new ConcurrentHashMap<>();
+
+    public void saveHintUsage(String type, String owner, Map<String, Integer> counts) {
+        if (mongoManager.isConnected()) {
+            Document doc = new Document("_id", type + ":" + owner).append("type", type)
+                    .append("owner", owner).append("counts", new Document(counts));
+            mongoManager.getDatabase().getCollection("hint_usage").replaceOne(
+                    Filters.eq("_id", doc.getString("_id")), doc, new ReplaceOptions().upsert(true));
+        }
+        memHintUsage.computeIfAbsent(type, k -> new ConcurrentHashMap<>()).put(owner, Map.copyOf(counts));
+    }
+
+    public Map<String, Map<String, Integer>> getHintUsage(String type) {
+        if (mongoManager.isConnected()) {
+            Map<String, Map<String, Integer>> result = new HashMap<>();
+            for (Document doc : mongoManager.getDatabase().getCollection("hint_usage").find(Filters.eq("type", type))) {
+                Map<String, Integer> counts = new HashMap<>();
+                doc.get("counts", Document.class).forEach((challenge, count) -> counts.put(challenge, ((Number) count).intValue()));
+                result.put(doc.getString("owner"), counts);
+            }
+            return result;
+        }
+        return new HashMap<>(memHintUsage.getOrDefault(type, Map.of()));
+    }
+
     public boolean isDatabaseReady() {
         return mongoManager.ping();
     }
