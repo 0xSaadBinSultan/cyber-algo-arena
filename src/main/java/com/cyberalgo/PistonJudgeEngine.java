@@ -39,6 +39,7 @@ public final class PistonJudgeEngine {
         String judge0 = System.getenv("JUDGE0_URL");
         this.configured = endpoint != null && !endpoint.isBlank() || judge0 != null && !judge0.isBlank();
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(6))
                 .build();
         this.mapper = new ObjectMapper();
@@ -90,7 +91,9 @@ public final class PistonJudgeEngine {
         long maxTime = 0L;
         long maxMemory = 0L;
         long memoryLimitBytes = problem.getMemoryLimitMb() * MB;
-        int runLimitMs = Math.toIntExact(Math.max(50L, problem.getTimeLimitMillis()));
+        // JVM startup and JIT compilation count toward runtime CPU usage.
+        long timeBudgetMillis = problem.getTimeLimitMillis() * ("java".equals(lang.language()) ? 2L : 1L);
+        int runLimitMs = Math.toIntExact(Math.max(50L, timeBudgetMillis));
 
         for (int i = 0; i < tests.size(); i++) {
             CPTestCase test = tests.get(i);
@@ -167,8 +170,8 @@ public final class PistonJudgeEngine {
                 maxMemory = Math.max(maxMemory, memory);
 
                 if ("TO".equalsIgnoreCase(runStatus)
-                        || wallTime > problem.getTimeLimitMillis()
-                        || cpuTime > problem.getTimeLimitMillis()) {
+                        || wallTime > timeBudgetMillis
+                        || cpuTime > timeBudgetMillis) {
                     return result(SubmissionResult.Status.TIME_LIMIT_EXCEEDED,
                             verdictMessage("Time Limit Exceeded", test, i),
                             passed, tests.size(), maxTime, maxMemory, lang.displayName());

@@ -9,6 +9,8 @@ const esc = (v) =>
       ],
   );
 const icons = {
+  radar:
+    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="m12 12 7-7M12 3v9"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   code: '<path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 3l-4 18"/>',
   flag: '<path d="M5 21V3m0 1c5-5 9 5 14 0v10c-5 5-9-5-14 0"/>',
@@ -83,7 +85,7 @@ const head = (eyebrow, title, text, action = "") =>
   `<div class="page-head"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${text}</p></div>${action}</div>`;
 function authUI() {
   $("#auth-actions").innerHTML = user
-    ? `${user.role === "ADMIN" ? '<a class="button subtle" href="/admin">Admin portal ↗</a>' : ""}<button class="button subtle" data-action="logout">Sign out</button>`
+    ? '<button class="button subtle" data-action="logout">Sign out</button>'
     : '<button class="button subtle" data-action="login">Sign in</button><button class="button primary" data-action="register">Join the arena</button>';
   $("#side-avatar").textContent = user
     ? user.username.slice(0, 2).toUpperCase()
@@ -128,9 +130,11 @@ function route() {
       "cp",
       "ctf",
       "contests",
+      "radar",
       "standings",
       "submissions",
       "team",
+      "profile",
     ].includes(page)
   )
     page = "overview";
@@ -144,18 +148,22 @@ function route() {
     cp: "Problemset",
     ctf: "CTF labs",
     contests: "Contests",
+    radar: "Contest Radar",
     standings: "Standings",
     submissions: "My submissions",
     team: "My team",
+    profile: "My profile",
   }[page];
   ({
     overview: overview,
     cp: cpPage,
     ctf: ctfPage,
     contests: contestPage,
+    radar: radarPage,
     standings: standingsPage,
     submissions: submissionsPage,
     team: teamPage,
+    profile: profilePage,
   })[page]();
 }
 function overview() {
@@ -274,6 +282,126 @@ function contestPage() {
         )) +
     '<p class="muted small">Create or join a team before registering. Contest points are separate from practice progress. Problems are drawn from the public practice catalog.</p>';
 }
+let radarEvents = [],
+  radarPlatform = "ALL",
+  radarLoading = false;
+const platformLinks = {
+  CODEFORCES: "https://codeforces.com/contests",
+  CTFTIME: "https://ctftime.org/event/list/upcoming",
+  ATCODER: "https://atcoder.jp/contests/",
+  CODECHEF: "https://www.codechef.com/contests",
+};
+const platformName = (p) =>
+  ({
+    CODEFORCES: "Codeforces",
+    CTFTIME: "CTFtime",
+    ATCODER: "AtCoder",
+    CODECHEF: "CodeChef",
+  })[p] || p;
+function scheduleUrl(value) {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" &&
+      /(^|\.)(codeforces\.com|ctftime\.org|atcoder\.jp|codechef\.com)$/.test(
+        u.hostname,
+      )
+      ? u.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+function countdown(start) {
+  const minutes = Math.max(
+    0,
+    Math.floor((new Date(start) - Date.now()) / 60000),
+  );
+  return minutes >= 1440
+    ? Math.floor(minutes / 1440) +
+        "d " +
+        Math.floor((minutes % 1440) / 60) +
+        "h"
+    : Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
+}
+async function radarPage() {
+  $("#view").innerHTML =
+    head(
+      "LOOK BEYOND THE CLUB",
+      "Your next contest is out there.",
+      "Upcoming CP and CTF events from the wider community. Times are shown in your local timezone.",
+      '<button class="button secondary" id="refresh-radar">Refresh schedules</button>',
+    ) +
+    '<div class="category-pills" id="radar-filters"></div><div id="radar-results"><div class="panel loading">Checking contest schedules…</div></div><div class="section-head"><h2>Explore the official calendars</h2></div><div class="tracks">' +
+    Object.entries(platformLinks)
+      .map(
+        ([platform, url]) =>
+          `<a class="track-card" href="${url}" target="_blank" rel="noopener noreferrer"><h3>${platformName(platform)} ↗</h3><p>${platform === "CTFTIME" ? "Security competitions and team events" : "Algorithm contests and programming rounds"}</p><span class="tag gray">Official schedule</span></a>`,
+      )
+      .join("") +
+    '</div><p class="muted small">External schedules can change. Check the official event page before registering. Feed failures are shown as unavailable; no event dates are invented.</p>';
+  $("#refresh-radar").onclick = loadRadar;
+  if (radarEvents.length) renderRadar();
+  else await loadRadar();
+}
+async function loadRadar() {
+  if (radarLoading) return;
+  radarLoading = true;
+  const button = $("#refresh-radar"),
+    done = button ? busy(button, "Checking…") : () => {};
+  try {
+    radarEvents = await api("/events/upcoming");
+    if (page === "radar") renderRadar();
+  } catch (error) {
+    if (page === "radar")
+      $("#radar-results").innerHTML = empty(
+        "Schedules are temporarily unavailable",
+        "Use an official calendar below, or try refresh in a moment.",
+      );
+  } finally {
+    radarLoading = false;
+    done();
+  }
+}
+function renderRadar() {
+  if (!$("#radar-filters")) return;
+  $("#radar-filters").innerHTML = ["ALL", ...Object.keys(platformLinks)]
+    .map(
+      (p) =>
+        `<button class="pill ${p === radarPlatform ? "active" : ""}" data-radar-platform="${p}">${p === "ALL" ? "All platforms" : platformName(p)}</button>`,
+    )
+    .join("");
+  document.querySelectorAll("[data-radar-platform]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        radarPlatform = button.dataset.radarPlatform;
+        renderRadar();
+      }),
+  );
+  const events = radarEvents.filter((event) => {
+    const start = new Date(event.startTimeIso || event.startTime).getTime();
+    return (
+      Number.isFinite(start) &&
+      start + Number(event.durationSeconds || 0) * 1000 > Date.now() &&
+      (radarPlatform === "ALL" || event.platform === radarPlatform) &&
+      scheduleUrl(event.url)
+    );
+  });
+  $("#radar-results").innerHTML = events.length
+    ? '<div class="ctf-grid">' +
+      events
+        .map((event) => {
+          const start = event.startTimeIso || event.startTime,
+            live = new Date(start) <= new Date(),
+            url = scheduleUrl(event.url);
+          return `<article class="lab-card"><div class="lab-meta">${tag(platformName(event.platform), "teal")}${tag(live ? "Live now" : "Upcoming", live ? "" : "gray")}</div><h3>${esc(event.title)}</h3><p>Starts ${fmt(start)}<br>${Math.round(Number(event.durationSeconds || 0) / 60)} minute contest<br>${live ? "Contest in progress" : "Starts in " + countdown(start)}</p><div class="lab-bottom"><span class="muted small">${esc(event.format || "Contest")}</span><a class="button subtle" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Event page ↗</a></div></article>`;
+        })
+        .join("") +
+      "</div>"
+    : empty(
+        "No verified events for this filter",
+        "Some providers may be unavailable. Their official calendars are always linked below.",
+      );
+}
 async function standingsPage(contestId) {
   $("#view").innerHTML =
     head(
@@ -328,6 +456,59 @@ async function submissionsPage() {
       : '<div class="empty">Your first submission will show up here. Pick a problem to get started.</div>';
   } catch (e) {
     toast(e.message);
+  }
+}
+async function profilePage() {
+  if (!user) {
+    $("#view").innerHTML =
+      head(
+        "YOUR PROGRESS",
+        "Every step adds up.",
+        "Sign in to see your CP and CTF progress.",
+      ) + '<button class="button primary" data-action="login">Sign in</button>';
+    return;
+  }
+  $("#view").innerHTML =
+    head(
+      "YOUR PROGRESS",
+      esc(user.username),
+      "Your practice scores, track progress, and solved challenges.",
+    ) + '<div id="profile-results" class="loading">Loading your profile…</div>';
+  try {
+    const p = await api("/users/me/profile");
+    if (page !== "profile") return;
+    $("#profile-results").className = "";
+    $("#profile-results").innerHTML =
+      '<div class="stats">' +
+      stat(
+        "Practice points",
+        p.personalScore,
+        "One account, both tracks",
+        "chart",
+      ) +
+      stat("CP solves", p.cpSolvesCount, p.cpScore + " CP points", "code") +
+      stat("CTF solves", p.ctfSolvesCount, p.ctfScore + " CTF points", "flag") +
+      stat(
+        "Total solves",
+        p.solvesCount,
+        "Keep building your skills",
+        "check",
+      ) +
+      '</div><div class="panel panel-pad"><h2>Your solved problems</h2>' +
+      ((p.solvedChallenges || []).length
+        ? '<div class="category-pills">' +
+          p.solvedChallenges
+            .map(
+              (id) =>
+                `<button class="button subtle" data-open="${esc(id)}">${esc(problems.find((item) => item.id === id)?.title || id)} ↗</button>`,
+            )
+            .join("") +
+          "</div>"
+        : '<p class="muted">Your first solve will show up here.</p>') +
+      '</div><p class="muted small">Contest results stay in their own standings. Practice scores are shown above.</p>';
+  } catch (error) {
+    if ($("#profile-results"))
+      $("#profile-results").textContent = error.message;
   }
 }
 async function teamPage() {
@@ -433,7 +614,7 @@ async function openProblem(id) {
     $("#problem-body").innerHTML =
       info +
       (p.type === "CP"
-        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button class="button subtle" id="run-samples">Run samples</button><button class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Drafts are saved in this browser.</p></section></div>`
+        ? `<div class="workspace"><div><article class="statement">${markdown(p.description)}</article>${samples}</div><section class="editor-panel"><div class="editor-head"><label>Language<select id="code-language"><option value="cpp">C++</option><option value="java">Java</option><option value="python">Python 3</option></select></label><span class="tag gray">${p.hiddenTestCount} hidden tests</span></div><label for="source-code" class="sample-label">Your solution</label><textarea id="source-code" aria-label="Your solution" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="editor-actions"><button class="button subtle" id="run-samples">Run samples</button><button class="button primary" id="submit-code">Submit solution ${icon("arrow")}</button></div><div id="verdict" class="verdict" role="status">${judge.configured ? "Ready when you are. Run samples first, then submit against all tests." : "The execution service has not been configured by the host yet. You can read the problem and save a draft."}</div><p class="small muted">Samples don’t affect your score. Submit runs all samples and hidden tests. Java receives 2× time for JVM startup. Drafts are saved in this browser.</p></section></div>`
         : `<div class="ctf-workspace"><article class="statement">${markdown(p.description)}</article>${p.hasAttachment ? `<a class="button secondary" href="/api/challenges/${encodeURIComponent(p.id)}/download">Download ${esc(p.attachmentFileName)} ↓</a>` : ""}<div class="subheading"><button class="button subtle" id="hint-button">Need a nudge? Unlock hint (${p.hintCost} point penalty)</button><p id="hint-text" class="muted small"></p></div><form id="flag-form"><label>Recovered flag<input id="flag-input" placeholder="flag{your_discovery}" required autocomplete="off" spellcheck="false"></label><button class="button primary full">Submit flag ${icon("arrow")}</button></form><div id="verdict" class="verdict" role="status" style="margin-top:18px">${p.solved && !activeContest ? "You’ve already solved this lab. Nice work." : "Read the evidence. Find the flag. Take your time."}</div></div>`);
     $("#problem-dialog").showModal();
     if (p.type === "CP") {
