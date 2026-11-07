@@ -1025,7 +1025,12 @@ code {
   align-items: center;
   background: #151e27;
   border-bottom: 1px solid #2e3e4f;
+  flex-wrap: wrap;
+  gap: 12px;
 }
+.ai-tutor-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.ai-action-buttons button, #ai-toggle-btn { min-height: 44px; }
+#ai-feedback-source { margin: 0 0 10px; }
 .ai-sparkle {
   color: var(--teal);
   font-size: 14px;

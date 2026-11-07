@@ -650,21 +650,22 @@ async function openProblem(id) {
     const aiTutorWidget = p.type === "CTF" ? `
       <div class="ai-tutor-box">
         <div class="ai-tutor-head">
-          <div style="display:flex;align-items:center;gap:8px">
+          <div class="ai-tutor-title">
             <span class="ai-sparkle">✦</span>
             <strong>Gemini AI Tutor</strong>
-            <span class="tag gray small">Sanitized guidance · No spoilers</span>
+            <span class="tag gray small">Learn without spoilers</span>
           </div>
           <button type="button" class="button subtle small" id="ai-toggle-btn">Ask Tutor ▾</button>
         </div>
         <div id="ai-drawer" class="ai-drawer" hidden>
           <p class="muted small" style="margin:0 0 10px">Need a nudge? The AI Tutor guides your investigation without revealing the flag.</p>
           <div class="ai-action-buttons">
-            <button type="button" class="button subtle small" data-ai="HINT" data-level="1">💡 Concept Nudge (L1)</button>
-            <button type="button" class="button subtle small" data-ai="HINT" data-level="2">🔍 Investigation Strategy (L2)</button>
-            <button type="button" class="button subtle small" data-ai="EXPLAIN">📖 Explain Lab</button>
+            <button type="button" class="button subtle small" data-ai="HINT" data-level="1">Concept nudge</button>
+            <button type="button" class="button subtle small" data-ai="HINT" data-level="2">Investigation strategy</button>
+            <button type="button" class="button subtle small" data-ai="EXPLAIN">Explain the lab</button>
           </div>
           <div id="ai-feedback" class="ai-feedback" hidden>
+            <p id="ai-feedback-source" class="muted small" role="status" aria-live="polite"></p>
             <div id="ai-feedback-text" class="ai-feedback-text"></div>
           </div>
         </div>
@@ -723,8 +724,13 @@ async function openProblem(id) {
           const done = busy(btn, "Consulting AI…");
           const feedback = $("#ai-feedback");
           const feedbackText = $("#ai-feedback-text");
+          const source = $("#ai-feedback-source");
+          const actions = [...aiDrawer.querySelectorAll("[data-ai]")];
+          actions.forEach((action) => (action.disabled = true));
           feedback.hidden = false;
-          feedbackText.textContent = "Analyzing problem and formulating guidance…";
+          feedback.setAttribute("aria-busy", "true");
+          source.textContent = "Asking Gemini…";
+          feedbackText.textContent = "Your guidance is on its way. If AI is unavailable, a study guide will help you continue.";
           try {
             const body = {
               challengeId: p.id,
@@ -734,11 +740,17 @@ async function openProblem(id) {
               compilerError: $("#verdict")?.textContent || "",
             };
             const res = await api("/ai/tutor", body);
+            source.textContent = res.source === "study_guide"
+              ? "Study guide · AI temporarily unavailable"
+              : "Gemini AI response";
             feedbackText.innerHTML = markdown(res.message);
           } catch (err) {
+            source.textContent = "Couldn’t load guidance. Try again when your connection is ready.";
             feedbackText.textContent = err.message;
           } finally {
+            feedback.setAttribute("aria-busy", "false");
             done();
+            actions.forEach((action) => (action.disabled = false));
           }
         };
       });

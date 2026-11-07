@@ -140,6 +140,22 @@ class ArenaIntegrationTest {
         } finally { executor.shutdownNow(); }
     }
 
+    @Test void ctfTutorReturnsClearlyLabeledGuidanceWithoutProviderConfiguration() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(System.getenv("GEMINI_API_KEY") == null
+                || System.getenv("GEMINI_API_KEY").isBlank());
+        assertEquals(201, req("/api/auth/register", json.writeValueAsString(java.util.Map.of(
+                "username", "guide" + UUID.randomUUID(), "password", "GuidePassword!2026"))).statusCode());
+        var response = req("/api/ai/tutor", "{\"challengeId\":\"ARENA-CRYPTO\",\"mode\":\"EXPLAIN\"}");
+        assertEquals(200, response.statusCode());
+        var body = json.readTree(response.body());
+        assertEquals("study_guide", body.path("source").asText());
+        assertTrue(body.path("notice").asText().contains("unavailable"));
+        assertFalse(body.path("message").asText().isBlank());
+        assertEquals("", body.path("model").asText());
+        assertFalse(response.body().contains("flag{"));
+        assertEquals(400, req("/api/ai/tutor", "{\"challengeId\":\"ARENA-SUM\"}").statusCode());
+    }
+
     @Test void playerCannotCreateAContestAndCanReadOwnHistory() throws Exception {
         String name="http"+UUID.randomUUID();
         var registered=req("/api/auth/register",json.writeValueAsString(java.util.Map.of("username",name,"password","PlayerOnly!2026")));

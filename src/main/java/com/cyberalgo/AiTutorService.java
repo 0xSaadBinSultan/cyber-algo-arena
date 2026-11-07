@@ -13,6 +13,9 @@ public final class AiTutorService {
     private static final int MAX_ERROR = 2000;
 
     private final GeminiService gemini;
+    private volatile long retryAfterMillis;
+
+    public record Reply(String message, String source, String model, String notice) {}
 
     public AiTutorService(GeminiService gemini) {
         this.gemini = gemini;
@@ -33,6 +36,11 @@ public final class AiTutorService {
             String question,
             String userCode,
             String compilerError) {
+        return reply(challenge, requestedMode, requestedHintLevel, question, userCode, compilerError).message();
+    }
+
+    public Reply reply(Challenge challenge, String requestedMode, int requestedHintLevel,
+                       String question, String userCode, String compilerError) {
 
         String mode = normalizeMode(requestedMode);
         int hintLevel = Math.max(1, Math.min(3, requestedHintLevel));
@@ -44,7 +52,17 @@ public final class AiTutorService {
                 limit(userCode, MAX_CODE),
                 limit(compilerError, MAX_ERROR));
 
-        return gemini.generate(systemInstruction(), prompt);
+        if (gemini.isConfigured() && System.currentTimeMillis() >= retryAfterMillis) {
+            try {
+                return new Reply(gemini.generate(systemInstruction(), prompt), "gemini", gemini.getModel(), "");
+            } catch (IllegalStateException ex) {
+                // Do not hammer an unavailable provider during a classroom demo.
+                retryAfterMillis = System.currentTimeMillis() + 30_000;
+                System.err.println("[AiTutor] Provider unavailable; serving a labeled study guide.");
+            }
+        }
+        return new Reply(CtfStudyGuide.explain(challenge, mode, hintLevel), "study_guide", "",
+                "AI guidance is temporarily unavailable. This built-in study guide can help you continue.");
     }
 
     static String buildPrompt(
