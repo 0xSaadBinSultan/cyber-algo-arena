@@ -29,13 +29,20 @@ public final class PistonJudgeEngine {
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final URI executeEndpoint;
+    private final boolean configured;
 
     public PistonJudgeEngine() {
+        this(System.getenv("PISTON_URL"));
+    }
+
+    PistonJudgeEngine(String endpoint) {
+        String judge0 = System.getenv("JUDGE0_URL");
+        this.configured = endpoint != null && !endpoint.isBlank() || judge0 != null && !judge0.isBlank();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(6))
                 .build();
         this.mapper = new ObjectMapper();
-        this.executeEndpoint = URI.create(resolveExecuteUrl(System.getenv("PISTON_URL")));
+        this.executeEndpoint = URI.create(resolveExecuteUrl(endpoint));
     }
 
     public record ExecutionResult(
@@ -57,12 +64,19 @@ public final class PistonJudgeEngine {
             return result(SubmissionResult.Status.INVALID, "Source code is required", 0, 0, 0, 0, "");
         }
 
+        if (problem.isExternalReference()) {
+            return result(SubmissionResult.Status.INVALID, "External practice reference: submit on the original platform", 0, 0, 0, 0, "");
+        }
         List<CPTestCase> tests = problem.getJudgeTestCases();
         if (tests.isEmpty()) {
             return result(
                     SubmissionResult.Status.INVALID,
                     "Judge misconfigured: no server-side testcases are configured for this problem",
                     0, 0, 0, 0, "");
+        }
+
+        if (!configured) {
+            return result(SubmissionResult.Status.INVALID, "Execution service is not configured. Ask the host to set PISTON_URL or JUDGE0_URL.", 0, tests.size(), 0, 0, "");
         }
 
         DetectedLanguage lang;
@@ -95,27 +109,31 @@ public final class PistonJudgeEngine {
                 reqBody.put("run_cpu_time", runLimitMs);
                 reqBody.put("run_memory_limit", memoryLimitBytes);
 
-                HttpRequest request = HttpRequest.newBuilder()
+                HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                         .uri(executeEndpoint)
                         .timeout(Duration.ofMillis(Math.max(12_000L, runLimitMs + 11_000L)))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(
                                 mapper.writeValueAsString(reqBody),
-                                StandardCharsets.UTF_8))
-                        .build();
+                                StandardCharsets.UTF_8));
+                String token = System.getenv("PISTON_API_KEY");
+                if (token != null && !token.isBlank()) requestBuilder.header("Authorization", "Bearer " + token.trim());
+                HttpRequest request = requestBuilder.build();
 
-                HttpResponse<String> response = httpClient.send(
-                        request,
-                        HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() != 200) {
-                    String msg = response.statusCode() == 401 || response.statusCode() == 403
-                            ? "Judge service authorization failed. Configure an authorized/self-hosted Piston service."
-                            : "Judge service error: HTTP " + response.statusCode();
-                    return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                JsonNode root;
+                String judge0 = System.getenv("JUDGE0_URL");
+                if (judge0 != null && !judge0.isBlank()) {
+                    root = new Judge0Adapter().execute(reqBody);
+                } else {
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() != 200) {
+                        String msg = response.statusCode() == 401 || response.statusCode() == 403
+                                ? "Judge service authorization failed. Configure an authorized Piston or Judge0 service."
+                                : "Judge service error: HTTP " + response.statusCode();
+                        return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                    }
+                    root = mapper.readTree(response.body());
                 }
-
-                JsonNode root = mapper.readTree(response.body());
                 JsonNode compile = root.path("compile");
                 if (!compile.isMissingNode() && !compile.isNull()) {
                     String compileStatus = compile.path("status").asText("");
@@ -136,6 +154,9 @@ public final class PistonJudgeEngine {
                 }
 
                 JsonNode run = root.path("run");
+                if (!run.isObject() || !run.hasNonNull("code") && run.path("status").asText("").isBlank()) {
+                    return result(SubmissionResult.Status.INVALID, "Judge returned an incomplete execution result", passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                }
                 String runStatus = run.path("status").asText("");
                 String signal = run.path("signal").asText("");
                 Integer exitCode = run.path("code").isNull() ? null : run.path("code").asInt();
@@ -172,7 +193,7 @@ public final class PistonJudgeEngine {
                             run.path("message").asText(""),
                             signal.isBlank() ? "Runtime Error" : "Terminated by " + signal);
                     return result(SubmissionResult.Status.RUNTIME_ERROR,
-                            verdictMessage("Runtime Error", test, i) + ": " + truncate(details, 350),
+                            verdictMessage("Runtime Error", test, i) + (test.hidden() ? "" : ": " + truncate(details, 350)),
                             passed, tests.size(), maxTime, maxMemory, lang.displayName());
                 }
 
@@ -185,8 +206,8 @@ public final class PistonJudgeEngine {
 
                 passed++;
             } catch (java.net.http.HttpTimeoutException ex) {
-                return result(SubmissionResult.Status.TIME_LIMIT_EXCEEDED,
-                        verdictMessage("Time Limit Exceeded", test, i),
+                return result(SubmissionResult.Status.INVALID,
+                        "Judge service request timed out. Please retry.",
                         passed, tests.size(), maxTime, maxMemory, lang.displayName());
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
@@ -272,7 +293,8 @@ public final class PistonJudgeEngine {
             throw new IllegalArgumentException("PISTON_URL must start with http:// or https://");
         }
         raw = raw.replaceAll("/+$", "");
-        if (raw.endsWith("/api/v2/execute")) return raw;
+        if (raw.endsWith("/execute")) return raw;
+        if (raw.endsWith("/api/v2")) return raw + "/execute";
         return raw + "/api/v2/execute";
     }
 

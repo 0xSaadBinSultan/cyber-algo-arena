@@ -14,11 +14,8 @@ class SecurityConfigTest {
     }
 
     @Test
-    void temporaryDefaultAdminIsAdminAdminWhenNoExplicitConfigExists() {
-        SecurityConfig.AdminBootstrap bootstrap = SecurityConfig.effectiveAdminBootstrap();
-
-        assertEquals("admin", bootstrap.username());
-        assertEquals("admin", bootstrap.password());
+    void noBuiltInAdministratorCredentialExists() {
+        assertTrue(SecurityConfig.adminBootstrap().isEmpty());
     }
 
     @Test

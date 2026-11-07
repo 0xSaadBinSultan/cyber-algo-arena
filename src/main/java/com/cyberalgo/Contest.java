@@ -33,6 +33,20 @@ public final class Contest {
         this.registeredTeamIds = new LinkedHashSet<>(registeredTeamIds != null ? registeredTeamIds : List.of());
     }
 
+    private List<String> challengeIds = List.of();
+
+    public void setChallengeIds(Collection<String> ids) {
+        challengeIds = List.copyOf(new LinkedHashSet<>(ids == null ? List.of() : ids));
+    }
+
+    public List<String> getChallengeIds() { return challengeIds; }
+
+    public String getStatus() {
+        if (Instant.now().isBefore(startTime)) return "UPCOMING";
+        if (!Instant.now().isBefore(endTime)) return "ENDED";
+        return isRunning ? "LIVE" : "PAUSED";
+    }
+
     public String getId() {
         return id;
     }

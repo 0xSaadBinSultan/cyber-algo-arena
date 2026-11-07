@@ -56,6 +56,7 @@ public final class WebServer {
         int effectivePort = resolvePort(port);
         registerSecurityMiddleware();
         registerRoutes();
+        new ArenaRoutes(app, engine);
         app.start(effectivePort);
         System.out.println("[WebServer] Running on http://localhost:" + effectivePort);
     }
@@ -74,6 +75,7 @@ public final class WebServer {
     }
 
     private void registerSecurityMiddleware() {
+        app.before("/api/*", ctx -> ctx.header("Cache-Control", "no-store"));
         app.before(ctx -> {
             ctx.header("X-Content-Type-Options", "nosniff");
             ctx.header("X-Frame-Options", "DENY");
@@ -206,11 +208,10 @@ public final class WebServer {
 
     private void handleJudgeStatus(Context ctx) {
         String configured = System.getenv("PISTON_URL");
-        ctx.json(Map.of(
-                "provider", "Piston-compatible sandbox",
-                "configured", configured != null && !configured.isBlank(),
-                "mode", (configured != null && !configured.isBlank()) ? "configured" : "public-fallback"
-        ));
+        String judge0 = System.getenv("JUDGE0_URL");
+        boolean ready = configured != null && !configured.isBlank() || judge0 != null && !judge0.isBlank();
+        ctx.json(Map.of("provider", judge0 != null && !judge0.isBlank() ? "Judge0 sandbox" : "Piston sandbox",
+                "configured", ready, "mode", ready ? "configured" : "setup-required"));
     }
 
     // ═══════════════════════════════════════════
@@ -457,6 +458,10 @@ public final class WebServer {
             map.put("startTime", c.getStartTime().toString());
             map.put("endTime", c.getEndTime().toString());
             map.put("isRunning", c.isRunning());
+            map.put("status", c.getStatus());
+            map.put("challengeIds", c.getChallengeIds());
+            User viewer = getSessionUser(ctx);
+            map.put("registered", viewer != null && engine.getRepository().getParticipation(c.getId(), viewer.getId()).isPresent());
             map.put("registeredTeamsCount", c.getRegisteredTeamIds().size());
             list.add(map);
         }
@@ -476,7 +481,7 @@ public final class WebServer {
         try {
             engine.registerPlayerInContest(contestId, user.getTeamId(), user.getId());
             ctx.json(Map.of("message", "Registered for contest successfully", "contestId", contestId, "teamId", user.getTeamId()));
-        } catch (IllegalStateException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             ctx.status(409).json(errorMap(ex.getMessage()));
         }
     }
@@ -496,6 +501,8 @@ public final class WebServer {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Challenge c : engine.getChallenges()) {
+            // Historical imports contain placeholder data. Keep them as external references only.
+            if (!PracticeCatalogIds.isShowable(c)) continue;
             result.add(challengeToMap(c, teamId, user));
         }
         ctx.json(result);
@@ -518,7 +525,7 @@ public final class WebServer {
             } else if (c instanceof CPProblem cp) {
                 map.put("timeLimitMs", cp.getTimeLimitMillis());
                 map.put("memoryLimitMb", cp.getMemoryLimitMb());
-                map.put("testcaseDir", cp.getTestcaseDirectory().toString());
+
             }
 
             if (teamId != null) {
@@ -637,6 +644,10 @@ public final class WebServer {
                 return;
             }
 
+            if (challenge instanceof CPProblem cp && !cp.isJudgeReady()) {
+                ctx.status(400).json(errorMap("This problem is an external reference or has no verified hidden tests"));
+                return;
+            }
             String subId = "SUB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             Submission submission = new Submission(
                     subId,
@@ -1190,12 +1201,23 @@ public final class WebServer {
                 }
             }
         } else if (c instanceof CPProblem cp) {
+            map.put("judgeReady", cp.isJudgeReady());
+            map.put("externalReference", cp.isExternalReference());
+            if (c.getId().startsWith("CF-")) {
+                String key = c.getId().substring(3);
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)([A-Z][0-9]*)").matcher(key);
+                if (m.matches()) map.put("sourceUrl", "https://codeforces.com/problemset/problem/" + m.group(1) + "/" + m.group(2));
+            }
+            if (c.getId().startsWith("AC-")) {
+                String[] parts = c.getId().substring(3).toLowerCase(Locale.ROOT).split("-");
+                if (parts.length == 2) map.put("sourceUrl", "https://atcoder.jp/contests/" + parts[0] + "/tasks/" + parts[0] + "_" + parts[1]);
+            }
             map.put("timeLimitMs", cp.getTimeLimitMillis());
             map.put("memoryLimitMb", cp.getMemoryLimitMb());
-            map.put("hiddenTestCount", cp.getHiddenTestCount());
+            map.put("hiddenTestCount", cp.isExternalReference() ? 0 : cp.getHiddenTestCount());
 
             List<Map<String, String>> samples = new ArrayList<>();
-            for (CPTestCase tc : cp.getPublicSampleCases()) {
+            for (CPTestCase tc : cp.isExternalReference() ? List.<CPTestCase>of() : cp.getPublicSampleCases()) {
                 samples.add(Map.of("input", tc.input(), "output", tc.expectedOutput()));
             }
             map.put("sampleCases", samples);

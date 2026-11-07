@@ -78,7 +78,7 @@ public final class CodeforcesSyncService {
 
                             // Setup testcase directory
                             Path testcaseDir = Path.of("contest_data", "testcases", problemId);
-                            provisionSampleTestcases(testcaseDir, contestId, index);
+
 
                             CPProblem cpProblem = new CPProblem(
                                     problemId,
@@ -88,7 +88,7 @@ public final class CodeforcesSyncService {
                                     2000L,
                                     256,
                                     testcaseDir);
-                            cpProblem.setDescription("Codeforces Problem " + contestId + index + " — Rating: " + rating + ". Solve this competitive programming challenge. Submit your output to match expected testcase results.");
+                            cpProblem.setDescription("Codeforces Problem " + contestId + index + " — Rating: " + rating + ". External practice reference. Read the full statement and submit on Codeforces; official hidden tests are not imported.");
 
                             engine.addChallenge(cpProblem);
 
@@ -108,81 +108,8 @@ public final class CodeforcesSyncService {
             System.err.println("[CodeforcesSyncService] API fetch warning: " + ex.getMessage());
         }
 
-        // Resilient fallback if offline
-        if (syncedProblems.isEmpty()) {
-            syncedProblems = populateFallbackProblems(engine, targetCount);
-        }
-
         System.out.println("[CodeforcesSyncService] Synchronized " + syncedProblems.size() + " CP problems into MongoDB.");
         return new SyncResult(syncedProblems.size(), syncedProblems);
-    }
-
-    private void provisionSampleTestcases(Path dir, int contestId, String index) {
-        try {
-            Files.createDirectories(dir);
-            Path in1 = dir.resolve("input_1.txt");
-            Path out1 = dir.resolve("output_1.txt");
-            if (!Files.exists(in1)) {
-                Files.writeString(in1, "3\n1 2 3\n");
-            }
-            if (!Files.exists(out1)) {
-                Files.writeString(out1, "6\n");
-            }
-
-            Path in2 = dir.resolve("input_2.txt");
-            Path out2 = dir.resolve("output_2.txt");
-            if (!Files.exists(in2)) {
-                Files.writeString(in2, "4\n5 10 15 20\n");
-            }
-            if (!Files.exists(out2)) {
-                Files.writeString(out2, "50\n");
-            }
-        } catch (IOException ignored) {}
-    }
-
-    private List<Map<String, Object>> populateFallbackProblems(ContestEngine engine, int count) {
-        List<Map<String, Object>> list = new ArrayList<>();
-        int[][] fallbackDef = {
-                {2257, 800, 100},
-                {2257, 900, 120},
-                {2258, 1000, 150},
-                {2258, 1200, 180},
-                {2259, 1300, 200},
-                {2259, 1400, 250},
-                {2260, 1100, 160},
-                {2260, 1300, 210},
-                {2261, 1000, 150},
-                {2261, 1400, 250}
-        };
-
-        for (int i = 0; i < Math.min(count, fallbackDef.length); i++) {
-            int contestId = fallbackDef[i][0];
-            char index = (char) ('A' + (i % 4));
-            int rating = fallbackDef[i][1];
-            int points = fallbackDef[i][2];
-            String problemId = "CF-" + contestId + index;
-            String name = "Codeforces Matrix Round " + contestId + " " + index;
-
-            Path testcaseDir = Path.of("contest_data", "testcases", problemId);
-            provisionSampleTestcases(testcaseDir, contestId, String.valueOf(index));
-
-            Challenge.Difficulty diff = rating <= 1000
-                    ? Challenge.Difficulty.EASY
-                    : (rating <= 1500 ? Challenge.Difficulty.MEDIUM : Challenge.Difficulty.HARD);
-
-            CPProblem cp = new CPProblem(problemId, name, points, diff, 2000L, 256, testcaseDir);
-            cp.setDescription("Codeforces Round " + contestId + " Problem " + index + " — Practice competitive programming at rating " + rating + ".");
-            engine.addChallenge(cp);
-
-            Map<String, Object> info = new LinkedHashMap<>();
-            info.put("id", problemId);
-            info.put("title", name);
-            info.put("rating", rating);
-            info.put("points", points);
-            info.put("difficulty", diff.name());
-            list.add(info);
-        }
-        return list;
     }
 
     public record SyncResult(int syncedCount, List<Map<String, Object>> problems) {}
