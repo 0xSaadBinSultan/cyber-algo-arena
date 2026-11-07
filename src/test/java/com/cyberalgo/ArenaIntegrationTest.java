@@ -20,6 +20,9 @@ class ArenaIntegrationTest {
     @BeforeAll static void setup() throws Exception {
         System.setProperty("arena.admin.password","IntegrationAdminOnly!2026");
         mongo=new MongoManager("mongodb://localhost:27017","arena_test_"+UUID.randomUUID().toString().replace("-",""));
+        if ("true".equals(System.getenv("ARENA_TEST_REQUIRE_MONGO"))) {
+            assertTrue(mongo.isConnected(), "CI integration tests require persistent MongoDB");
+        }
         engine=new ContestEngine(new MongoRepository(mongo)); engine.load();
         int port;try(java.net.ServerSocket socket=new java.net.ServerSocket(0)){port=socket.getLocalPort();}
         web=new WebServer(engine,port);url="http://localhost:"+port;
