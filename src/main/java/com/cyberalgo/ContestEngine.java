@@ -36,9 +36,13 @@ public final class ContestEngine {
     private volatile long lastSyncMillis = 0L;
 
     public ContestEngine(MongoRepository repository) {
+        this(repository, new PistonJudgeEngine());
+    }
+
+    ContestEngine(MongoRepository repository, PistonJudgeEngine judge) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.leaderboard = new Leaderboard();
-        this.pistonJudge = new PistonJudgeEngine();
+        this.pistonJudge = Objects.requireNonNull(judge, "judge must not be null");
     }
 
     /** Loads all persisted state from MongoDB into memory. */
@@ -465,9 +469,8 @@ public final class ContestEngine {
             team = getTeam(submission.getTeamId());
         }
 
-        // Club practice is individual-first: every member can solve a problem once,
-        // even if another member of the same team already solved it.
-        if ("GLOBAL".equals(submission.getContestId()) && user.isSolved(challenge.getId())) {
+        // Practice awards points once per member. CP resubmissions are still evaluated.
+        if ("GLOBAL".equals(submission.getContestId()) && user.isSolved(challenge.getId()) && !(challenge instanceof CPProblem)) {
             throw new DuplicateSubmissionException("Challenge already solved by user " + user.getUsername());
         }
 
@@ -500,6 +503,14 @@ public final class ContestEngine {
             submissions.add(submission);
             repository.saveSubmission(submission);
             return result;
+        }
+
+        if (status == SubmissionResult.Status.ACCEPTED && challenge instanceof CPProblem && user.isSolved(challenge.getId())) {
+            SubmissionResult repeat = new SubmissionResult(status, 0, outcomeMessage + " · Already solved; no additional practice points.");
+            submission.applyResult(repeat);
+            submissions.add(submission);
+            repository.saveSubmission(submission);
+            return repeat;
         }
 
         if (status == SubmissionResult.Status.ACCEPTED) {

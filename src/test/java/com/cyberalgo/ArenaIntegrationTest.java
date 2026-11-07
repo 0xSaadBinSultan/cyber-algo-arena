@@ -64,6 +64,29 @@ class ArenaIntegrationTest {
         assertEquals(SubmissionResult.Status.ACCEPTED,engine.submit(new Submission("s4"+suffix,"GLOBAL",u.getId(),team.getId(),"ARENA-CRYPTO","flag{one_decode_closer}",0,0,Instant.now())).getStatus());
         assertTrue(u.getPersonalScore()>0);
     }
+    @Test void acceptedCpResubmissionsAreJudgedWithoutAwardingPointsTwice() throws Exception {
+        var mock=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        mock.createContext("/api/v2/execute",exchange->{
+            exchange.getRequestBody().readAllBytes();
+            byte[] body="{\"run\":{\"code\":0,\"stdout\":\"42\\n\"}}".getBytes();
+            exchange.sendResponseHeaders(200,body.length);exchange.getResponseBody().write(body);exchange.close();
+        });mock.start();
+        try {
+            var replayEngine=new ContestEngine(engine.getRepository(),new PistonJudgeEngine("http://127.0.0.1:"+mock.getAddress().getPort()));
+            replayEngine.load();
+            String key=UUID.randomUUID().toString();
+            User user=replayEngine.registerUser("repeat"+key,"repeat@example.test","RepeatPassword!2026");
+            CPProblem cp=new CPProblem("CP-REPLAY"+key,"Replay",100,Challenge.Difficulty.EASY,1000,256,
+                    java.nio.file.Path.of("unused"),List.of(CPTestCase.sample("","42"),CPTestCase.hidden("","42")));
+            replayEngine.addChallenge(cp);
+            var first=replayEngine.submit(new Submission("first"+key,"GLOBAL",user.getId(),"",cp.getId(),"print(42)",0,0,Instant.now()),"python");
+            int score=user.getPersonalScore();
+            assertTrue(first.getPointsAwarded()>0);
+            var second=replayEngine.submit(new Submission("second"+key,"GLOBAL",user.getId(),"",cp.getId(),"print(42)",0,0,Instant.now()),"python");
+            assertEquals(SubmissionResult.Status.ACCEPTED,second.getStatus());assertEquals(0,second.getPointsAwarded());
+            assertEquals(score,user.getPersonalScore());assertEquals(1,user.getSolvesCount());assertEquals(1,cp.getSolveCount());
+        }finally{mock.stop(0);}
+    }
     @Test void playerCannotCreateAContestAndCanReadOwnHistory() throws Exception {
         String name="http"+UUID.randomUUID();
         var registered=req("/api/auth/register",json.writeValueAsString(java.util.Map.of("username",name,"password","PlayerOnly!2026")));

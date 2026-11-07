@@ -792,6 +792,7 @@ $("#host-form").onsubmit = async (e) => {
   }
 };
 document.addEventListener("click", async (e) => {
+  if (e.target.closest(".skip")) { e.preventDefault(); $("#main").focus(); return; }
   const close = e.target.closest("[data-close]");
   if (close) {
     close.closest("dialog").close();

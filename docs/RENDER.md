@@ -70,3 +70,5 @@ An optional authenticated gateway can connect Render to the local judge for a li
 Set Render's `PISTON_URL` and `PISTON_API_KEY` from the private `render-judge-settings.txt` written beside the checkout. Never commit that settings file or the sibling private JSON token file. The token stays in the backend; the browser never receives it. Submitted source and server-side test stdin pass through Cloudflare to this PC.
 
 Keep the PC and Docker on during the presentation. A Quick Tunnel has no uptime guarantee, and its hostname changes when recreated. After rebooting, run the script and update Render's `PISTON_URL` if it changed. Use an independently hosted execution provider for permanent availability. Closing Compass does not affect the Atlas database.
+
+CP practice allows repeat source submissions so members can compare languages or improve a solution. Every attempt receives a real verdict, but only the first accepted solve awards practice points. Team contest duplicate solves remain blocked.
