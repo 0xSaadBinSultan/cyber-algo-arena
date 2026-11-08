@@ -209,9 +209,9 @@ public final class WebServer {
     private void handleJudgeStatus(Context ctx) {
         String configured = System.getenv("PISTON_URL");
         String judge0 = System.getenv("JUDGE0_URL");
-        boolean ready = configured != null && !configured.isBlank() || judge0 != null && !judge0.isBlank();
-        ctx.json(Map.of("provider", judge0 != null && !judge0.isBlank() ? "Judge0 sandbox" : "Piston sandbox",
-                "configured", ready, "mode", ready ? "configured" : "setup-required"));
+        String provider = (judge0 != null && !judge0.isBlank()) ? "Judge0 sandbox" : (configured != null && !configured.isBlank() ? "Piston sandbox" : "Judge0 CE cloud");
+        ctx.json(Map.of("provider", provider,
+                "configured", true, "mode", "configured"));
     }
 
     // ═══════════════════════════════════════════

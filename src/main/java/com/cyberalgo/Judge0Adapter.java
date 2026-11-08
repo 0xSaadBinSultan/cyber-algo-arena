@@ -9,14 +9,16 @@ import java.util.*;
 
 /** Converts an authorized Judge0 sandbox result to the common execution protocol. */
 final class Judge0Adapter {
+    static final String DEFAULT_JUDGE0_URL = "https://ce.judge0.com";
     private final ObjectMapper mapper = new ObjectMapper();
-    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
+    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String base;
     private final String apiKey;
     Judge0Adapter() { this(System.getenv("JUDGE0_URL"), System.getenv("JUDGE0_API_KEY")); }
     Judge0Adapter(String base, String apiKey) {
-        this.base = base.replaceAll("/+$", "");
-        this.apiKey = apiKey;
+        String resolved = (base == null || base.isBlank()) ? DEFAULT_JUDGE0_URL : base.trim();
+        this.base = resolved.replaceAll("/+$", "");
+        this.apiKey = apiKey != null && !apiKey.isBlank() ? apiKey.trim() : null;
     }
     JsonNode execute(Map<String,Object> piston) throws Exception {
         int lang = switch (String.valueOf(piston.get("language"))) {case "c++" -> 54; case "java" -> 62; default -> 71;};
@@ -32,14 +34,16 @@ final class Judge0Adapter {
         // Base64 avoids invalid UTF-8 from submitted programs breaking JSON decoding.
         request.put("source_code",b64(String.valueOf(request.get("source_code"))));
         request.put("stdin",b64(String.valueOf(request.get("stdin"))));
-        JsonNode created = send("/submissions?base64_encoded=true&wait=false", request);
+        JsonNode created = send("/submissions?base64_encoded=true&wait=true", request);
         String token = created.path("token").asText("");
         if (!token.matches("[a-zA-Z0-9-]+")) throw new IllegalStateException("Judge did not return a submission token");
-        JsonNode result = null;
-        for (int i=0; i<40; i++) {
-            result = send("/submissions/"+token+"?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,wall_time,memory,exit_code,exit_signal",null);
-            if (result.path("status").path("id").asInt() > 2) break;
-            Thread.sleep(500);
+        JsonNode result = created;
+        if (result.path("status").path("id").asInt(0) <= 2) {
+            for (int i=0; i<40; i++) {
+                Thread.sleep(500);
+                result = send("/submissions/"+token+"?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,wall_time,memory,exit_code,exit_signal",null);
+                if (result.path("status").path("id").asInt() > 2) break;
+            }
         }
         int status=result.path("status").path("id").asInt();
         if (status <= 2) throw new IllegalStateException("Judge queue timed out; try again shortly");
@@ -55,10 +59,14 @@ final class Judge0Adapter {
         return mapper.valueToTree(Map.of("run",run));
     }
     private JsonNode send(String path,Map<String,Object> body) throws Exception {
-        HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(base+path)).timeout(Duration.ofSeconds(20)).header("Content-Type","application/json");
+        HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(base+path))
+            .timeout(Duration.ofSeconds(20))
+            .header("Content-Type","application/json")
+            .header("User-Agent","CyberAlgoArena-Judge/1.0");
         if(apiKey!=null&&!apiKey.isBlank()) {
-            if(URI.create(base).getHost().endsWith("rapidapi.com")) {
-                builder.header("X-RapidAPI-Key",apiKey).header("X-RapidAPI-Host",URI.create(base).getHost());
+            URI u = URI.create(base);
+            if(u.getHost()!=null&&u.getHost().endsWith("rapidapi.com")) {
+                builder.header("X-RapidAPI-Key",apiKey).header("X-RapidAPI-Host",u.getHost());
             } else builder.header("X-Auth-Token",apiKey);
         }
         if(body==null)builder.GET();else builder.POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)));

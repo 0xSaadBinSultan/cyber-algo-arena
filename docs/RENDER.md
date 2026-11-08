@@ -22,8 +22,9 @@ The application does not execute user programs in the Render web process.
 
 Choose one execution provider:
 
-1. Set `PISTON_URL` to an authorized/self-hosted Piston URL. Full `/execute` URLs and base URLs are accepted. Optionally set `PISTON_API_KEY` for bearer authentication.
-2. Set `JUDGE0_URL=https://judge0-ce.p.rapidapi.com` and `JUDGE0_API_KEY` for an activated Judge0 CE account. A configured Judge0 URL takes priority over Piston. Self-hosted Judge0 uses `X-Auth-Token` instead of RapidAPI headers.
+1. **Recommended (24/7 Cloud Zero-Maintenance)**: Set `JUDGE0_URL=https://ce.judge0.com`. The public Judge0 Community Edition executes C++, Java, and Python 3 submissions directly in the cloud without requiring an API key, without running Docker or tunnels on your local PC, and with 100% permanent uptime.
+2. Set `PISTON_URL` to an authorized/self-hosted Piston URL. Full `/execute` URLs and base URLs are accepted. Optionally set `PISTON_API_KEY` for bearer authentication. If Piston is temporarily unreachable, the platform automatically falls back to Judge0 CE cloud execution.
+3. Set `JUDGE0_URL=https://judge0-ce.p.rapidapi.com` and `JUDGE0_API_KEY` for an activated Judge0 CE RapidAPI account. Self-hosted Judge0 uses `X-Auth-Token` instead of RapidAPI headers.
 
 Judge0 CE language IDs currently used are 54 (C++), 62 (Java), and 71 (Python 3). These must be installed/enabled by the provider. Programs must read stdin and write stdout; Java entrypoint is `public class Main`.
 

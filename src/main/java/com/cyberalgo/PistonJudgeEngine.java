@@ -30,14 +30,16 @@ public final class PistonJudgeEngine {
     private final ObjectMapper mapper;
     private final URI executeEndpoint;
     private final boolean configured;
+    private final String rawEndpoint;
 
     public PistonJudgeEngine() {
         this(System.getenv("PISTON_URL"));
     }
 
     PistonJudgeEngine(String endpoint) {
+        this.rawEndpoint = endpoint;
         String judge0 = System.getenv("JUDGE0_URL");
-        this.configured = endpoint != null && !endpoint.isBlank() || judge0 != null && !judge0.isBlank();
+        this.configured = true;
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(6))
@@ -125,17 +127,37 @@ public final class PistonJudgeEngine {
 
                 JsonNode root;
                 String judge0 = System.getenv("JUDGE0_URL");
-                if (judge0 != null && !judge0.isBlank()) {
+                boolean preferJudge0 = judge0 != null && !judge0.isBlank();
+                if (preferJudge0) {
                     root = new Judge0Adapter().execute(reqBody);
                 } else {
-                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                    if (response.statusCode() != 200) {
-                        String msg = response.statusCode() == 401 || response.statusCode() == 403
-                                ? "Judge service authorization failed. Configure an authorized Piston or Judge0 service."
-                                : "Judge service error: HTTP " + response.statusCode();
-                        return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                    try {
+                        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                        if (response.statusCode() == 200) {
+                            root = mapper.readTree(response.body());
+                        } else {
+                            String msg = response.statusCode() == 401 || response.statusCode() == 403
+                                    ? "Judge service authorization failed. Configure an authorized Piston or Judge0 service."
+                                    : "Judge service error: HTTP " + response.statusCode();
+                            if (response.statusCode() == 401 || response.statusCode() >= 500) {
+                                try {
+                                    root = new Judge0Adapter().execute(reqBody);
+                                } catch (Exception judge0Ex) {
+                                    return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                                }
+                            } else {
+                                return result(SubmissionResult.Status.INVALID, msg, passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                            }
+                        }
+                    } catch (Exception ex) {
+                        try {
+                            root = new Judge0Adapter().execute(reqBody);
+                        } catch (Exception judge0Ex) {
+                            return result(SubmissionResult.Status.INVALID,
+                                    "Judge service unavailable: " + sanitizeError(ex.getMessage()),
+                                    passed, tests.size(), maxTime, maxMemory, lang.displayName());
+                        }
                     }
-                    root = mapper.readTree(response.body());
                 }
                 JsonNode compile = root.path("compile");
                 if (!compile.isMissingNode() && !compile.isNull()) {
