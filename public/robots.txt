@@ -1,1 +1,5 @@
-User-agent: *\nDisallow: /admin\nDisallow: /api/admin/\n
+User-agent: *
+Disallow: /admin
+Disallow: /api/admin/
+
+Sitemap: https://cyber-algo-arena.vercel.app/sitemap.xml

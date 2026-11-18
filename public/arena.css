@@ -871,6 +871,32 @@ footer span {
 footer a:hover {
   color: var(--accent);
 }
+.discovery {
+  border-top: 1px solid var(--border);
+  margin-top: 42px;
+  padding-top: 30px;
+}
+.discovery-intro {
+  max-width: 850px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+.discovery-intro strong { color: var(--text); font-weight: 500; }
+.discovery-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 25px 0 34px; }
+.discovery-links > a { display: block; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.discovery-links > a:hover { border-color: var(--accent); }
+.discovery-links h3 { margin: 16px 0 10px; }
+.discovery-links p { color: var(--muted); line-height: 1.7; font-size: 14px; }
+.discovery-links > a > span:last-child { color: var(--accent); font-size: 13px; }
+.discovery-faq { max-width: 900px; }
+.discovery-faq details { border-bottom: 1px solid var(--border); padding: 17px 0; }
+.discovery-faq summary { cursor: pointer; min-height: 28px; font-size: 16px; line-height: 1.7; }
+.discovery-faq p { color: var(--muted); font-size: 15px; line-height: 1.8; }
+.discovery-faq a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+footer nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+footer nav a { min-height: 30px; display: inline-flex; align-items: center; }
+@media (max-width: 1100px) { .discovery-links { grid-template-columns: 1fr; } footer { flex-wrap: wrap; } }
 dialog {
   background: #131a21;
   color: var(--text);
