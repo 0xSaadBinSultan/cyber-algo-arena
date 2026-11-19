@@ -25,6 +25,11 @@ both regular search and answer-based discovery. Structured data describes the
 actual website/application and each page's breadcrumbs, with no invented reviews
 or usage figures.
 
+The combined guide also addresses “CP and CTF merge”, “CP CTF together”,
+“CP CTF merged platform”, and “CPCTF”. CPCTF is explicitly defined on the page
+as shorthand for the combined practice workflow. The title, introduction,
+questions, and homepage links explain this intent in readable language.
+
 ## Updating content
 
 Edit the public learning copy in `scripts/build-search-pages.py`, then run:
@@ -36,6 +41,10 @@ python3 scripts/build-search-pages.py
 Commit the generated HTML and `public/sitemap.xml` along with the source. Update
 public statements and sample counts when changing the built-in problems. Keep
 hidden tests, CTF flags, credentials, and member data out of these pages.
+
+Update the combined page's `modified` date, or `HOME_MODIFIED` for the homepage,
+when its content changes. These editorial dates populate sitemap `lastmod`;
+running the generator alone keeps them unchanged.
 
 `public/robots.txt` points to the sitemap. Vercel serves extensionless page URLs.
 Admin/API responses carry `X-Robots-Tag: noindex, nofollow`; the separate backend

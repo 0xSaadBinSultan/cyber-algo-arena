@@ -6,16 +6,20 @@ from pathlib import Path
 
 PUBLIC = Path(__file__).resolve().parents[1] / "public"
 BASE = "https://cyber-algo-arena.vercel.app"
+HOME_MODIFIED = "2026-11-19"
 
 PAGES = [
     {
         "path": "cp-and-ctf",
-        "title": "CP and CTF in One Platform | Cyber Algo Arena",
-        "heading": "Competitive programming and CTF. One place to grow.",
-        "description": "Practice competitive programming and capture the flag together. Compare CP and CTF, explore judged coding problems, and start beginner security labs.",
+        "modified": "2026-11-19",
+        "title": "CP and CTF Together: A Merged Platform | Cyber Algo Arena",
+        "heading": "CP and CTF together in one platform.",
+        "description": "Bring CP and CTF together in a merged practice platform. Cyber Algo Arena combines coding problems, CTF labs, shared progress, and mixed contests.",
         "eyebrow": "ONE ARENA · TWO WAYS TO THINK",
-        "answer": "Cyber Algo Arena combines competitive programming (CP) and capture the flag (CTF) in one platform. Use one account to solve algorithm problems with an online judge, explore security labs, and track progress across both subjects.",
-        "body": '''<section><h2>What is the difference between CP and CTF?</h2>
+        "answer": "Cyber Algo Arena is a merged CP and CTF platform for competitive programming and capture the flag practice. Solve judged coding problems and security challenges with one account, then bring both tracks into a club contest.",
+        "body": '''<section class="answer-box"><h2>Can I merge CP and CTF into one platform?</h2><p>Yes. Cyber Algo Arena brings CP and CTF together through a shared account, a practice workspace, and combined progress tracking. You can switch from an algorithm problem to a security lab without creating another account.</p><p>The two tracks keep their own submission rules: CP source code runs against public samples and hidden testcases, while CTF answers are checked as flags. A contest can include challenges from both tracks.</p></section>
+<section><h2>What does CPCTF mean here?</h2><p>CPCTF is shorthand on this page for competitive programming and capture the flag together. It describes a combined practice workflow: build algorithmic skills, investigate security puzzles, and follow your progress in one place.</p><p>For example, start with Packet Budget to practice input handling and integer sums, then investigate the access log in The midnight request. Both solves contribute to the same member profile.</p></section>
+<section><h2>What is the difference between CP and CTF?</h2>
 <p>Competitive programming asks you to build a correct, efficient algorithm for a defined input and output. Capture the flag asks you to investigate a security puzzle and recover a flag: a short answer that proves you solved it. Both reward careful reading, experimentation, and persistence.</p>
 <div class="table-scroll"><table><caption>Two tracks, compared</caption><thead><tr><th scope="col">Question</th><th scope="col">Competitive programming</th><th scope="col">Capture the flag</th></tr></thead><tbody>
 <tr><th scope="row">What do I submit?</th><td>Source code in C++, Java, or Python.</td><td>A flag recovered from the challenge.</td></tr>
@@ -143,10 +147,13 @@ def main():
         target = PUBLIC / (page["path"] + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(page_document(page), encoding="utf-8")
-    urls = [BASE + "/"] + [BASE + "/" + page["path"] for page in PAGES]
-    # Do not invent lastmod dates, change frequencies, or ranking priorities.
+    urls = [(BASE + "/", HOME_MODIFIED)] + [
+        (BASE + "/" + page["path"], page.get("modified")) for page in PAGES]
+    # Editorial modification dates stay fixed across rebuilds.
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    sitemap += "\n".join(f"  <url><loc>{url}</loc></url>" for url in urls)
+    sitemap += "\n".join(
+        f"  <url><loc>{url}</loc>" + (f"<lastmod>{modified}</lastmod>" if modified else "") + "</url>"
+        for url, modified in urls)
     (PUBLIC / "sitemap.xml").write_text(sitemap + "\n</urlset>\n", encoding="utf-8")
     print(f"Built {len(PAGES)} public pages and sitemap.xml")
 

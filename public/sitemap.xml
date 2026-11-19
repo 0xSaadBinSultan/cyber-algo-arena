@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://cyber-algo-arena.vercel.app/</loc></url>
-  <url><loc>https://cyber-algo-arena.vercel.app/cp-and-ctf</loc></url>
+  <url><loc>https://cyber-algo-arena.vercel.app/</loc><lastmod>2026-11-19</lastmod></url>
+  <url><loc>https://cyber-algo-arena.vercel.app/cp-and-ctf</loc><lastmod>2026-11-19</lastmod></url>
   <url><loc>https://cyber-algo-arena.vercel.app/competitive-programming</loc></url>
   <url><loc>https://cyber-algo-arena.vercel.app/capture-the-flag</loc></url>
   <url><loc>https://cyber-algo-arena.vercel.app/problems/packet-budget</loc></url>
